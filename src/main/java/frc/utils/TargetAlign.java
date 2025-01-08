@@ -9,6 +9,8 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.FieldConstants;
 
 public class TargetAlign {
+
+    //gets the position of the destinated target on the field. Returned rotation is intended to be yawed first by drivetrain and then pitched by arm. 
     public Pose3d getReefPositionPose(int level, int position) {
         double height = FieldConstants.REEF_LEVEL_HEIGHTS[level];
         double radius = FieldConstants.REEF_LEVEL_RADII[level];
@@ -42,7 +44,7 @@ public class TargetAlign {
         return pose;
     }
 
-    //Converts from blue alliance pos to red alliance pos. Takes the difference of the center of the field and the blue position, and adds it back to the center position. Also inverts angle. 
+    //Converts from blue alliance pos to red alliance pos. Takes the difference of the center of the field and the blue position, and adds it back to the center position. Also adds 180 degrees to angle. 
     public Pose2d getRedPosition(Pose2d bluePosition) {
         double x = bluePosition.getX();
         double y = bluePosition.getY();
@@ -54,7 +56,7 @@ public class TargetAlign {
         x = FieldConstants.FIELD_LENGTH / 2.0 + distanceFromCenterX;
         y = FieldConstants.FIELD_WIDTH / 2.0 + distanceFromCenterY;
 
-        angle = -angle;
+        angle = angle + Math.PI;
 
         return new Pose2d(x, y, new Rotation2d(angle));
     }
