@@ -21,7 +21,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     /** Constant values of pivot subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int pivotMotor = 0; // TODO get actual can ids
+            private static final int pivotMotor = -0; // TODO get actual can ids
         }
 
         public static class PID {
