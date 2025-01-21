@@ -5,11 +5,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
 
-/** Climber subsystem which hangs robot from deep cage. */
-public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
-    /** Constant values of climber subsystem. */
+/** Subsystem which rotates manipulator subsystem. */
+public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.Constants.Position> {
+    /** Constant values of pivot subsystem. */
     public static final class Constants {
-        /** Positions that climber subsystem can be in. */
+        /** Positions that pivot subsystem can be in. */
         public enum Position {
         }
     }
@@ -39,7 +39,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     }
 
     @Override
-    public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
+    public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }

@@ -1,6 +1,6 @@
 plugins {
     id "java"
-    id "edu.wpi.first.GradleRIO" version "2025.1.1"
+    id "edu.wpi.first.GradleRIO" version "2025.2.1"
 }
 
 java {
@@ -53,7 +53,7 @@ def includeDesktopSupport = true
 // Also defines JUnit 5.
 dependencies {
     implementation project(":houndutil")
-
+    
     annotationProcessor wpi.java.deps.wpilibAnnotations()
     implementation wpi.java.deps.wpilib()
     implementation wpi.java.vendor.java()

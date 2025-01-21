@@ -1,15 +1,16 @@
 package frc.robot.subsystems;
 
-import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
 
-/** Climber subsystem which hangs robot from deep cage. */
-public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
-    /** Constant values of climber subsystem. */
+/** Subsystem which lifts manipulator subsystem. */
+public class Elevator extends SubsystemBase
+        implements BaseLinearMechanism<Elevator.Constants.Position> {
+    /** Constant values of elevator subsystem. */
     public static final class Constants {
-        /** Positions that climber subsystem can be in. */
+        /** Positions that elevator subsystem can be in. */
         public enum Position {
         }
     }
@@ -39,7 +40,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     }
 
     @Override
-    public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
+    public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
