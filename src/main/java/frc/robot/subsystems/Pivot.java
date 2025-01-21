@@ -9,6 +9,16 @@ import java.util.function.Supplier;
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.Constants.Position> {
     /** Constant values of pivot subsystem. */
     public static final class Constants {
+        private static final class CANIDs {
+            private static final int pivotMotor = 0; //TODO get actual can ids 
+        }
+        public static class PID {
+            public static final double kP = 0; //TODO find good value
+            public static final double kI = 0; //TODO find good value
+            public static final double kD = 0; //TODO find good value
+        }
+
+        public static final int MAX_AMPS = 10;
         /** Positions that pivot subsystem can be in. */
         public enum Position {
         }
