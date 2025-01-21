@@ -120,7 +120,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> pidController.reset(getPosition())),
-                runOnce(() -> pidController.setGoal(goalPositionSupplier.get())), // TODO this is some enum stuff
+                runOnce(() -> pidController.setGoal(goalPositionSupplier.get())),
                 moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPosition");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'moveToArbitraryPositionCommand'");
