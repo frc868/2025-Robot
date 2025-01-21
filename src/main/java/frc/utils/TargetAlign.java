@@ -6,24 +6,25 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import frc.robot.FieldConstants;
+import frc.robot.Constants.Field.*;
+import frc.robot.Constants.*;
 
 public class TargetAlign {
 
     //gets the position of the destinated target on the field. Returned rotation is intended to be yawed first by drivetrain and then pitched by arm. 
     public Pose3d getReefPositionPose(int level, int position) {
-        double height = FieldConstants.REEF_LEVEL_HEIGHTS[level];
-        double radius = FieldConstants.REEF_LEVEL_RADII[level];
-        double verticalAngle = FieldConstants.REEF_LEVEL_ANGLES[level]; //0 is horizontal, positive is angle up
+        double height = Field.REEF_LEVEL_HEIGHTS[level];
+        double radius = Field.REEF_LEVEL_RADII[level];
+        double verticalAngle = Field.REEF_LEVEL_ANGLES[level]; //0 is horizontal, positive is angle up
 
-        int side = position / FieldConstants.REEF_PLACES_PER_SIDE;
-        int place = position % FieldConstants.REEF_PLACES_PER_SIDE;
+        int side = position / Field.REEF_PLACES_PER_SIDE;
+        int place = position % Field.REEF_PLACES_PER_SIDE;
 
-        double horizontalAngle = 2.0 * Math.PI / FieldConstants.REEF_SIDES * side; //0 is facing the -X direction, moving counterclockwise. Will normalize with convention (+X is 0) on return
+        double horizontalAngle = 2.0 * Math.PI / Field.REEF_SIDES * side; //0 is facing the -X direction, moving counterclockwise. Will normalize with convention (+X is 0) on return
         double offsetDirection = (place == 0) ? -1 : 1;
 
-        double x = -radius * Math.cos(horizontalAngle) + offsetDirection * FieldConstants.REEF_RADIUS_OFFSET * Math.sin(horizontalAngle);
-        double y = -radius * Math.sin(horizontalAngle) - offsetDirection * FieldConstants.REEF_RADIUS_OFFSET * Math.cos(horizontalAngle);
+        double x = -radius * Math.cos(horizontalAngle) + offsetDirection * Field.REEF_RADIUS_OFFSET * Math.sin(horizontalAngle);
+        double y = -radius * Math.sin(horizontalAngle) - offsetDirection * Field.REEF_RADIUS_OFFSET * Math.cos(horizontalAngle);
 
 
         var alliance = DriverStation.getAlliance();
@@ -50,11 +51,11 @@ public class TargetAlign {
         double y = bluePosition.getY();
         double angle = bluePosition.getRotation().getRadians();
 
-        double distanceFromCenterX = FieldConstants.FIELD_LENGTH / 2.0 - x;
-        double distanceFromCenterY = FieldConstants.FIELD_WIDTH / 2.0 - y;
+        double distanceFromCenterX = Field.FIELD_LENGTH / 2.0 - x;
+        double distanceFromCenterY = Field.FIELD_WIDTH / 2.0 - y;
 
-        x = FieldConstants.FIELD_LENGTH / 2.0 + distanceFromCenterX;
-        y = FieldConstants.FIELD_WIDTH / 2.0 + distanceFromCenterY;
+        x = Field.FIELD_LENGTH / 2.0 + distanceFromCenterX;
+        y = Field.FIELD_WIDTH / 2.0 + distanceFromCenterY;
 
         angle = angle + Math.PI;
 
