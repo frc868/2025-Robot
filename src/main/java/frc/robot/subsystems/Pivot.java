@@ -9,6 +9,7 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -20,24 +21,45 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     /** Constant values of pivot subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int pivotMotor = 0; //TODO get actual can ids 
+            private static final int pivotMotor = 0; // TODO get actual can ids
         }
+
         public static class PID {
-            public static final double kP = 0; //TODO find good value
-            public static final double kI = 0; //TODO find good value
-            public static final double kD = 0; //TODO find good value
+            public static final double kP = 0; // TODO find good value
+            public static final double kI = 0; // TODO find good value
+            public static final double kD = 0; // TODO find good value
+        }
+
+        public static class FeedForward {
+            public static final double kS = 0; // TODO find good value
+            public static final double kG = 0; // TODO find good value
+            public static final double kV = 0; // TODO find good value
+            public static final double kA = 0; // TODO find good value
+        }
+
+        public static class MotionProfiling { // TODO everything
+            public static final double MAX_VELOCITY_METERS_PER_SECOND = 0.0;
+            public static final double MAX_ACCELERATION_METERS_PER_SECOND_SQUARED = 0.0;
+            public static final TrapezoidProfile.Constraints MOVEMENT_CONSTRAINTS = new TrapezoidProfile.Constraints(
+                    MAX_VELOCITY_METERS_PER_SECOND, MAX_ACCELERATION_METERS_PER_SECOND_SQUARED);
+
         }
 
         public static final int MAX_AMPS = 10;
+
         /** Positions that pivot subsystem can be in. */
         public enum Position {
+            // TODO measure positions
         }
     }
 
     private SparkFlex motor;
     private SparkFlexConfig motorConfig;
-    private ProfiledPIDController pidController = new ProfiledPIDController(kP, kI, kD, MOVEMENT_CONSTRAINTS);
-    private ArmFeedforward feedforward = new ArmFeedforward(kS, kG, kV, kA);
+    private ProfiledPIDController pidController = new ProfiledPIDController(Constants.PID.kP, Constants.PID.kI,
+            Constants.PID.kD,
+            Constants.MotionProfiling.MOVEMENT_CONSTRAINTS);
+    private ArmFeedforward feedforward = new ArmFeedforward(Constants.FeedForward.kS, Constants.FeedForward.kG,
+            Constants.FeedForward.kV, Constants.FeedForward.kA);
     private double feedbackVoltage = 0.0;
     private double feedforwardVoltage = 0.0;
 
