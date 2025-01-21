@@ -626,7 +626,6 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
     @Override
     public DriveMode getDriveMode() {
-<<<<<<< HEAD
         return driveMode;
     }
 
@@ -642,21 +641,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             return simOdometry.getPoseMeters();
         else
             return new Pose2d();
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getDriveMode'");
-    }
-
-    @Override
-    public Pose2d getPose() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPose'");
->>>>>>> dev
     }
 
     @Override
     public Rotation2d getRotation() {
-<<<<<<< HEAD
         return Rotation2d.fromDegrees(pigeon.getYaw().getValueAsDouble());
     }
 
@@ -696,33 +684,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     @Log(groups = "control")
     public ChassisAccelerations getFieldRelativeAccelerations() {
         return new ChassisAccelerations(getFieldRelativeSpeeds(), prevFieldRelVelocities, 0.020);
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getRotation'");
-    }
-
-    @Override
-    public SwerveModulePosition[] getModulePositions() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getModulePositions'");
-    }
-
-    @Override
-    public SwerveModuleState[] getModuleStates() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getModuleStates'");
-    }
-
-    @Override
-    public ChassisSpeeds getChassisSpeeds() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getChassisSpeeds'");
->>>>>>> dev
     }
 
     @Override
     public SwerveDrivePoseEstimator getPoseEstimator() {
-<<<<<<< HEAD
         return poseEstimator;
     }
 
@@ -735,75 +700,47 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         } finally {
             stateLock.writeLock().unlock();
         }
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPoseEstimator'");
->>>>>>> dev
     }
 
     @Override
     public void updatePoseEstimator() {
-<<<<<<< HEAD
-=======
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'updatePoseEstimator'");
->>>>>>> dev
     }
 
     @Override
     public void resetPoseEstimator(Pose2d pose) {
-<<<<<<< HEAD
         poseEstimator.resetPosition(getRotation(), getModulePositions(),
                 new Pose2d(pose.getTranslation(), getRotation()));
         if (RobotBase.isSimulation())
             simOdometry.resetPosition(getRotation(), getModulePositions(),
                     new Pose2d(pose.getTranslation(), getRotation()));
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPoseEstimator'");
->>>>>>> dev
     }
 
     @Override
     public void resetGyro() {
-<<<<<<< HEAD
         pigeon.setYaw(0);
         initialized = true;
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetGyro'");
->>>>>>> dev
     }
 
     @Override
     public void setMotorHoldModes(MotorHoldMode motorHoldMode) {
-<<<<<<< HEAD
         frontLeft.setMotorHoldMode(motorHoldMode);
         frontRight.setMotorHoldMode(motorHoldMode);
         backLeft.setMotorHoldMode(motorHoldMode);
         backRight.setMotorHoldMode(motorHoldMode);
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setMotorHoldModes'");
->>>>>>> dev
     }
 
     @Override
     public void setDriveCurrentLimit(int currentLimit) {
-<<<<<<< HEAD
         frontLeft.setDriveCurrentLimit(currentLimit);
         frontRight.setDriveCurrentLimit(currentLimit);
         backLeft.setDriveCurrentLimit(currentLimit);
         backRight.setDriveCurrentLimit(currentLimit);
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setDriveCurrentLimit'");
->>>>>>> dev
     }
 
     @Override
     public void stop() {
-<<<<<<< HEAD
         frontLeft.stop();
         frontRight.stop();
         backLeft.stop();
@@ -828,33 +765,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
     public void drive(ChassisSpeeds speeds) {
         drive(speeds, this.driveMode);
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'stop'");
-    }
-
-    @Override
-    public void setStates(SwerveModuleState[] state) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setStates'");
-    }
-
-    @Override
-    public void setStatesClosedLoop(SwerveModuleState[] state) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setStatesClosedLoop'");
-    }
-
-    @Override
-    public void drive(ChassisSpeeds speeds) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'drive'");
->>>>>>> dev
     }
 
     @Override
     public void drive(ChassisSpeeds speeds, DriveMode driveMode) {
-<<<<<<< HEAD
         if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red
                 && driveMode == DriveMode.FIELD_ORIENTED) {
             speeds.vxMetersPerSecond *= -1;
@@ -889,15 +803,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
         commandedModuleStates = states;
         setStates(states);
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'drive'");
->>>>>>> dev
     }
 
     @Override
     public void driveClosedLoop(ChassisSpeeds speeds, DriveMode driveMode) {
-<<<<<<< HEAD
         if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red
                 && driveMode == DriveMode.FIELD_ORIENTED) {
             speeds.vxMetersPerSecond *= -1;
@@ -968,24 +877,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
             drive(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), driveMode);
         }).withName("drivetrain.teleopDrive");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'driveClosedLoop'");
-    }
-
-    @Override
-    public Command teleopDriveCommand(
-            DoubleSupplier xSpeedSupplier,
-            DoubleSupplier ySpeedSupplier,
-            DoubleSupplier thetaSpeedSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'teleopDriveCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command controlledRotateCommand(DoubleSupplier angle) {
-<<<<<<< HEAD
         return Commands.run(() -> {
             if (!isControlledRotationEnabled) {
                 rotationController.reset(getRotation().getRadians());
@@ -1013,29 +908,18 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                     rotationController.calculate(poseEstimator.getEstimatedPosition().getRotation().getRadians())),
                     driveMode);
         })).withName("drivetrain.standaloneControlledRotate");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'controlledRotateCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command disableControlledRotateCommand() {
-<<<<<<< HEAD
         return Commands.runOnce(
                 () -> {
                     isControlledRotationEnabled = false;
                 }).withName("drivetrain.disableControlledRotate");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-                "Unimplemented method 'disableControlledRotateCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command wheelLockCommand() {
-<<<<<<< HEAD
         return run(() -> {
             setStates(new SwerveModuleState[] {
                     new SwerveModuleState(0, Rotation2d.fromDegrees(45)),
@@ -1044,15 +928,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                     new SwerveModuleState(0, Rotation2d.fromDegrees(45))
             });
         }).withName("drivetrain.wheelLock");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'wheelLockCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command turnWheelsToAngleCommand(double angle) {
-<<<<<<< HEAD
         return Commands.runOnce(() -> {
             setStates(new SwerveModuleState[] {
                     new SwerveModuleState(0, new Rotation2d(angle)),
@@ -1104,30 +983,14 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 (speeds, feedforwards) -> driveClosedLoop(speeds, DriveMode.ROBOT_RELATIVE),
                 new PPHolonomicDriveController(
                         new PIDConstants(PATH_FOLLOWING_TRANSLATION_kP, 0, 0),
-                        new PIDConstants(PATH_FOLLOWING_ROTATION_kP, 0, 0)), ROBOT_CONFIG,
+                        new PIDConstants(PATH_FOLLOWING_ROTATION_kP, 0, 0)),
+                ROBOT_CONFIG,
                 () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
                 this).finallyDo(this::stop).withName("drivetrain.followPath");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'turnWheelsToAngleCommand'");
-    }
-
-    @Override
-    public Command driveToPoseCommand(Supplier<Pose2d> pose) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'driveToPoseCommand'");
-    }
-
-    @Override
-    public Command followPathCommand(PathPlannerPath path) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'followPathCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command driveDeltaCommand(Transform2d delta, PathConstraints constraints) {
-<<<<<<< HEAD
         return new DeferredCommand(() -> followPathCommand(
                 new PathPlannerPath(
                         PathPlannerPath.bezierFromPoses(
@@ -1135,50 +998,30 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                         constraints, new IdealStartingState(0, delta.getRotation().plus(getRotation())),
                         new GoalEndState(0, delta.getRotation().plus(getRotation())))),
                 Set.of()).withName("drivetrain.driveDelta");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'driveDeltaCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command setDriveModeCommand(DriveMode driveMode) {
-<<<<<<< HEAD
         return runOnce(() -> this.driveMode = driveMode).withName("drivetrain.setDriveMode");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setDriveModeCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command resetGyroCommand() {
-<<<<<<< HEAD
         return runOnce(() -> resetGyro()).withName("drivetrain.resetGyro");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetGyroCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command setDriveCurrentLimitCommand(int currentLimit) {
-<<<<<<< HEAD
         return Commands.runOnce(() -> {
             frontLeft.setDriveCurrentLimit(currentLimit);
             frontRight.setDriveCurrentLimit(currentLimit);
             backLeft.setDriveCurrentLimit(currentLimit);
             backRight.setDriveCurrentLimit(currentLimit);
         }).withName("drivetrain.setDriveCurrentLimit");
-=======
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setDriveCurrentLimitCommand'");
->>>>>>> dev
     }
 
     @Override
     public Command coastMotorsCommand() {
-<<<<<<< HEAD
         return runOnce(this::stop)
                 .andThen(() -> setMotorHoldModes(MotorHoldMode.COAST))
                 .finallyDo((d) -> setMotorHoldModes(MotorHoldMode.BRAKE))
@@ -1241,6 +1084,4 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             this.initialized = initialized;
         }).withName("drivetrain.setInitialized");
     }
-}=======
-// TODO Auto-generated method stub
-throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");}}>>>>>>>dev
+}
