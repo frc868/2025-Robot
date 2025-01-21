@@ -21,19 +21,19 @@ public class Vision implements BaseVision {
         public static final class Constants {
                 public static final Matrix<N3, N1> SINGLE_TAG_STD_DEVS = VecBuilder.fill(Double.MAX_VALUE,
                                 Double.MAX_VALUE,
-                                Double.MAX_VALUE);
-                public static final Matrix<N3, N1> MULTI_TAG_STD_DEVS = VecBuilder.fill(0.1, 0.1, Double.MAX_VALUE);
+                                Double.MAX_VALUE); // TODO
+                public static final Matrix<N3, N1> MULTI_TAG_STD_DEVS = VecBuilder.fill(0.1, 0.1, Double.MAX_VALUE); // TODO
                 public static final Matrix<N3, N1> MULTI_TAG_TELEOP_STD_DEVS = VecBuilder.fill(0.01, 0.01,
-                                Double.MAX_VALUE);
+                                Double.MAX_VALUE); // TODO
 
                 public static final PhotonCameraConstants CAMERA_CONSTANTS = new PhotonCameraConstants();
                 static {
-                        CAMERA_CONSTANTS.WIDTH = 1600;
-                        CAMERA_CONSTANTS.HEIGHT = 1200;
-                        CAMERA_CONSTANTS.FOV = 95.39;
-                        CAMERA_CONSTANTS.FPS = 35;
-                        CAMERA_CONSTANTS.AVG_LATENCY = 30;
-                        CAMERA_CONSTANTS.STDDEV_LATENCY = 15;
+                        CAMERA_CONSTANTS.WIDTH = 1600; // TODO
+                        CAMERA_CONSTANTS.HEIGHT = 1200; // TODO
+                        CAMERA_CONSTANTS.FOV = 95.39; // TODO
+                        CAMERA_CONSTANTS.FPS = 35; // TODO
+                        CAMERA_CONSTANTS.AVG_LATENCY = 30; // TODO
+                        CAMERA_CONSTANTS.STDDEV_LATENCY = 15; // TODO
                 }
 
                 // 2/17/24
@@ -43,25 +43,25 @@ public class Vision implements BaseVision {
                                                 new Translation3d(
                                                                 Units.inchesToMeters(11.886316),
                                                                 -Units.inchesToMeters(7.507594),
-                                                                Units.inchesToMeters(9.541569)),
+                                                                Units.inchesToMeters(9.541569)), // TODO
                                                 new Rotation3d(0, Units.degreesToRadians(-25),
-                                                                Units.degreesToRadians(10))),
+                                                                Units.degreesToRadians(10))), // TODO
                                 // left camera
                                 new Transform3d(
                                                 new Translation3d(
                                                                 -Units.inchesToMeters(1.765373),
                                                                 Units.inchesToMeters(10.707761),
-                                                                Units.inchesToMeters(12.116848)),
+                                                                Units.inchesToMeters(12.116848)), // TODO
                                                 new Rotation3d(0, Units.degreesToRadians(-20),
-                                                                Units.degreesToRadians(70))),
+                                                                Units.degreesToRadians(70))), // TODO
                                 // right camera
                                 new Transform3d(
                                                 new Translation3d(
                                                                 -Units.inchesToMeters(1.765373),
                                                                 -Units.inchesToMeters(10.707761),
-                                                                Units.inchesToMeters(12.116848)),
+                                                                Units.inchesToMeters(12.116848)), // TODO
                                                 new Rotation3d(0, Units.degreesToRadians(-20),
-                                                                Units.degreesToRadians(-70)))
+                                                                Units.degreesToRadians(-70))) // TODO
                 };
         }
 
