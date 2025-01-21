@@ -1,5 +1,9 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -13,17 +17,29 @@ public class Elevator extends SubsystemBase
         private static final class CANIDs {
             private static final int elevatorMotor = 0; //TODO get actual can ids 
         }
+
         public static class PID {
             public static final double kP = 0; //TODO find good value
             public static final double kI = 0; //TODO find good value
             public static final double kD = 0; //TODO find good value
         }
 
-        public static final int MAX_AMPS = 10;
+        public static final double MAX_AMPS = 10;
 
         /** Positions that elevator subsystem can be in. */
         public enum Position {
         }
+    }
+
+    private TalonFX elevatorMotor = new TalonFX(Constants.CANIDs.elevatorMotor);
+    private TalonFXConfigurator elevatorConfig = elevatorMotor.getConfigurator();
+    private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
+
+    public Elevator() {
+        elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
+        elevatorConfig_Current.SupplyCurrentLimitEnable = true;
+
+        elevatorConfig.apply(elevatorConfig_Current);
     }
 
     @Override
