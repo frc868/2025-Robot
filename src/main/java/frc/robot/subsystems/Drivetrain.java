@@ -527,6 +527,9 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             }
         }
 
+        /**
+         * Runs the odometry thread.
+         */
         public void run() {
             /* Make sure all signals update at the correct update frequency */
             BaseStatusSignal.setUpdateFrequencyForAll(UPDATE_FREQUENCY, allSignals);
@@ -691,6 +694,14 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         return poseEstimator;
     }
 
+    /**
+     * Adds a vision measurement to the pose estimator.
+     *
+     * @param visionRobotPoseMeters    The pose of the robot from vision.
+     * @param timestampSeconds         The timestamp of the vision measurement.
+     * @param visionMeasurementStdDevs The standard deviations of the vision
+     *                                 measurement.
+     */
     public void addVisionMeasurement(Pose2d visionRobotPoseMeters,
             double timestampSeconds,
             Matrix<N3, N1> visionMeasurementStdDevs) {
@@ -763,6 +774,11 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         backRight.setStateClosedLoop(states[3]);
     }
 
+    /**
+     * Drives the robot with the given chassis speeds.
+     *
+     * @param speeds The desired chassis speeds.
+     */
     public void drive(ChassisSpeeds speeds) {
         drive(speeds, this.driveMode);
     }
@@ -893,6 +909,13 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         }).withName("drivetrain.controlledRotate");
     }
 
+    /**
+     * Same as controlledRotateCommand but includes the run command to actually
+     * execute the rotation
+     *
+     * @param angle The desired angle to rotate to.
+     * @return The command to rotate the robot.
+     */
     public Command standaloneControlledRotateCommand(DoubleSupplier angle) {
         return runOnce(() -> {
             if (!isControlledRotationEnabled) {
@@ -1059,26 +1082,65 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         // getModulePositions()[3].angle)));
     }
 
+    /**
+     * Creates a command to perform a quasistatic system identification on the drive
+     * motors.
+     *
+     * @param direction The direction to perform the identification in.
+     * @return The command to perform the identification.
+     */
     public Command sysIdDriveQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdDrive.quasistatic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
+    /**
+     * Creates a command to perform a dynamic system identification on the drive
+     * motors.
+     *
+     * @param direction The direction to perform the identification in.
+     * @return The command to perform the identification.
+     */
     public Command sysIdDriveDynamic(SysIdRoutine.Direction direction) {
         return sysIdDrive.dynamic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
+    /**
+     * Creates a command to perform a quasistatic system identification on the steer
+     * motors.
+     *
+     * @param direction The direction to perform the identification in.
+     * @return The command to perform the identification.
+     */
     public Command sysIdSteerQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdSteer.quasistatic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
+    /**
+     * Creates a command to perform a dynamic system identification on the steer
+     * motors.
+     *
+     * @param direction The direction to perform the identification in.
+     * @return The command to perform the identification.
+     */
     public Command sysIdSteerDynamic(SysIdRoutine.Direction direction) {
         return sysIdSteer.dynamic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
+    /**
+     * Returns whether the drivetrain has been initialized.
+     *
+     * @return True if the drivetrain has been initialized, false otherwise.
+     */
     public boolean getInitialized() {
         return initialized;
     }
 
+    /**
+     * Creates a command to set the initialized state of the drivetrain.
+     *
+     * @param initialized The desired initialized state.
+     * @return The command to set the initialized state.
+     */
     public Command setInitializedCommand(boolean initialized) {
         return Commands.runOnce(() -> {
             this.initialized = initialized;
