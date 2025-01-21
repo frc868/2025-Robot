@@ -1,7 +1,17 @@
 package frc.robot.subsystems;
 
+import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.config.SparkFlexConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.ArmFeedforward;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
 
@@ -14,70 +24,117 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         }
     }
 
+    private SparkFlex motor;
+    private SparkFlexConfig motorConfig;
+    private ProfiledPIDController pidController = new ProfiledPIDController(kP, kI, kD, MOVEMENT_CONSTRAINTS);
+    private ArmFeedforward feedforward = new ArmFeedforward(kS, kG, kV, kA);
+    private double feedbackVoltage = 0.0;
+    private double feedforwardVoltage = 0.0;
+
+    public Pivot() {
+        // TODO everything
+    }
+
     @Override
     public double getPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+        return motor.getEncoder().getPosition();
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'getPosition'");
     }
 
     @Override
     public void resetPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        motor.getEncoder().setPosition(-65537); // TODO real value
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPosition'");
     }
 
     @Override
     public void setVoltage(double voltage) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+        voltage = MathUtil.clamp(voltage, -12, 12);
+        // TODO safety stuff
+        motor.setVoltage(voltage);
+        // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
     @Override
     public Command moveToCurrentGoalCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
+        return run(() -> {
+            feedbackVoltage = pidController.calculate(getPosition());
+            feedforwardVoltage = feedforward.calculate(getPosition(), 0); // TODO is velocity really 0?
+            setVoltage(feedbackVoltage + feedforwardVoltage);
+        }).withName("pivot.moveToCurrentGoal");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToCurrentGoalCommand'");
     }
 
     @Override
     public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
+        return Commands.sequence(
+                runOnce(() -> pidController.reset(getPosition())),
+                runOnce(() -> pidController.setGoal(goalPositionSupplier.get().value)), // TODO this is some enum stuff
+                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPosition");
+
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToPositionCommand'");
+    }
+
+    /* this was in the code last year so good enough */
+    public boolean atGoal() {
+        return pidController.atGoal();
     }
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-                "Unimplemented method 'moveToArbitraryPositionCommand'");
+        return Commands.sequence(
+                runOnce(() -> pidController.reset(getPosition())),
+                runOnce(() -> pidController.setGoal(goalPositionSupplier.get())), // TODO this is some enum stuff
+                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPosition");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToArbitraryPositionCommand'");
     }
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
+        return moveToArbitraryPositionCommand(() -> pidController.getGoal().position + delta.get())
+                .withName("pivot.movePositionDeltaCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'movePositionDeltaCommand'");
     }
 
     @Override
     public Command holdCurrentPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
+        return movePositionDeltaCommand(() -> 0.0).withName("pivot.holdCurrentPositionCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'holdCurrentPositionCommand'");
     }
 
     @Override
     public Command resetPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        return runOnce(this::resetPosition).withName("pivot.resetPosition");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPositionCommand'");
     }
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+        return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
+                .withName("pivot.setOverriddenSpeed");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'setOverridenSpeedCommand'");
     }
 
     @Override
     public Command coastMotorsCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        return runOnce(motor::stopMotor)
+                .andThen(() -> motorConfig.idleMode(IdleMode.kCoast)) // TODO make sure im doing this right
+                .finallyDo((d) -> {
+                    motorConfig.idleMode(IdleMode.kBrake); // TODO make sure im doing this right
+                    pidController.reset(getPosition());
+                }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("pivot.coastMotorsCommand");
+
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'coastMotorsCommand'");
     }
 }
