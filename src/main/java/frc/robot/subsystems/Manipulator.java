@@ -68,15 +68,65 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
 
     }
 
+    /**
+     * Creates command that will run the manipulator rollers forwards
+     * 
+     * @return A command that will run the rollers at
+     *         {@link Constants#INTAKE_VOLTAGE a specified voltage}
+     */
     @Override
     public Command runRollersCommand() {
-        // TODO Auto-generated method stubs
-        throw new UnsupportedOperationException("Unimplemented method 'runRollersCommand'");
+        return this.runOnce(() -> {
+            manipulatorMotor.setVoltage(Constants.INTAKE_VOLTAGE);
+        });
     }
 
+    /**
+     * Creates a command that will run the manipulator rollers backwards
+     * 
+     * @return A command that will run the rollers at
+     *         {@link Constants#INTAKE_VOLTAGE a specified voltage}
+     */
     @Override
     public Command reverseRollersCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'reverseRollersCommand'");
+        return this.runOnce(() -> {
+            manipulatorMotor.setVoltage(-Constants.INTAKE_VOLTAGE);
+        });
     }
+
+    /**
+     * Creates a command that will stop the manipulator rollers
+     * 
+     * @return Command that will zero the voltage of the manipulator motor
+     */
+    public Command stopRollersCommand() {
+        return this.runOnce(() -> {
+            manipulatorMotor.setVoltage(0);
+        });
+    }
+
+    /**
+     * Command that will run the rollers until a game piece is detected.
+     * This piece will be detected by checking for current spikes in the motor
+     * caused by increased load
+     * 
+     * @return Command that will {@link #runRollersCommand() intake} until the robot
+     *         {@link #hasGamePiece() has a game piece}
+     */
+    public Command intakeGamePieceCommand() {
+        return runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(stopRollersCommand());
+    }
+
+    /**
+     * Checks the values of the motor current and compares them to a threshold to
+     * identify if there is a game piece in the intake
+     * 
+     * @return Whether or not there is a game piece in the intake
+     */
+    public boolean hasGamePiece() {
+        manipulatorCurrent.refresh();
+        return intakeDebouncer.calculate(
+                manipulatorCurrent.getValueAsDouble() > Constants.TORQUE_CURRENT_DETECTION_THRESHOLD);
+    }
+
 }
