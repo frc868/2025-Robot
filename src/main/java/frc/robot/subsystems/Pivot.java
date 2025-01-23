@@ -55,8 +55,15 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
         /** Positions that pivot subsystem can be in. */
         public enum Position {
-            // TODO measure positions
+            TEMP(0);
+
+            public final double value;
+
+            private Position(double value) {
+                this.value = value;
+            }
         }
+
     }
 
     private TalonFX pivotMotor = new TalonFX(Constants.CANIDs.pivotMotor);
@@ -116,7 +123,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> pidController.reset(getPosition())),
-                runOnce(() -> pidController.setGoal(goalPositionSupplier.get().value)), // TODO this is some enum stuff
+                runOnce(() -> pidController.setGoal(goalPositionSupplier.get().value)),
                 moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPosition");
 
         // throw new UnsupportedOperationException("Unimplemented method
@@ -173,10 +180,11 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         return runOnce(pivotMotor::stopMotor)
                 .andThen(() -> {
                     pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure im doing this right
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure this is right (when we
+                                                                             // know stuff better)
                 }).finallyDo((d) -> {
                     pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure im doing this right
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput);
                     pidController.reset(getPosition());
                 }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
                 .withName("pivot.coastMotorsCommand");
