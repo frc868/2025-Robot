@@ -8,10 +8,39 @@ import java.util.function.Supplier;
 /** Climber subsystem which hangs robot from deep cage. */
 public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
     /** Constant values of climber subsystem. */
+    private TalonFX climberMotor;
+    private TalonFXConfigurator climberConfigurator;
+    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
+    private StatusSignal<Current> climberCurrent;
+
     public static final class Constants {
+        //Declares motor CanIDs
+        public static final class CANIDS {
+            public static final int CLIMBER_MOTOR_LEFT_CANID = 0; //Have not asked what the CanID should be yet
+            public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; //Also have not asked what the CanID should be yet
+        }
+
+        public static final double MAX_CURRENT_LIMIT = 0; //Max current limit for climber
+        
+        //"Torque - we are not sure if we need it yet" - Sage Ryker and Noor(but written by Sage Ryker)
+
+        public static final double GEAR_RATIO = 0;
+        
+        public static final double VOLTAGE = 0;
+
         /** Positions that climber subsystem can be in. */
         public enum Position {
         }
+    }
+
+    public Climber(){
+        //Assign both climber motors to their specified CANID
+        climberMotorLeft = new TalonFX(Constants.CLIMBER_MOTOR_LEFT_CANID);
+        climberMotorRight = new TalonFX(Constants.CLIMBER_MOTOR_RIGHT_CANID);
+        
+        limit.SupplyCurrentLimit = Constants.CURRENT_LIMIT; //Create current limits
+        limit.SupplyCurrentLimitEnable = true;
+        climberConfigurator.apply(limit); //Applies current limits
     }
 
     @Override
