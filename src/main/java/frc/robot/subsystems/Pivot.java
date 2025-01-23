@@ -25,7 +25,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     /** Constant values of pivot subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int elevatorMotor = 0; // TODO get actual can ids
+            private static final int pivotMotor = 0; // TODO get actual can ids
         }
 
         public static class PID {
@@ -57,16 +57,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         }
     }
 
-    private TalonFX elevatorMotor = new TalonFX(Constants.CANIDs.elevatorMotor);
-    private RelativeEncoder elevatorEncoder = WIP
-    private TalonFXConfigurator elevatorConfig = elevatorMotor.getConfigurator();
-    private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
+    private TalonFX pivotMotor = new TalonFX(Constants.CANIDs.pivotMotor);
+    private TalonFXConfigurator pivotConfig = pivotMotor.getConfigurator();
+    private CurrentLimitsConfigs pivotConfig_Current = new CurrentLimitsConfigs();
 
-    public Elevator() {
-        elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
-        elevatorConfig_Current.SupplyCurrentLimitEnable = true;
-
-        elevatorConfig.apply(elevatorConfig_Current);
+    public Pivot() {
+        pivotConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
+        pivotConfig_Current.SupplyCurrentLimitEnable = true;
+        pivotConfig.apply(pivotConfig_Current);
     }
 
     private ProfiledPIDController pidController = new ProfiledPIDController(Constants.PID.kP, Constants.PID.kI,
@@ -77,13 +75,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     private double feedbackVoltage = 0.0;
     private double feedforwardVoltage = 0.0;
 
-    public Pivot() {
-        // TODO everything
-    }
-
     @Override
     public double getPosition() {
-        return elevatorMotor.
+        return pivotMotor.getPosition().getValueAsDouble();
         // throw new UnsupportedOperationException("Unimplemented method
         // 'getPosition'");
     }
