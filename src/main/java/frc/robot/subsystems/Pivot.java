@@ -1,8 +1,10 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.config.SparkFlexConfig;
@@ -58,13 +60,15 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     }
 
     private TalonFX pivotMotor = new TalonFX(Constants.CANIDs.pivotMotor);
-    private TalonFXConfigurator pivotConfig = pivotMotor.getConfigurator();
+    private TalonFXConfigurator pivotConfigurator = pivotMotor.getConfigurator();
+    private TalonFXConfiguration pivotConfiguration = new TalonFXConfiguration();
+
     private CurrentLimitsConfigs pivotConfig_Current = new CurrentLimitsConfigs();
 
     public Pivot() {
         pivotConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         pivotConfig_Current.SupplyCurrentLimitEnable = true;
-        pivotConfig.apply(pivotConfig_Current);
+        pivotConfigurator.apply(pivotConfig_Current);
     }
 
     private ProfiledPIDController pidController = new ProfiledPIDController(Constants.PID.kP, Constants.PID.kI,
@@ -84,7 +88,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
     @Override
     public void resetPosition() {
-        motor.getEncoder().setPosition(-65537); // TODO real value
+        pivotMotor.setPosition(-65537); // TODO real value
         // throw new UnsupportedOperationException("Unimplemented method
         // 'resetPosition'");
     }
@@ -93,7 +97,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     public void setVoltage(double voltage) {
         voltage = MathUtil.clamp(voltage, -12, 12);
         // TODO safety stuff
-        motor.setVoltage(voltage);
+        pivotMotor.setVoltage(voltage);
         // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
@@ -166,10 +170,13 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
     @Override
     public Command coastMotorsCommand() {
-        return runOnce(motor::stopMotor)
-                .andThen(() -> motorConfig.idleMode(IdleMode.kCoast)) // TODO make sure im doing this right
-                .finallyDo((d) -> {
-                    motorConfig.idleMode(IdleMode.kBrake); // TODO make sure im doing this right
+        return runOnce(pivotMotor::stopMotor)
+                .andThen(() -> {
+                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure im doing this right
+                }).finallyDo((d) -> {
+                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure im doing this right
                     pidController.reset(getPosition());
                 }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
                 .withName("pivot.coastMotorsCommand");
