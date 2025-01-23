@@ -8,6 +8,7 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
+import edu.wpi.first.math.MathUtil;
 
 /** Subsystem which lifts manipulator subsystem. */
 public class Elevator extends SubsystemBase
@@ -15,7 +16,8 @@ public class Elevator extends SubsystemBase
     /** Constant values of elevator subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int elevatorMotor = 0; //TODO get actual can ids 
+            private static final int elevatorMotorL = 0; //TODO get actual can ids 
+            private static final int elevatorMotorR = 0; //TODO get actual can ids 
         }
 
         public static class PID {
@@ -25,39 +27,46 @@ public class Elevator extends SubsystemBase
         }
 
         public static final double MAX_AMPS = 10;
+        public static final double RESET_POS = 0; //TODO get real value
 
         /** Positions that elevator subsystem can be in. */
         public enum Position {
         }
     }
 
-    private TalonFX elevatorMotor = new TalonFX(Constants.CANIDs.elevatorMotor);
-    private TalonFXConfigurator elevatorConfig = elevatorMotor.getConfigurator();
+    //Make motors and config objects
+    private TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.elevatorMotorL);
+    private TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.elevatorMotorR);
+    private TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
+    private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
 
+    // Constructor (initialization)
     public Elevator() {
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
-
-        elevatorConfig.apply(elevatorConfig_Current);
+        elevatorConfigL.apply(elevatorConfig_Current);
+        elevatorConfigR.apply(elevatorConfig_Current);
     }
 
     @Override
     public double getPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+        return elevatorMotorL.getPosition(true).getValueAsDouble();
+        //throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
     }
 
     @Override
     public void resetPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        elevatorMotorL.setPosition(Constants.RESET_POS);
+        elevatorMotorR.setPosition(Constants.RESET_POS);
+        //throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
     }
 
     @Override
     public void setVoltage(double voltage) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+        elevatorMotorL.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        elevatorMotorR.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        //throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
     @Override
@@ -93,8 +102,9 @@ public class Elevator extends SubsystemBase
 
     @Override
     public Command resetPositionCommand() {
+        return runOnce(() -> resetPosition());
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        //throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
     }
 
     @Override
