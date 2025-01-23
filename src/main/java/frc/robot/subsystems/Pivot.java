@@ -1,5 +1,9 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
@@ -21,7 +25,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     /** Constant values of pivot subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int pivotMotor = -0; // TODO get actual can ids
+            private static final int elevatorMotor = 0; // TODO get actual can ids
         }
 
         public static class PID {
@@ -53,8 +57,18 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         }
     }
 
-    private SparkFlex motor;
-    private SparkFlexConfig motorConfig;
+    private TalonFX elevatorMotor = new TalonFX(Constants.CANIDs.elevatorMotor);
+    private RelativeEncoder elevatorEncoder = WIP
+    private TalonFXConfigurator elevatorConfig = elevatorMotor.getConfigurator();
+    private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
+
+    public Elevator() {
+        elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
+        elevatorConfig_Current.SupplyCurrentLimitEnable = true;
+
+        elevatorConfig.apply(elevatorConfig_Current);
+    }
+
     private ProfiledPIDController pidController = new ProfiledPIDController(Constants.PID.kP, Constants.PID.kI,
             Constants.PID.kD,
             Constants.MotionProfiling.MOVEMENT_CONSTRAINTS);
@@ -69,7 +83,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
     @Override
     public double getPosition() {
-        return motor.getEncoder().getPosition();
+        return elevatorMotor.
         // throw new UnsupportedOperationException("Unimplemented method
         // 'getPosition'");
     }
