@@ -5,11 +5,6 @@ import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.config.SparkFlexConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
@@ -22,7 +17,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
 
-/** Subsystem which rotates manipulator subsystem. */
+/** Subsystem which rotates pivot subsystem. */
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.Constants.Position> {
     /** Constant values of pivot subsystem. */
     public static final class Constants {
@@ -52,6 +47,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         }
 
         public static final int MAX_AMPS = 10;
+        public static final double resetPosition = 0; //TODO get real reset encoder value
 
         /** Positions that pivot subsystem can be in. */
         public enum Position {
@@ -69,7 +65,6 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     private TalonFX pivotMotor = new TalonFX(Constants.CANIDs.pivotMotor);
     private TalonFXConfigurator pivotConfigurator = pivotMotor.getConfigurator();
     private TalonFXConfiguration pivotConfiguration = new TalonFXConfiguration();
-
     private CurrentLimitsConfigs pivotConfig_Current = new CurrentLimitsConfigs();
 
     public Pivot() {
@@ -95,7 +90,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
     @Override
     public void resetPosition() {
-        pivotMotor.setPosition(-65537); // TODO real value
+        pivotMotor.setPosition(Constants.resetPosition);
         // throw new UnsupportedOperationException("Unimplemented method
         // 'resetPosition'");
     }
