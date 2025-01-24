@@ -1,6 +1,13 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import java.util.function.Supplier;
@@ -14,18 +21,19 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     private StatusSignal<Current> climberCurrent;
 
     public static final class Constants {
-        //Declares motor CanIDs
+        // Declares motor CanIDs
         public static final class CANIDS {
-            public static final int CLIMBER_MOTOR_LEFT_CANID = 0; //Have not asked what the CanID should be yet
-            public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; //Also have not asked what the CanID should be yet
+            public static final int CLIMBER_MOTOR_LEFT_CANID = 0; // Have not asked what the CanID should be yet
+            public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; // Also have not asked what the CanID should be yet
         }
 
-        public static final double MAX_CURRENT_LIMIT = 0; //Max current limit for climber
-        
-        //"Torque - we are not sure if we need it yet" - Sage Ryker and Noor(but written by Sage Ryker)
+        public static final double MAX_CURRENT_LIMIT = 0; // Max current limit for climber
+
+        // "Torque - we are not sure if we need it yet" - Sage Ryker and Noor(but
+        // written by Sage Ryker)
 
         public static final double GEAR_RATIO = 0;
-        
+
         public static final double VOLTAGE = 0;
 
         /** Positions that climber subsystem can be in. */
@@ -33,20 +41,19 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         }
     }
 
-    public Climber(){
-        //Assign both climber motors to their specified CANID
-        climberMotorLeft = new TalonFX(Constants.CLIMBER_MOTOR_LEFT_CANID);
-        climberMotorRight = new TalonFX(Constants.CLIMBER_MOTOR_RIGHT_CANID);
-        
-        limit.SupplyCurrentLimit = Constants.CURRENT_LIMIT; //Create current limits
+    public Climber() {
+        // Assign both climber motors to their specified CANID
+        private TalonFX climberMotorLeft = new TalonFX(Constants.CLIMBER_MOTOR_LEFT_CANID);
+        private TalonFX climberMotorRight = new TalonFX(Constants.CLIMBER_MOTOR_RIGHT_CANID);
+
+        limit.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
         limit.SupplyCurrentLimitEnable = true;
-        climberConfigurator.apply(limit); //Applies current limits
+        climberConfigurator.apply(limit); // Applies current limits
     }
 
     @Override
-    public double getPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+    public double getPosition(double position) {
+        return climberMotorLeft.getPosition(true).getValueAsDouble(); // Returns the position of the left climber motor
     }
 
     @Override
