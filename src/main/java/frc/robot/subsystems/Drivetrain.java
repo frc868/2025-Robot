@@ -200,15 +200,16 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND,
                 MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED);
 
-        public static final double MASS = 50.0; // KG, TODO
-        public static final double MOMENT_OF_INERTIA = 0.05; // KG m^2, TODO
+        public static final double MASS = 55.0; // KG, TODO
+        public static final double MOMENT_OF_INERTIA = 4.9; // KG m^2, TODO
         public static final double SWERVE_WHEEL_RADIUS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE / (Math.PI * 2.0); // meters
 
         public static final ModuleConfig MODULE_CONFIG = new ModuleConfig(SWERVE_WHEEL_RADIUS,
                 SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND, 1.0, SWERVE_CONSTANTS.DRIVE_GEARBOX_REPR,
                 SWERVE_CONSTANTS.DRIVE_CURRENT_LIMIT, 1);
-        public static final RobotConfig ROBOT_CONFIG = new RobotConfig(MASS, 0.5, MODULE_CONFIG,
-                DRIVE_BASE_RADIUS_METERS);
+        public static final RobotConfig ROBOT_CONFIG = new RobotConfig(MASS, MOMENT_OF_INERTIA, MODULE_CONFIG,
+                SWERVE_MODULE_LOCATIONS[0], SWERVE_MODULE_LOCATIONS[1], SWERVE_MODULE_LOCATIONS[2],
+                SWERVE_MODULE_LOCATIONS[3]);
 
     }
 
