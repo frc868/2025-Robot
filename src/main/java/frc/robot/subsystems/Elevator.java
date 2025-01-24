@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -26,6 +27,12 @@ public class Elevator extends SubsystemBase
             public static final double kD = 0; //TODO find good value
         }
 
+        public static class Feedforward {
+            public static final double kS = 0; //TODO find good value
+            public static final double kV = 0; //TODO find good value
+            public static final double kA = 0; //TODO find good value
+        }
+
         public static final double MAX_AMPS = 10;
         public static final double RESET_POS = 0; //TODO get real value
 
@@ -41,12 +48,25 @@ public class Elevator extends SubsystemBase
     private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
 
+    //Make controllers
+    private Slot0Configs controlConfig = new Slot0Configs();
+
     // Constructor (initialization)
     public Elevator() {
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
         elevatorConfigL.apply(elevatorConfig_Current);
         elevatorConfigR.apply(elevatorConfig_Current);
+
+        controlConfig.kP = Constants.PID.kP;
+        controlConfig.kI = Constants.PID.kI;
+        controlConfig.kD = Constants.PID.kD;
+        controlConfig.kS = Constants.Feedforward.kS;
+        controlConfig.kV = Constants.Feedforward.kV;
+        controlConfig.kA = Constants.Feedforward.kA;
+        elevatorConfigL.apply(controlConfig);
+        elevatorConfigR.apply(controlConfig);
+
     }
 
     @Override
@@ -84,8 +104,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-                "Unimplemented method 'moveToArbitraryPositionCommand'");
+        throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
     }
 
     @Override
