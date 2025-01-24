@@ -8,6 +8,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -46,6 +47,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         public static final InvertedValue INVERTED = InvertedValue.Clockwise_Positive;
         // voltage to run the intake and outtake at
         public static final double INTAKE_VOLTAGE = 0;
+        // voltage that will keep the game piece in place
+        public static final double HOLD_VOLTAGE = 0;
     }
 
     public Manipulator() {
@@ -69,6 +72,19 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     }
 
     /**
+     * Sets the manipulator motor's voltage to the input provided
+     * 
+     * @param voltage The voltage to set the motor to (clamped to be between -12 and
+     *                12)
+     * @return Command that will set the voltage to the input provided once
+     */
+    public Command setVoltageCommand(double voltage) {
+        return this.runOnce(() -> {
+            manipulatorMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        });
+    }
+
+    /**
      * Creates command that will run the manipulator rollers forwards
      * 
      * @return A command that will run the rollers at
@@ -76,22 +92,18 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command runRollersCommand() {
-        return this.runOnce(() -> {
-            manipulatorMotor.setVoltage(Constants.INTAKE_VOLTAGE);
-        });
+        return setVoltageCommand(Constants.INTAKE_VOLTAGE);
     }
 
     /**
      * Creates a command that will run the manipulator rollers backwards
      * 
-     * @return A command that will run the rollers at
+     * @return A command that will run the rollers backwards at
      *         {@link Constants#INTAKE_VOLTAGE a specified voltage}
      */
     @Override
     public Command reverseRollersCommand() {
-        return this.runOnce(() -> {
-            manipulatorMotor.setVoltage(-Constants.INTAKE_VOLTAGE);
-        });
+        return setVoltageCommand(-Constants.INTAKE_VOLTAGE);
     }
 
     /**
@@ -100,9 +112,17 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that will zero the voltage of the manipulator motor
      */
     public Command stopRollersCommand() {
-        return this.runOnce(() -> {
-            manipulatorMotor.setVoltage(0);
-        });
+        return setVoltageCommand(0);
+    }
+
+    /**
+     * Sets the manipulator motor {@link Constants#HOLD_VOLTAGE voltage} to keep
+     * game pieces in place
+     * 
+     * @return Command that keeps the intaked game pieces in place
+     */
+    public Command holdRollersCommand() {
+        return setVoltageCommand(Constants.HOLD_VOLTAGE);
     }
 
     /**
