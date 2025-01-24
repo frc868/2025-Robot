@@ -27,33 +27,33 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
             public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; // Also have not asked what the CanID should be yet
         }
 
-        public static final double MAX_CURRENT_LIMIT = 0; // Max current limit for climber
-
+        public static final double CURRENT_LIMIT = 0; // Max current limit for climber
         // "Torque - we are not sure if we need it yet" - Sage Ryker and Noor(but
         // written by Sage Ryker)
 
-        public static final double GEAR_RATIO = 0;
+        public static final double GEAR_RATIO = 36 / (.75 * Math.PI);
 
         public static final double VOLTAGE = 0;
 
-        /** Positions that climber subsystem can be in. */
+        // Assign both climber motors to their specified CANID
+        private static TalonFX climberMotorLeft = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_LEFT_CANID);
+        private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
+
         public enum Position {
         }
+
     }
 
     public Climber() {
-        // Assign both climber motors to their specified CANID
-        private TalonFX climberMotorLeft = new TalonFX(Constants.CLIMBER_MOTOR_LEFT_CANID);
-        private TalonFX climberMotorRight = new TalonFX(Constants.CLIMBER_MOTOR_RIGHT_CANID);
-
-        limit.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
-        limit.SupplyCurrentLimitEnable = true;
-        climberConfigurator.apply(limit); // Applies current limits
+        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
+        limitConfigs.SupplyCurrentLimitEnable = true;
+        climberConfigurator.apply(limitConfigs); // Applies current limits
     }
 
     @Override
-    public double getPosition(double position) {
-        return climberMotorLeft.getPosition(true).getValueAsDouble(); // Returns the position of the left climber motor
+    public double getPosition() {
+        return Constants.climberMotorLeft.getPosition(true).getValueAsDouble();
+        // Returns the position of the left climber motor
     }
 
     @Override
