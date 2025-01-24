@@ -2,9 +2,10 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
-import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
@@ -33,11 +34,14 @@ public class Elevator extends SubsystemBase
             public static final double kS = 0; //TODO find good value
             public static final double kV = 0; //TODO find good value
             public static final double kA = 0; //TODO find good value
+            public static final double MM_ACCEL = 0; //TODO find good value
+            public static final double MM_CRUISE = 0; //TODO find good value
+            public static final double MM_JERK = 0; //TODO find good value
         }
 
         public static final double MAX_AMPS = 10;
         public static final double RESET_POS = 0; //TODO get real value
-        public static final double ENCODER_CONVERSION_FACTOR = 1; //conversion factor for encoder rotations -> 
+        public static final double ENCODER_CONVERSION_FACTOR = 1; //conversion factor for encoder rotations -> linear distance
 
         /** Positions that elevator subsystem can be in. */
         public enum Position {
@@ -52,9 +56,13 @@ public class Elevator extends SubsystemBase
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
     private FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
     private Slot0Configs controlConfig = new Slot0Configs();
+    private MotionMagicConfigs mmConfig = new MotionMagicConfigs();
+
+    private MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
 
     // Constructor (initialization)
     public Elevator() {
+        //Current limit config application
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
         elevatorConfig_Feedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
@@ -63,6 +71,7 @@ public class Elevator extends SubsystemBase
         elevatorConfigR.apply(elevatorConfig_Current);
         elevatorConfigR.apply(elevatorConfig_Feedback);
 
+        //PID config application
         controlConfig.kP = Constants.PID.kP;
         controlConfig.kI = Constants.PID.kI;
         controlConfig.kD = Constants.PID.kD;
@@ -71,6 +80,13 @@ public class Elevator extends SubsystemBase
         controlConfig.kA = Constants.Feedforward.kA;
         elevatorConfigL.apply(controlConfig);
         elevatorConfigR.apply(controlConfig);
+
+        //Motion Magic config application
+        mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
+        mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
+        mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_JERK;
+        elevatorConfigL.apply(mmConfig);
+        elevatorConfigR.apply(mmConfig);
     }
 
     // Return the current position in linear distance (if ENCODER_CONVERSION_FACTOR is properly set)
@@ -108,10 +124,14 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
 
+    //Move to any position
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
+        return runOnce(() -> {
+            elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+            elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+        });
+        //throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
     }
 
     @Override
@@ -120,12 +140,17 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
     }
 
+    //Keep mechanism at current position
     @Override
     public Command holdCurrentPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
+        return runOnce(() -> {
+            elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
+            elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
+        });
+        //throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
     }
 
+    //Reset the position of the mechanism
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition());
