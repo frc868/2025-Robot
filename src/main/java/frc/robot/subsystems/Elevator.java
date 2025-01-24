@@ -3,9 +3,10 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -50,8 +51,6 @@ public class Elevator extends SubsystemBase
     private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
     private FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
-
-    //Make controllers
     private Slot0Configs controlConfig = new Slot0Configs();
 
     // Constructor (initialization)
@@ -74,12 +73,14 @@ public class Elevator extends SubsystemBase
         elevatorConfigR.apply(controlConfig);
     }
 
+    // Return the current position in linear distance (if ENCODER_CONVERSION_FACTOR is properly set)
     @Override
     public double getPosition() {
         return elevatorMotorL.getPosition(true).getValueAsDouble();
         //throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
     }
 
+    //Reset the encoder positions to a defined constant
     @Override
     public void resetPosition() {
         elevatorMotorL.setPosition(Constants.RESET_POS);
@@ -87,6 +88,7 @@ public class Elevator extends SubsystemBase
         //throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
     }
 
+    //Set the voltage (and by proxy speed) of the 2 motors
     @Override
     public void setVoltage(double voltage) {
         elevatorMotorL.setVoltage(MathUtil.clamp(voltage, -12, 12));
@@ -136,9 +138,18 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
     }
 
+    //Motors stop trying to brake until command ends, then they are set back to brake mode
     @Override
     public Command coastMotorsCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        return runOnce(() -> {
+            elevatorMotorL.stopMotor();
+            elevatorMotorR.stopMotor();
+            elevatorMotorL.setNeutralMode(NeutralModeValue.Coast);
+            elevatorMotorR.setNeutralMode(NeutralModeValue.Coast);
+        }).finallyDo(() -> {
+            elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
+            elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
+        });
+        //throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
     }
 }
