@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
@@ -35,6 +36,7 @@ public class Elevator extends SubsystemBase
 
         public static final double MAX_AMPS = 10;
         public static final double RESET_POS = 0; //TODO get real value
+        public static final double ENCODER_CONVERSION_FACTOR = 1; //conversion factor for encoder rotations -> 
 
         /** Positions that elevator subsystem can be in. */
         public enum Position {
@@ -47,6 +49,7 @@ public class Elevator extends SubsystemBase
     private TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
     private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
+    private FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
 
     //Make controllers
     private Slot0Configs controlConfig = new Slot0Configs();
@@ -55,8 +58,11 @@ public class Elevator extends SubsystemBase
     public Elevator() {
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
+        elevatorConfig_Feedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
         elevatorConfigL.apply(elevatorConfig_Current);
+        elevatorConfigL.apply(elevatorConfig_Feedback);
         elevatorConfigR.apply(elevatorConfig_Current);
+        elevatorConfigR.apply(elevatorConfig_Feedback);
 
         controlConfig.kP = Constants.PID.kP;
         controlConfig.kI = Constants.PID.kI;
@@ -66,7 +72,6 @@ public class Elevator extends SubsystemBase
         controlConfig.kA = Constants.Feedforward.kA;
         elevatorConfigL.apply(controlConfig);
         elevatorConfigR.apply(controlConfig);
-
     }
 
     @Override
@@ -122,7 +127,6 @@ public class Elevator extends SubsystemBase
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition());
-        // TODO Auto-generated method stub
         //throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
     }
 
