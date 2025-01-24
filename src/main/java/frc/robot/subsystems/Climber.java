@@ -6,6 +6,7 @@ import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -39,6 +40,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         private static TalonFX climberMotorLeft = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_LEFT_CANID);
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
 
+        public static final double RESET_POSITION = 0; // Need real value
+
         public enum Position {
         }
 
@@ -58,14 +61,17 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public void resetPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        // Resets the position of the climber mechanism to the stated position set in
+        // constants
+        Constants.climberMotorLeft.setPosition(Constants.RESET_POSITION);
+        Constants.climberMotorRight.setPosition(Constants.RESET_POSITION);
     }
 
     @Override
     public void setVoltage(double voltage) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+        // Set the voltage of the climber motors to a value clamped between -12V and 12V
+        Constants.climberMotorLeft.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        Constants.climberMotorRight.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     @Override
