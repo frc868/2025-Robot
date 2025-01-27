@@ -83,6 +83,9 @@ public class Elevator extends SubsystemBase
     // Make the Motion Magic object that sets where the motors should go
     private MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
 
+    // Make the voltage object
+    private VoltageOut voltageRequest = new VoltageOut(0);
+
     // Constructor (initialization)
     public Elevator() {
         // Current limit config application
@@ -147,8 +150,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public void setVoltage(double voltage) {
-        elevatorMotorL.setControl(new VoltageOut(MathUtil.clamp(voltage, -12, 12)));
-        elevatorMotorR.setControl(new VoltageOut(MathUtil.clamp(voltage, -12, 12)));
+        elevatorMotorL.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        elevatorMotorR.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
         // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
