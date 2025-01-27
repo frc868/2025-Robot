@@ -137,8 +137,9 @@ public class Elevator extends SubsystemBase
 
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value);
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToPositionCommand'");
     }
 
     // Move to any position
@@ -154,8 +155,9 @@ public class Elevator extends SubsystemBase
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get());
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'movePositionDeltaCommand'");
     }
 
     // Keep mechanism at current position
