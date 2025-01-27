@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
@@ -25,6 +26,13 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         public enum Position {
         }
     }
+
+    public Intake() {
+
+    }
+
+    private TalonFX intakeMotorLift = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_LIFT_CANID);
+    private TalonFX intakeMotorBar = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_BAR_CANID);
 
     @Override
     public double getPosition() {
