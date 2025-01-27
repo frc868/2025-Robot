@@ -32,10 +32,19 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         public static final double GEAR_RATIO = 0;
         // whether or not the motor must be inverted, depending on its placement
         public static final InvertedValue INVERTED = InvertedValue.Clockwise_Positive;
-        // voltage to run the intake and outtake at
-        public static final double INTAKE_VOLTAGE = 0;
-        // voltage that will keep the game piece in place
-        public static final double HOLD_VOLTAGE = 0;
+
+        // voltages to set the manipulator motor to, each accomplishing a different task
+        public enum Voltages {
+            HOLD(0.0), // the voltage that will hold a game piece in place inside the intake
+            INTAKE(0.0), // the voltage that will be used to intake a game piece
+            OUTTAKE(0.0);// the voltage that will be used to push out a game piece
+
+            public final double volts;
+
+            Voltages(double volts) {
+                this.volts = volts;
+            }
+        };
     }
 
     // create motor object
@@ -95,7 +104,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command runRollersCommand() {
-        return setVoltageCommand(Constants.INTAKE_VOLTAGE).withName("manipulator.runRollers");
+        return setVoltageCommand(Constants.Voltages.INTAKE.volts).withName("manipulator.runRollers");
     }
 
     /**
@@ -106,7 +115,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command reverseRollersCommand() {
-        return setVoltageCommand(-Constants.INTAKE_VOLTAGE).withName("manipulator.reverseRollers");
+        return setVoltageCommand(Constants.Voltages.OUTTAKE.volts).withName("manipulator.reverseRollers");
     }
 
     /**
@@ -125,7 +134,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that keeps the intaked game pieces in place
      */
     public Command holdRollersCommand() {
-        return setVoltageCommand(Constants.HOLD_VOLTAGE).withName("manipulator.holdRollers");
+        return setVoltageCommand(Constants.Voltages.HOLD.volts).withName("manipulator.holdRollers");
     }
 
     /**
