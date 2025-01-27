@@ -2,6 +2,8 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
@@ -33,6 +35,12 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     private TalonFX intakeMotorLift = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_LIFT_CANID);
     private TalonFX intakeMotorBar = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_BAR_CANID);
+
+    TalonFXConfigurator configLift = intakeMotorLift.getConfigurator();
+    TalonFXConfiguration configLiftData = new TalonFXConfiguration();
+
+    TalonFXConfigurator configBar = intakeMotorBar.getConfigurator();
+    TalonFXConfiguration configBarData = new TalonFXConfiguration();
 
     @Override
     public double getPosition() {
