@@ -159,8 +159,9 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command moveToCurrentGoalCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position);
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToCurrentGoalCommand'");
     }
 
     /**
