@@ -128,8 +128,6 @@ public class Elevator extends SubsystemBase
     @Override
     public double getPosition() {
         return elevatorMotorL.getPosition(true).getValueAsDouble();
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'getPosition'");
     }
 
     /**
@@ -140,8 +138,6 @@ public class Elevator extends SubsystemBase
     public void resetPosition() {
         elevatorMotorL.setPosition(Constants.RESET_POS);
         elevatorMotorR.setPosition(Constants.RESET_POS);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPosition'");
     }
 
     /**
@@ -152,7 +148,6 @@ public class Elevator extends SubsystemBase
     public void setVoltage(double voltage) {
         elevatorMotorL.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
         elevatorMotorR.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
-        // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
     /**
@@ -163,8 +158,6 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToCurrentGoalCommand() {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToCurrentGoalCommand'");
     }
 
     /**
@@ -175,8 +168,6 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToPositionCommand'");
     }
 
     /**
@@ -190,8 +181,6 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
         });
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToArbitraryPositionCommand'");
     }
 
     /**
@@ -203,8 +192,6 @@ public class Elevator extends SubsystemBase
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get());
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'movePositionDeltaCommand'");
     }
 
     // Keep mechanism at current position
@@ -214,16 +201,12 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
             elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
         });
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'holdCurrentPositionCommand'");
     }
 
     // Reset the position of the mechanism
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition());
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPositionCommand'");
     }
 
     /**
@@ -237,8 +220,6 @@ public class Elevator extends SubsystemBase
         return run(() -> {
             setVoltage(speed.get() * 12.0);
         });
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'setOverridenSpeedCommand'");
     }
 
     /**
@@ -263,7 +244,5 @@ public class Elevator extends SubsystemBase
                 },
                 () -> false,
                 this).withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'coastMotorsCommand'");
     }
 }
