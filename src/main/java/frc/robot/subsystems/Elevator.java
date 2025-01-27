@@ -6,6 +6,7 @@ import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
@@ -146,8 +147,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public void setVoltage(double voltage) {
-        elevatorMotorL.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        elevatorMotorR.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        elevatorMotorL.setControl(new VoltageOut(MathUtil.clamp(voltage, -12, 12)));
+        elevatorMotorR.setControl(new VoltageOut(MathUtil.clamp(voltage, -12, 12)));
         // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
@@ -229,8 +230,11 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+        return run(() -> {
+            setVoltage(speed.get() * 12.0);
+        });
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'setOverridenSpeedCommand'");
     }
 
     /**
