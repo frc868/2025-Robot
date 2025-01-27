@@ -20,79 +20,69 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public double getPosition() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
     }
 
     @Override
     public void resetPosition() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
     }
 
     @Override
     public void setVoltage(double voltage) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
     @Override
     public Command moveToCurrentGoalCommand() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
     }
 
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
     }
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
     }
 
     @Override
     public Command holdCurrentPositionCommand() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
     }
 
     @Override
     public Command resetPositionCommand() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
     }
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        // TODO Auto-generated method stub
+
         throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
     }
 
     @Override
     public Command coastMotorsCommand() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
     }
 
     @Override
     public Command runRollersCommand() {
-        // TODO Auto-generated method stub
+
         throw new UnsupportedOperationException("Unimplemented method 'runRollersCommand'");
     }
 
     @Override
     public Command reverseRollersCommand() {
-        // TODO Auto-generated method stub
+
         throw new UnsupportedOperationException("Unimplemented method 'reverseRollersCommand'");
     }
 }
