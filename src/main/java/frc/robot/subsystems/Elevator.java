@@ -24,8 +24,8 @@ public class Elevator extends SubsystemBase
     /** Constant values of elevator subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int elevatorMotorL = 0; // TODO get actual can ids
-            private static final int elevatorMotorR = 0; // TODO get actual can ids
+            private static final int ELEVATOR_MOTOR_L = 0; // TODO get actual can ids
+            private static final int ELEVATOR_MOTOR_R = 0; // TODO get actual can ids
         }
 
         public static class PID {
@@ -49,7 +49,7 @@ public class Elevator extends SubsystemBase
                                                                   // distance
 
         /** Positions that elevator subsystem can be in. */
-        public enum Position {
+        public static enum Position {
             GROUND(0.0),
             L1(0.0),
             L2(0.0),
@@ -58,7 +58,7 @@ public class Elevator extends SubsystemBase
             CORAL_INTAKE(0.0),
             PROCESSOR(0.0);
 
-            public double value;
+            public final double value;
 
             Position(double value) {
                 this.value = value;
@@ -67,24 +67,24 @@ public class Elevator extends SubsystemBase
     }
 
     // Make motor objects
-    private TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.elevatorMotorL);
-    private TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.elevatorMotorR);
+    private final TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.ELEVATOR_MOTOR_L);
+    private final TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.ELEVATOR_MOTOR_R);
 
     // Get the motor configurators
-    private TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
-    private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
+    private final TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
+    private final TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
 
     // Make the configs that are applied to motors later
-    private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
-    private FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
-    private Slot0Configs controlConfig = new Slot0Configs();
-    private MotionMagicConfigs mmConfig = new MotionMagicConfigs();
+    private final CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
+    private final FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
+    private final Slot0Configs controlConfig = new Slot0Configs();
+    private final MotionMagicConfigs mmConfig = new MotionMagicConfigs();
 
     // Make the Motion Magic object that sets where the motors should go
-    private MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
+    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
 
     // Make the voltage object
-    private VoltageOut voltageRequest = new VoltageOut(0);
+    private final VoltageOut voltageRequest = new VoltageOut(0);
 
     // Constructor (initialization)
     public Elevator() {
@@ -194,7 +194,12 @@ public class Elevator extends SubsystemBase
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get());
     }
 
-    // Keep mechanism at current position
+    /**
+     * Creates a command that sets the elevator motor goal to the current position, and moves to
+     * that goal.
+     * 
+     * @return command to hold current position
+     */
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
@@ -203,7 +208,12 @@ public class Elevator extends SubsystemBase
         });
     }
 
-    // Reset the position of the mechanism
+    /**
+     * Creates an instantaneous command that resets the position of the elevator
+     * mechanism.
+     * 
+     * @return command to reset position
+     */    
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition());
