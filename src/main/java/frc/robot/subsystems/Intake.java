@@ -13,7 +13,15 @@ import frc.robot.subsystems.Intake.Constants.Position;
 public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJointedArm<Intake.Constants.Position> {
     /** Constant values of intake subsystem. */
     public static final class Constants {
-        /** Positions that intake subsystem can be in. */
+        public static final class CANIDS {
+            public static final int INTAKE_MOTOR_LIFT_CANID = 0; // TO DO
+            public static final int INTAKE_MOTOR_BAR_CANID = 0; // TO DO
+        }
+
+        public static final double CURRENT_LIMIT = 0; // TO DO
+
+        public static final double VOLTAGE = 0; // TO DO
+
         public enum Position {
         }
     }
