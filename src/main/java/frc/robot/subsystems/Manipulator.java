@@ -16,19 +16,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /** Subsystem which intakes and scores scoring elements. */
 public class Manipulator extends SubsystemBase implements BaseIntake {
-    // create motor object
-    private TalonFX manipulatorMotor;
-    // create motor configuration object & each specific config
-    private TalonFXConfigurator manipulatorConfigurator;
-    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
-    private MotorOutputConfigs outputConfigs = new MotorOutputConfigs();
-    // used to make sure that checking for game pieces is consistent and unaffected
-    // by spikes
-    private Debouncer intakeDebouncer = new Debouncer(0.2);
-    // the object used to actually check the manipulator's current (to see if we
-    // have game pieces)
-    private StatusSignal<Current> manipulatorCurrent;
-
     // Constant values of manipulator subsystem.
     public static final class Constants {
         // CAN IDs for the Manipulator Motor
@@ -51,9 +38,25 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         public static final double HOLD_VOLTAGE = 0;
     }
 
+    // create motor object
+    private final TalonFX manipulatorMotor;
+    // create motor configuration object & each specific config
+    private final TalonFXConfigurator manipulatorConfigurator;
+    private final CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
+    private final MotorOutputConfigs outputConfigs = new MotorOutputConfigs();
+    // used to make sure that checking for game pieces is consistent and unaffected
+    // by spikes
+    private final Debouncer intakeDebouncer = new Debouncer(0.2);
+    // the object used to actually check the manipulator's current (to see if we
+    // have game pieces)
+    private final StatusSignal<Current> manipulatorCurrent;
+
     public Manipulator() {
         // assign the manipulator motor to the specified CAN ID
         manipulatorMotor = new TalonFX(Constants.CANIDS.MANIPULATOR_MOTOR_CANID);
+
+        // assign the manipulator configurator to the manipulator motor's configurator
+        manipulatorConfigurator = manipulatorMotor.getConfigurator();
 
         // create current limits
         limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
