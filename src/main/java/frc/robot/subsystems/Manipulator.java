@@ -84,7 +84,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public Command setVoltageCommand(double voltage) {
         return this.runOnce(() -> {
             manipulatorMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        });
+        }).withName("manipulator.setVoltage");
     }
 
     /**
@@ -95,7 +95,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command runRollersCommand() {
-        return setVoltageCommand(Constants.INTAKE_VOLTAGE);
+        return setVoltageCommand(Constants.INTAKE_VOLTAGE).withName("manipulator.runRollers");
     }
 
     /**
@@ -106,7 +106,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command reverseRollersCommand() {
-        return setVoltageCommand(-Constants.INTAKE_VOLTAGE);
+        return setVoltageCommand(-Constants.INTAKE_VOLTAGE).withName("manipulator.reverseRollers");
     }
 
     /**
@@ -115,7 +115,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that will zero the voltage of the manipulator motor
      */
     public Command stopRollersCommand() {
-        return setVoltageCommand(0);
+        return setVoltageCommand(0).withName("manipulator.stopRollers");
     }
 
     /**
@@ -125,7 +125,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that keeps the intaked game pieces in place
      */
     public Command holdRollersCommand() {
-        return setVoltageCommand(Constants.HOLD_VOLTAGE);
+        return setVoltageCommand(Constants.HOLD_VOLTAGE).withName("manipulator.holdRollers");
     }
 
     /**
@@ -137,7 +137,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      *         {@link #hasGamePiece() has a game piece}
      */
     public Command intakeGamePieceCommand() {
-        return runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(stopRollersCommand());
+        return (runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(stopRollersCommand()))
+                .withName("manipulator.intakeGamePiece");
     }
 
     /**
