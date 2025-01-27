@@ -10,7 +10,10 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+
 import java.util.function.Supplier;
 import edu.wpi.first.math.MathUtil;
 
@@ -237,15 +240,21 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command coastMotorsCommand() {
-        return runOnce(() -> {
-            elevatorMotorL.stopMotor();
-            elevatorMotorR.stopMotor();
-            elevatorMotorL.setNeutralMode(NeutralModeValue.Coast);
-            elevatorMotorR.setNeutralMode(NeutralModeValue.Coast);
-        }).finallyDo(() -> {
-            elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
-            elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
-        });
+        return new FunctionalCommand(
+                () -> {
+                    elevatorMotorL.setNeutralMode(NeutralModeValue.Coast);
+                    elevatorMotorR.setNeutralMode(NeutralModeValue.Coast);
+                },
+                () -> {
+                    elevatorMotorL.stopMotor();
+                    elevatorMotorR.stopMotor();
+                },
+                (d) -> {
+                    elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
+                    elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
+                },
+                () -> false,
+                this).withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
         // throw new UnsupportedOperationException("Unimplemented method
         // 'coastMotorsCommand'");
     }
