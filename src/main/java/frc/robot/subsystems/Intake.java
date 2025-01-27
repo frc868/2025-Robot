@@ -32,7 +32,14 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     }
 
     public Intake() {
+        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
+        limitConfigs.SupplyCurrentLimitEnable = true;
 
+        configLiftData.CurrentLimits = limitConfigs;
+        configBarData.CurrentLimits = limitConfigs;
+
+        configLift.apply(configLiftData);
+        configBar.apply(configBarData);
     }
 
     private TalonFX intakeMotorLift = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_LIFT_CANID);
@@ -46,7 +53,6 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
 
-    
     @Override
     public double getPosition() {
         throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
