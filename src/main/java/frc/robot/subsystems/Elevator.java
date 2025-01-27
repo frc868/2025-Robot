@@ -1,22 +1,25 @@
 package frc.robot.subsystems;
 
+import java.util.function.Supplier;
+
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
-
-import java.util.function.Supplier;
-import edu.wpi.first.math.MathUtil;
 
 /** Subsystem which lifts manipulator subsystem. */
 public class Elevator extends SubsystemBase
@@ -43,20 +46,21 @@ public class Elevator extends SubsystemBase
             public static final double MM_JERK = 0; // TODO find good value
         }
 
-        public static final double MAX_AMPS = 10;
-        public static final double RESET_POS = 0; // TODO get real value
-        public static final double ENCODER_CONVERSION_FACTOR = 1; // conversion factor for encoder rotations -> linear
-                                                                  // distance
+        public static final InvertedValue L_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
+        public static final InvertedValue R_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
+        public static final double MAX_AMPS = 10; //TODO find good # amps
+        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO get conversion factor for encoder rotations -> linear distance
 
         /** Positions that elevator subsystem can be in. */
         public static enum Position {
-            GROUND(0.0),
-            L1(0.0),
-            L2(0.0),
-            L3(0.0),
-            L4(0.0),
-            CORAL_INTAKE(0.0),
-            PROCESSOR(0.0);
+            RESET_POS(0.0), //TODO get actual position
+            GROUND(0.0), //TODO get actual position
+            L1(0.0), //TODO get actual position
+            L2(0.0), //TODO get actual position
+            L3(0.0), //TODO get actual position
+            L4(0.0), //TODO get actual position
+            CORAL_INTAKE(0.0), //TODO get actual position
+            PROCESSOR(0.0); //TODO get actual position
 
             public final double value;
 
@@ -75,10 +79,12 @@ public class Elevator extends SubsystemBase
     private final TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
 
     // Make the configs that are applied to motors later
-    private final CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
-    private final FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
+    private final CurrentLimitsConfigs elevatorConfigCurrent = new CurrentLimitsConfigs();
+    private final FeedbackConfigs elevatorConfigFeedback = new FeedbackConfigs();
     private final Slot0Configs controlConfig = new Slot0Configs();
     private final MotionMagicConfigs mmConfig = new MotionMagicConfigs();
+    private final MotorOutputConfigs elevatorConfigOutputL = new MotorOutputConfigs();
+    private final MotorOutputConfigs elevatorConfigOutputR = new MotorOutputConfigs();
 
     // Make the Motion Magic object that sets where the motors should go
     private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
@@ -89,15 +95,15 @@ public class Elevator extends SubsystemBase
     // Constructor (initialization)
     public Elevator() {
         // Current limit config application
-        elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
-        elevatorConfig_Current.SupplyCurrentLimitEnable = true;
+        elevatorConfigCurrent.SupplyCurrentLimit = Constants.MAX_AMPS;
+        elevatorConfigCurrent.SupplyCurrentLimitEnable = true;
+
+        //Set inversions
+        elevatorConfigOutputL.Inverted = Constants.L_MOTOR_DIRECTION;
+        elevatorConfigOutputR.Inverted = Constants.R_MOTOR_DIRECTION;
+
         // Convert motor rotations to a linear unit of measure for height
-        elevatorConfig_Feedback.SensorToMechanismRatio = Constants.ENCODER_CONVERSION_FACTOR;
-        // Apply the configs
-        elevatorConfigL.apply(elevatorConfig_Current);
-        elevatorConfigL.apply(elevatorConfig_Feedback);
-        elevatorConfigR.apply(elevatorConfig_Current);
-        elevatorConfigR.apply(elevatorConfig_Feedback);
+        elevatorConfigFeedback.SensorToMechanismRatio = Constants.ENCODER_CONVERSION_FACTOR;
 
         // PID config application
         controlConfig.kP = Constants.PID.kP;
@@ -107,14 +113,20 @@ public class Elevator extends SubsystemBase
         controlConfig.kV = Constants.Feedforward.kV;
         controlConfig.kA = Constants.Feedforward.kA;
 
-        elevatorConfigL.apply(controlConfig);
-        elevatorConfigR.apply(controlConfig);
-
         // Motion Magic config application
         mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_JERK;
 
+        // Apply the configs
+        elevatorConfigL.apply(elevatorConfigCurrent);
+        elevatorConfigL.apply(elevatorConfigFeedback);
+        elevatorConfigR.apply(elevatorConfigCurrent);
+        elevatorConfigR.apply(elevatorConfigFeedback);
+        elevatorConfigL.apply(elevatorConfigOutputL);
+        elevatorConfigR.apply(elevatorConfigOutputR);
+        elevatorConfigL.apply(controlConfig);
+        elevatorConfigR.apply(controlConfig);
         elevatorConfigL.apply(mmConfig);
         elevatorConfigR.apply(mmConfig);
     }
@@ -136,8 +148,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public void resetPosition() {
-        elevatorMotorL.setPosition(Constants.RESET_POS);
-        elevatorMotorR.setPosition(Constants.RESET_POS);
+        elevatorMotorL.setPosition(Constants.Position.RESET_POS.value);
+        elevatorMotorR.setPosition(Constants.Position.RESET_POS.value);
     }
 
     /**
@@ -157,7 +169,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command moveToCurrentGoalCommand() {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position);
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position)
+        .withName("elevator.moveToCurrentGoalCommand");
     }
 
     /**
@@ -167,7 +180,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value);
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value)
+        .withName("elevator.moveToPositionCommand");
     }
 
     /**
@@ -180,7 +194,8 @@ public class Elevator extends SubsystemBase
         return runOnce(() -> {
             elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
-        });
+        })
+        .withName("elevator.moveToArbitraryPositionCommand");
     }
 
     /**
@@ -191,11 +206,14 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get());
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
+        .withName("elevator.movePositionDeltaCommand");
     }
+    
 
     /**
-     * Creates a command that sets the elevator motor goal to the current position, and moves to
+     * Creates a command that sets the elevator motor goal to the current position,
+     * and moves to
      * that goal.
      * 
      * @return command to hold current position
@@ -205,7 +223,8 @@ public class Elevator extends SubsystemBase
         return runOnce(() -> {
             elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
             elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
-        });
+        })
+        .withName("elevator.holdCurrentPositionCommand");
     }
 
     /**
@@ -213,10 +232,12 @@ public class Elevator extends SubsystemBase
      * mechanism.
      * 
      * @return command to reset position
-     */    
+     */
     @Override
     public Command resetPositionCommand() {
-        return runOnce(() -> resetPosition());
+        return runOnce(() -> resetPosition())
+        .withName("elevator.resetPositionCommand");
+
     }
 
     /**
@@ -229,7 +250,9 @@ public class Elevator extends SubsystemBase
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return run(() -> {
             setVoltage(speed.get() * 12.0);
-        });
+        })
+        .withName("elevator.setOverridenSpeedCommand");
+
     }
 
     /**
@@ -253,6 +276,8 @@ public class Elevator extends SubsystemBase
                     elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
                 },
                 () -> false,
-                this).withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
+                this).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("elevator.coastMotorsCommand");
+
     }
 }
