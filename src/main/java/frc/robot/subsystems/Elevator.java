@@ -62,16 +62,21 @@ public class Elevator extends SubsystemBase
         }
     }
 
-    // Make motors and config objects
+    // Make motor objects
     private TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.elevatorMotorL);
     private TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.elevatorMotorR);
+
+    // Get the motor configurators
     private TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
     private TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
+
+    // Make the configs that are applied to motors later
     private CurrentLimitsConfigs elevatorConfig_Current = new CurrentLimitsConfigs();
     private FeedbackConfigs elevatorConfig_Feedback = new FeedbackConfigs();
     private Slot0Configs controlConfig = new Slot0Configs();
     private MotionMagicConfigs mmConfig = new MotionMagicConfigs();
 
+    // Make the Motion Magic object that sets where the motors should go
     private MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
 
     // Constructor (initialization)
@@ -79,7 +84,9 @@ public class Elevator extends SubsystemBase
         // Current limit config application
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
-        elevatorConfig_Feedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
+        // Convert motor rotations to a linear unit of measure for height
+        elevatorConfig_Feedback.SensorToMechanismRatio = Constants.ENCODER_CONVERSION_FACTOR;
+        // Apply the configs
         elevatorConfigL.apply(elevatorConfig_Current);
         elevatorConfigL.apply(elevatorConfig_Feedback);
         elevatorConfigR.apply(elevatorConfig_Current);
@@ -92,6 +99,7 @@ public class Elevator extends SubsystemBase
         controlConfig.kS = Constants.Feedforward.kS;
         controlConfig.kV = Constants.Feedforward.kV;
         controlConfig.kA = Constants.Feedforward.kA;
+
         elevatorConfigL.apply(controlConfig);
         elevatorConfigR.apply(controlConfig);
 
@@ -99,12 +107,17 @@ public class Elevator extends SubsystemBase
         mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_JERK;
+
         elevatorConfigL.apply(mmConfig);
         elevatorConfigR.apply(mmConfig);
     }
 
-    // Return the current position in linear distance (if ENCODER_CONVERSION_FACTOR
-    // is properly set)
+    /**
+     * Finds the position of the {@link #elevatorMotorL motor}
+     * 
+     * @return The position of the elevator (in whatever unit is used for the
+     *         {@link Constants#ENCODER_CONVERSION_FACTOR conversion factor})
+     */
     @Override
     public double getPosition() {
         return elevatorMotorL.getPosition(true).getValueAsDouble();
@@ -112,7 +125,10 @@ public class Elevator extends SubsystemBase
         // 'getPosition'");
     }
 
-    // Reset the encoder positions to a defined constant
+    /**
+     * Resets the position of the motors to a specified {@link Constants#RESET_POS
+     * position} (Should be a hard stop)
+     */
     @Override
     public void resetPosition() {
         elevatorMotorL.setPosition(Constants.RESET_POS);
@@ -121,7 +137,10 @@ public class Elevator extends SubsystemBase
         // 'resetPosition'");
     }
 
-    // Set the voltage (and by proxy speed) of the 2 motors
+    /**
+     * Sets the voltage of the motors directly, {@link MathUtil#clamp clamped} to
+     * safe values
+     */
     @Override
     public void setVoltage(double voltage) {
         elevatorMotorL.setVoltage(MathUtil.clamp(voltage, -12, 12));
@@ -129,12 +148,22 @@ public class Elevator extends SubsystemBase
         // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
+    /**
+     * Moves the motors to the currently set goal
+     * 
+     * @return Command to move the motors to the already set goal
+     */
     @Override
     public Command moveToCurrentGoalCommand() {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
     }
 
+    /**
+     * Moves the motors to one of the main {@link Constants.Position positions}
+     * 
+     * @return Command that will move the motors to the setpoint enum
+     */
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value);
@@ -142,7 +171,11 @@ public class Elevator extends SubsystemBase
         // 'moveToPositionCommand'");
     }
 
-    // Move to any position
+    /**
+     * Moves the motors to any position supplied
+     * 
+     * @return Command that will move the motors to the position supplied
+     */
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
@@ -153,6 +186,12 @@ public class Elevator extends SubsystemBase
         // 'moveToArbitraryPositionCommand'");
     }
 
+    /**
+     * Moves the elevator's motors to a position relative to the current position.
+     * 
+     * @param delta A supplier of how much relative change is wanted, in meters.
+     *              (Positive moves up)
+     */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get());
@@ -179,14 +218,23 @@ public class Elevator extends SubsystemBase
         // 'resetPositionCommand'");
     }
 
+    /**
+     * Creates a command that will manually set the speed of the elevator's motors
+     * 
+     * @param speed Supplier for the speed (-1 to 1) to set the motor to
+     * @return Command that sets the speed to the value returned by the supplier
+     */
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
     }
 
-    // Motors stop trying to brake until command ends, then they are set back to
-    // brake mode
+    /**
+     * Creates command to stop the elevator's motors and allow them to coast.
+     * 
+     * @return the command that allows motors to coast
+     */
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
