@@ -20,35 +20,49 @@ public class Elevator extends SubsystemBase
     /** Constant values of elevator subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int elevatorMotorL = 0; //TODO get actual can ids 
-            private static final int elevatorMotorR = 0; //TODO get actual can ids 
+            private static final int elevatorMotorL = 0; // TODO get actual can ids
+            private static final int elevatorMotorR = 0; // TODO get actual can ids
         }
 
         public static class PID {
-            public static final double kP = 0; //TODO find good value
-            public static final double kI = 0; //TODO find good value
-            public static final double kD = 0; //TODO find good value
+            public static final double kP = 0; // TODO find good value
+            public static final double kI = 0; // TODO find good value
+            public static final double kD = 0; // TODO find good value
         }
 
         public static class Feedforward {
-            public static final double kS = 0; //TODO find good value
-            public static final double kV = 0; //TODO find good value
-            public static final double kA = 0; //TODO find good value
-            public static final double MM_ACCEL = 0; //TODO find good value
-            public static final double MM_CRUISE = 0; //TODO find good value
-            public static final double MM_JERK = 0; //TODO find good value
+            public static final double kS = 0; // TODO find good value
+            public static final double kV = 0; // TODO find good value
+            public static final double kA = 0; // TODO find good value
+            public static final double MM_ACCEL = 0; // TODO find good value
+            public static final double MM_CRUISE = 0; // TODO find good value
+            public static final double MM_JERK = 0; // TODO find good value
         }
 
         public static final double MAX_AMPS = 10;
-        public static final double RESET_POS = 0; //TODO get real value
-        public static final double ENCODER_CONVERSION_FACTOR = 1; //conversion factor for encoder rotations -> linear distance
+        public static final double RESET_POS = 0; // TODO get real value
+        public static final double ENCODER_CONVERSION_FACTOR = 1; // conversion factor for encoder rotations -> linear
+                                                                  // distance
 
         /** Positions that elevator subsystem can be in. */
         public enum Position {
+            GROUND(0.0),
+            L1(0.0),
+            L2(0.0),
+            L3(0.0),
+            L4(0.0),
+            CORAL_INTAKE(0.0),
+            PROCESSOR(0.0);
+
+            public double value;
+
+            Position(double value) {
+                this.value = value;
+            }
         }
     }
 
-    //Make motors and config objects
+    // Make motors and config objects
     private TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.elevatorMotorL);
     private TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.elevatorMotorR);
     private TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
@@ -62,7 +76,7 @@ public class Elevator extends SubsystemBase
 
     // Constructor (initialization)
     public Elevator() {
-        //Current limit config application
+        // Current limit config application
         elevatorConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfig_Current.SupplyCurrentLimitEnable = true;
         elevatorConfig_Feedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
@@ -71,7 +85,7 @@ public class Elevator extends SubsystemBase
         elevatorConfigR.apply(elevatorConfig_Current);
         elevatorConfigR.apply(elevatorConfig_Feedback);
 
-        //PID config application
+        // PID config application
         controlConfig.kP = Constants.PID.kP;
         controlConfig.kI = Constants.PID.kI;
         controlConfig.kD = Constants.PID.kD;
@@ -81,7 +95,7 @@ public class Elevator extends SubsystemBase
         elevatorConfigL.apply(controlConfig);
         elevatorConfigR.apply(controlConfig);
 
-        //Motion Magic config application
+        // Motion Magic config application
         mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_JERK;
@@ -89,27 +103,30 @@ public class Elevator extends SubsystemBase
         elevatorConfigR.apply(mmConfig);
     }
 
-    // Return the current position in linear distance (if ENCODER_CONVERSION_FACTOR is properly set)
+    // Return the current position in linear distance (if ENCODER_CONVERSION_FACTOR
+    // is properly set)
     @Override
     public double getPosition() {
         return elevatorMotorL.getPosition(true).getValueAsDouble();
-        //throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'getPosition'");
     }
 
-    //Reset the encoder positions to a defined constant
+    // Reset the encoder positions to a defined constant
     @Override
     public void resetPosition() {
         elevatorMotorL.setPosition(Constants.RESET_POS);
         elevatorMotorR.setPosition(Constants.RESET_POS);
-        //throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPosition'");
     }
 
-    //Set the voltage (and by proxy speed) of the 2 motors
+    // Set the voltage (and by proxy speed) of the 2 motors
     @Override
     public void setVoltage(double voltage) {
         elevatorMotorL.setVoltage(MathUtil.clamp(voltage, -12, 12));
         elevatorMotorR.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        //throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+        // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
     }
 
     @Override
@@ -124,14 +141,15 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
 
-    //Move to any position
+    // Move to any position
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
             elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
         });
-        //throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToArbitraryPositionCommand'");
     }
 
     @Override
@@ -140,21 +158,23 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
     }
 
-    //Keep mechanism at current position
+    // Keep mechanism at current position
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
             elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
             elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
         });
-        //throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'holdCurrentPositionCommand'");
     }
 
-    //Reset the position of the mechanism
+    // Reset the position of the mechanism
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition());
-        //throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPositionCommand'");
     }
 
     @Override
@@ -163,7 +183,8 @@ public class Elevator extends SubsystemBase
         throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
     }
 
-    //Motors stop trying to brake until command ends, then they are set back to brake mode
+    // Motors stop trying to brake until command ends, then they are set back to
+    // brake mode
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
@@ -175,6 +196,7 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
             elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
         });
-        //throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'coastMotorsCommand'");
     }
 }
