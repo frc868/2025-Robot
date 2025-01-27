@@ -2,6 +2,8 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -42,6 +44,9 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     TalonFXConfigurator configBar = intakeMotorBar.getConfigurator();
     TalonFXConfiguration configBarData = new TalonFXConfiguration();
 
+    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
+
+    
     @Override
     public double getPosition() {
         throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
