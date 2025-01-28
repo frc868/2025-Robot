@@ -62,11 +62,11 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
 
         public enum Position {
-            RESET_POSITION(Degrees.of(0));
+            RESET_POSITION(0.0);
 
-            public final Angle pos;
+            public final double pos;
 
-            Position(Angle pos) {
+            Position(double pos) {
                 this.pos = pos;
             }
         }
