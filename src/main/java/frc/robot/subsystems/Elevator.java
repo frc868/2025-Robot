@@ -116,7 +116,7 @@ public class Elevator extends SubsystemBase
         // Motion Magic config application
         mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
         mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
-        mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_JERK;
+        mmConfig.MotionMagicJerk = Constants.Feedforward.MM_JERK;
 
         // Apply the configs
         elevatorConfigL.apply(elevatorConfigCurrent);
@@ -209,7 +209,6 @@ public class Elevator extends SubsystemBase
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
         .withName("elevator.movePositionDeltaCommand");
     }
-    
 
     /**
      * Creates a command that sets the elevator motor goal to the current position,
