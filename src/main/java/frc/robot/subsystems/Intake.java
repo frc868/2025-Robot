@@ -10,6 +10,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Intake.Constants.Position;
@@ -26,6 +27,8 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         public static final double CURRENT_LIMIT = 0; // TO DO
 
         public static final double VOLTAGE = 0; // TO DO
+
+        public static final double RESET_POSITION = 0; // Need a real value TODO
 
         public enum Position {
         }
@@ -65,7 +68,8 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public void setVoltage(double voltage) {
-        throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+        intakeMotorLift.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        intakeMotorBar.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     @Override
