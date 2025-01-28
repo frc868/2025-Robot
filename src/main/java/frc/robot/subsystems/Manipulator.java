@@ -4,6 +4,7 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
@@ -60,6 +61,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     // have game pieces)
     private final StatusSignal<Current> manipulatorCurrent;
 
+    private final VoltageOut manipulatorVoltage = new VoltageOut(0);
+
     public Manipulator() {
         // assign the manipulator motor to the specified CAN ID
         manipulatorMotor = new TalonFX(Constants.CANIDS.MANIPULATOR_MOTOR_CANID);
@@ -92,7 +95,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     public Command setVoltageCommand(double voltage) {
         return this.runOnce(() -> {
-            manipulatorMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+            manipulatorMotor.setControl(manipulatorVoltage.withOutput(MathUtil.clamp(voltage, -12, 12)));
         }).withName("manipulator.setVoltage");
     }
 
