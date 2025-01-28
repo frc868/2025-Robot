@@ -28,7 +28,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
         public static final double VOLTAGE = 0; // TO DO
 
-        public static final double RESET_POSITION = 0; // Need a real value TODO
+        public static final double RESET_POSITION = 0; // Need a real value
 
         public enum Position {
         }
@@ -58,12 +58,14 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public double getPosition() {
-        throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+        return intakeMotorLift.getPosition(true).getValueAsDouble();
     }
 
     @Override
     public void resetPosition() {
-        throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        // Resets the position of the climber mechanism to the stated position set in
+        intakeMotorLift.setPosition(Constants.RESET_POSITION);
+        intakeMotorBar.setPosition(Constants.RESET_POSITION);
     }
 
     @Override
