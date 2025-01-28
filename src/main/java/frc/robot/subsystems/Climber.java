@@ -16,16 +16,30 @@ import java.util.function.Supplier;
 /** Climber subsystem which hangs robot from deep cage. */
 public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
     /** Constant values of climber subsystem. */
-    private TalonFX climberMotor;
-    private TalonFXConfigurator climberConfigurator;
+    private TalonFXConfigurator climberConfiguratorL;
+    private TalonFXConfigurator climberConfiguratorR;
     private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
-    private StatusSignal<Current> climberCurrent;
 
     public static final class Constants {
         // Declares motor CanIDs
         public static final class CANIDS {
             public static final int CLIMBER_MOTOR_LEFT_CANID = 0; // Have not asked what the CanID should be yet
             public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; // Also have not asked what the CanID should be yet
+        }
+
+        public static class PID {
+            public static final double kP = 0; // TODO find good value
+            public static final double kI = 0; // TODO find good value
+            public static final double kD = 0; // TODO find good value
+        }
+
+        public static class Feedforward {
+            public static final double kS = 0; // TODO find good value
+            public static final double kV = 0; // TODO find good value
+            public static final double kA = 0; // TODO find good value
+            public static final double MM_ACCEL = 0; // TODO find good value
+            public static final double MM_CRUISE = 0; // TODO find good value
+            public static final double MM_JERK = 0; // TODO find good value
         }
 
         public static final double CURRENT_LIMIT = 0; // Max current limit for climber
@@ -40,17 +54,26 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         private static TalonFX climberMotorLeft = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_LEFT_CANID);
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
 
-        public static final double RESET_POSITION = 0; // Need real value
-
         public enum Position {
+            RESET_POSITION(0.0);
+
+            public final double pos;
+
+            Position(double pos) {
+                this.pos = pos;
+            }
         }
 
     }
 
     public Climber() {
+        climberConfiguratorL = Constants.climberMotorLeft.getConfigurator();
+        climberConfiguratorR = Constants.climberMotorRight.getConfigurator();
+
         limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
         limitConfigs.SupplyCurrentLimitEnable = true;
-        climberConfigurator.apply(limitConfigs); // Applies current limits
+        climberConfiguratorL.apply(limitConfigs); // Applies current limits
+        climberConfiguratorR.apply(limitConfigs);
     }
 
     @Override
@@ -63,8 +86,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     public void resetPosition() {
         // Resets the position of the climber mechanism to the stated position set in
         // constants
-        Constants.climberMotorLeft.setPosition(Constants.RESET_POSITION);
-        Constants.climberMotorRight.setPosition(Constants.RESET_POSITION);
+        Constants.climberMotorLeft.setPosition(Constants.Position.RESET_POSITION.pos);
+        Constants.climberMotorRight.setPosition(Constants.Position.RESET_POSITION.pos);
     }
 
     @Override
