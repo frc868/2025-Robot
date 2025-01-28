@@ -46,21 +46,26 @@ public class Elevator extends SubsystemBase
             public static final double MM_JERK = 0; // TODO find good value
         }
 
-        public static final InvertedValue L_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
-        public static final InvertedValue R_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
-        public static final double MAX_AMPS = 10; //TODO find good # amps
-        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO get conversion factor for encoder rotations -> linear distance
+        public static final InvertedValue L_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+                                                                                                // Clockwise_Positive or
+                                                                                                // CounterClockwise_Positive
+        public static final InvertedValue R_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+                                                                                                // Clockwise_Positive or
+                                                                                                // CounterClockwise_Positive
+        public static final double MAX_AMPS = 10; // TODO find good # amps
+        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO get conversion factor for encoder rotations ->
+                                                                  // linear distance
 
         /** Positions that elevator subsystem can be in. */
         public static enum Position {
-            RESET_POS(0.0), //TODO get actual position
-            GROUND(0.0), //TODO get actual position
-            L1(0.0), //TODO get actual position
-            L2(0.0), //TODO get actual position
-            L3(0.0), //TODO get actual position
-            L4(0.0), //TODO get actual position
-            CORAL_INTAKE(0.0), //TODO get actual position
-            PROCESSOR(0.0); //TODO get actual position
+            RESET_POS(0.0), // TODO get actual position
+            GROUND(0.0), // TODO get actual position
+            L1(0.0), // TODO get actual position
+            L2(0.0), // TODO get actual position
+            L3(0.0), // TODO get actual position
+            L4(0.0), // TODO get actual position
+            CORAL_INTAKE(0.0), // TODO get actual position
+            PROCESSOR(0.0); // TODO get actual position
 
             public final double value;
 
@@ -98,7 +103,7 @@ public class Elevator extends SubsystemBase
         elevatorConfigCurrent.SupplyCurrentLimit = Constants.MAX_AMPS;
         elevatorConfigCurrent.SupplyCurrentLimitEnable = true;
 
-        //Set inversions
+        // Set inversions
         elevatorConfigOutputL.Inverted = Constants.L_MOTOR_DIRECTION;
         elevatorConfigOutputR.Inverted = Constants.R_MOTOR_DIRECTION;
 
@@ -170,7 +175,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToCurrentGoalCommand() {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position)
-        .withName("elevator.moveToCurrentGoalCommand");
+                .withName("elevator.moveToCurrentGoalCommand");
     }
 
     /**
@@ -181,7 +186,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value)
-        .withName("elevator.moveToPositionCommand");
+                .withName("elevator.moveToPositionCommand");
     }
 
     /**
@@ -195,7 +200,7 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
         })
-        .withName("elevator.moveToArbitraryPositionCommand");
+                .withName("elevator.moveToArbitraryPositionCommand");
     }
 
     /**
@@ -207,7 +212,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
-        .withName("elevator.movePositionDeltaCommand");
+                .withName("elevator.movePositionDeltaCommand");
     }
 
     /**
@@ -223,7 +228,7 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
             elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
         })
-        .withName("elevator.holdCurrentPositionCommand");
+                .withName("elevator.holdCurrentPositionCommand");
     }
 
     /**
@@ -235,7 +240,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition())
-        .withName("elevator.resetPositionCommand");
+                .withName("elevator.resetPositionCommand");
 
     }
 
@@ -250,7 +255,7 @@ public class Elevator extends SubsystemBase
         return run(() -> {
             setVoltage(speed.get() * 12.0);
         })
-        .withName("elevator.setOverridenSpeedCommand");
+                .withName("elevator.setOverridenSpeedCommand");
 
     }
 
@@ -275,7 +280,7 @@ public class Elevator extends SubsystemBase
                     elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
                 },
                 () -> false,
-                this).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                this).withInterruptBehavior(InterruptionBehavior.kCancelSelf)
                 .withName("elevator.coastMotorsCommand");
 
     }
