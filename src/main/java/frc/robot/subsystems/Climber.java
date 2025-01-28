@@ -2,8 +2,11 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.FeedbackConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
@@ -16,10 +19,6 @@ import java.util.function.Supplier;
 /** Climber subsystem which hangs robot from deep cage. */
 public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
     /** Constant values of climber subsystem. */
-    private TalonFXConfigurator climberConfiguratorL;
-    private TalonFXConfigurator climberConfiguratorR;
-    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
-
     public static final class Constants {
         // Declares motor CanIDs
         public static final class CANIDS {
@@ -50,6 +49,9 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
         public static final double VOLTAGE = 0;
 
+        public static final InvertedValue MOTOR_L_INVERTED = InvertedValue.Clockwise_Positive;
+        public static final InvertedValue MOTOR_R_INVERTED = InvertedValue.Clockwise_Positive;
+
         // Assign both climber motors to their specified CANID
         private static TalonFX climberMotorLeft = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_LEFT_CANID);
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
@@ -66,14 +68,28 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     }
 
-    public Climber() {
-        climberConfiguratorL = Constants.climberMotorLeft.getConfigurator();
-        climberConfiguratorR = Constants.climberMotorRight.getConfigurator();
+    private TalonFXConfigurator climberConfiguratorL = Constants.climberMotorLeft.getConfigurator();
+    private TalonFXConfigurator climberConfiguratorR = Constants.climberMotorRight.getConfigurator();
+    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
+    private FeedbackConfigs feedbackConfigs = new FeedbackConfigs();
+    private MotorOutputConfigs outputConfigsL = new MotorOutputConfigs();
+    private MotorOutputConfigs outputConfigsR = new MotorOutputConfigs();
 
+    public Climber() {
         limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
         limitConfigs.SupplyCurrentLimitEnable = true;
         climberConfiguratorL.apply(limitConfigs); // Applies current limits
         climberConfiguratorR.apply(limitConfigs);
+
+        feedbackConfigs.SensorToMechanismRatio = Constants.GEAR_RATIO;
+        climberConfiguratorL.apply(feedbackConfigs);
+        climberConfiguratorR.apply(feedbackConfigs);
+
+        outputConfigsL.Inverted = Constants.MOTOR_L_INVERTED;
+        outputConfigsR.Inverted = Constants.MOTOR_R_INVERTED;
+        climberConfiguratorL.apply(outputConfigsL);
+        climberConfiguratorR.apply(outputConfigsR);
+
     }
 
     @Override
