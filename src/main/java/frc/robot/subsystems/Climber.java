@@ -62,7 +62,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
 
         public enum Position {
-            RESET_POSITION(0.0);
+            RESET_POSITION(0.0),
+            CLAMPED(0.0);
 
             public final double pos;
 
@@ -82,7 +83,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     private MotionMagicConfigs motionMagicConfigs = new MotionMagicConfigs();
     private Slot0Configs controlConfigs = new Slot0Configs();
 
-    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Degrees.of(0));
+    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Constants.Position.RESET_POSITION.pos);
 
     public Climber() {
         limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
@@ -154,9 +155,10 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-                "Unimplemented method 'moveToArbitraryPositionCommand'");
+        return runOnce(() -> {
+            Constants.climberMotorLeft.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+            Constants.climberMotorRight.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+        });
     }
 
     @Override
