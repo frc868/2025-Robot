@@ -3,7 +3,9 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -77,6 +79,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     private FeedbackConfigs feedbackConfigs = new FeedbackConfigs();
     private MotorOutputConfigs outputConfigsL = new MotorOutputConfigs();
     private MotorOutputConfigs outputConfigsR = new MotorOutputConfigs();
+    private MotionMagicConfigs motionMagicConfigs = new MotionMagicConfigs();
+    private Slot0Configs controlConfigs = new Slot0Configs();
 
     private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Degrees.of(0));
 
@@ -94,6 +98,24 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         outputConfigsR.Inverted = Constants.MOTOR_R_INVERTED;
         climberConfiguratorL.apply(outputConfigsL);
         climberConfiguratorR.apply(outputConfigsR);
+
+        controlConfigs.kP = Constants.PID.kP;
+        controlConfigs.kI = Constants.PID.kI;
+        controlConfigs.kD = Constants.PID.kD;
+
+        controlConfigs.kA = Constants.Feedforward.kA;
+        controlConfigs.kS = Constants.Feedforward.kS;
+        controlConfigs.kV = Constants.Feedforward.kV;
+
+        motionMagicConfigs.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
+        motionMagicConfigs.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
+        motionMagicConfigs.MotionMagicJerk = Constants.Feedforward.MM_JERK;
+
+        climberConfiguratorL.apply(controlConfigs);
+        climberConfiguratorR.apply(controlConfigs);
+
+        climberConfiguratorL.apply(motionMagicConfigs);
+        climberConfiguratorR.apply(motionMagicConfigs);
 
     }
 
