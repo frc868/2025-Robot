@@ -5,15 +5,18 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import static edu.wpi.first.units.Units.Degrees;
+
 import java.util.function.Supplier;
 
 /** Climber subsystem which hangs robot from deep cage. */
@@ -57,11 +60,11 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
 
         public enum Position {
-            RESET_POSITION(0.0);
+            RESET_POSITION(Degrees.of(0));
 
-            public final double pos;
+            public final Angle pos;
 
-            Position(double pos) {
+            Position(Angle pos) {
                 this.pos = pos;
             }
         }
@@ -74,6 +77,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     private FeedbackConfigs feedbackConfigs = new FeedbackConfigs();
     private MotorOutputConfigs outputConfigsL = new MotorOutputConfigs();
     private MotorOutputConfigs outputConfigsR = new MotorOutputConfigs();
+
+    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Degrees.of(0));
 
     public Climber() {
         limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
