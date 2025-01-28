@@ -17,29 +17,38 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 /** Subsystem which intakes and scores scoring elements. */
 public class Manipulator extends SubsystemBase implements BaseIntake {
-    // Constant values of manipulator subsystem.
+    /** Constant values of manipulator subsystem. */
     public static final class Constants {
-        // CAN IDs for the Manipulator Motor
+        /** CAN IDs for the Manipulator Motor */
         public static final class CANIDS {
             public static final int MANIPULATOR_MOTOR_CANID = 0;
         }
 
-        // Maximum current limit for the manipulator motor
+        /** Maximum current limit for the manipulator motor */
         public static final double CURRENT_LIMIT = 0;
-        // If the motor exerts force against a coral, it will require more current.
-        // This value is the threshold that allows us to know if the motor has a piece
+        /**
+         * If the motor exerts force against a coral, it will require more current.
+         * This value is the threshold that allows us to know if the motor has a game
+         * piece
+         */
         public static final double TORQUE_CURRENT_DETECTION_THRESHOLD = 0;
-        // Gear ratio in case we use pid/feedforward on this
+        /** Gear ratio in case we use pid/feedforward on this */
         public static final double GEAR_RATIO = 0;
-        // whether or not the motor must be inverted, depending on its placement
+        /** Whether or not the motor must be inverted, depending on its placement */
         public static final InvertedValue INVERTED = InvertedValue.Clockwise_Positive;
 
-        // voltages to set the manipulator motor to, each accomplishing a different task
+        /**
+         * Voltages to set the manipulator motor to, each accomplishing a different task
+         */
         public enum Voltages {
-            HOLD(0.0), // the voltage that will hold a game piece in place inside the intake
-            INTAKE(0.0), // the voltage that will be used to intake a game piece
-            OUTTAKE(0.0);// the voltage that will be used to push out a game piece
+            /** The voltage that will hold a game piece in place inside the intake */
+            HOLD(0.0),
+            /** The voltage that will be used to intake a game piece */
+            INTAKE(0.0),
+            /** The voltage that will be used to push out a game piece */
+            OUTTAKE(0.0);
 
+            /** This is used to access the values each name corresponds to, in volts */
             public final double volts;
 
             Voltages(double volts) {
@@ -149,7 +158,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      *         {@link #hasGamePiece() has a game piece}
      */
     public Command intakeGamePieceCommand() {
-        return (runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(stopRollersCommand()))
+        return (runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(holdRollersCommand()))
                 .withName("manipulator.intakeGamePiece");
     }
 
@@ -161,6 +170,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     public boolean hasGamePiece() {
         manipulatorCurrent.refresh();
+        // If motor current > threshold for some specific time, return true
         return intakeDebouncer.calculate(
                 manipulatorCurrent.getValueAsDouble() > Constants.TORQUE_CURRENT_DETECTION_THRESHOLD);
     }
