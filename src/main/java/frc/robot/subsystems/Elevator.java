@@ -174,7 +174,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToCurrentGoalCommand() {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position)
-                .withName("elevator.moveToCurrentGoalCommand");
+            .withName("elevator.moveToCurrentGoalCommand");
     }
 
     /**
@@ -185,7 +185,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value)
-                .withName("elevator.moveToPositionCommand");
+            .withName("elevator.moveToPositionCommand");
     }
 
     /**
@@ -199,7 +199,7 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
         })
-                .withName("elevator.moveToArbitraryPositionCommand");
+            .withName("elevator.moveToArbitraryPositionCommand");
     }
 
     /**
@@ -211,7 +211,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
-                .withName("elevator.movePositionDeltaCommand");
+            .withName("elevator.movePositionDeltaCommand");
     }
 
     /**
@@ -227,7 +227,7 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
             elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
         })
-                .withName("elevator.holdCurrentPositionCommand");
+            .withName("elevator.holdCurrentPositionCommand");
     }
 
     /**
@@ -239,7 +239,7 @@ public class Elevator extends SubsystemBase
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition())
-                .withName("elevator.resetPositionCommand");
+            .withName("elevator.resetPositionCommand");
 
     }
 
@@ -254,7 +254,7 @@ public class Elevator extends SubsystemBase
         return run(() -> {
             setVoltage(speed.get() * 12.0);
         })
-                .withName("elevator.setOverridenSpeedCommand");
+            .withName("elevator.setOverridenSpeedCommand");
 
     }
 
@@ -275,6 +275,6 @@ public class Elevator extends SubsystemBase
             elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
             elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-                .withName("elevator.coastMotors");
+            .withName("elevator.coastMotorsCommand");
     }
 }
