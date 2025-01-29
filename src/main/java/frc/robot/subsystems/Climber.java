@@ -172,8 +172,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+        return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0));
     }
 
     @Override
