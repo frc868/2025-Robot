@@ -118,37 +118,65 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     }
 
+    /**
+     * Gets the position of the left motor, increasing as it goes up
+     * 
+     * @return position of the left motor, as a double
+     */
     @Override
     public double getPosition() {
         return Constants.climberMotorLeft.getPosition(true).getValueAsDouble();
-        // Returns the position of the left climber motor
     }
 
+    /**
+     * Resets the position of the motors to the reset position specified in
+     * {@link Constants.Position#RESET_POSITION the constants}
+     */
     @Override
     public void resetPosition() {
-        // Resets the position of the climber mechanism to the stated position set in
-        // constants
         Constants.climberMotorLeft.setPosition(Constants.Position.RESET_POSITION.pos);
         Constants.climberMotorRight.setPosition(Constants.Position.RESET_POSITION.pos);
     }
 
+    /**
+     * Sets the voltage of both climber motors to a clamped value
+     * 
+     * @param voltage Voltage to set the motors to, clamped to the range [-12,12]
+     */
     @Override
     public void setVoltage(double voltage) {
-        // Set the voltage of the climber motors to a value clamped between -12V and 12V
         Constants.climberMotorLeft.setVoltage(MathUtil.clamp(voltage, -12, 12));
         Constants.climberMotorRight.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
+    /**
+     * Moves the climber motors to their current goal, if not already doing so/
+     * 
+     * @return Command to move to the current PID goal
+     */
     @Override
     public Command moveToCurrentGoalCommand() {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position);
     }
 
+    /**
+     * Sets the goal and moves the climber motors to the supplied position from
+     * {@link Constants.Position the possible positions}
+     * 
+     * @return Command that will move to one of the possible preset positions
+     */
     @Override
     public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().pos);
     }
 
+    /**
+     * Sets the goal and moves the climber motors to the supplied position.
+     * 
+     * @param goalPositionSupplier The supplier for the goal position, which must
+     *                             return a double
+     * @return Command that will move to a specified position
+     */
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
@@ -157,26 +185,60 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         });
     }
 
+    /**
+     * Sets the goal and moves climber motors to a position relative to the current
+     * position
+     * 
+     * @param delta Supplier for the relative change to the current position
+     *              (Current position + delta)
+     * @return Command that will move the climber relative to its current position
+     */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> delta.get() + getPosition());
     }
 
+    /**
+     * Holds the current position of the climber motors, keeping the climber
+     * mechanism still.
+     * 
+     * @return Command that will keep the climber still
+     */
     @Override
     public Command holdCurrentPositionCommand() {
         return moveToArbitraryPositionCommand(() -> getPosition());
     }
 
+    /**
+     * Resets the position of the climber encoders.
+     * This is a Command based wrapper for {@link #resetPosition()}
+     * 
+     * @return Command that resets the position to
+     *         {@link Constants.Position#RESET_POSITION the reset position}
+     */
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition);
     }
 
+    /**
+     * Creates a command that overrides PID control for the climber.
+     * 
+     * @param speed Supplier for speed, which should return values between -1 to 1
+     * @return Command that will set the speed of climber until interrupted, and
+     *         then zero the voltage.
+     */
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0));
     }
 
+    /**
+     * Creates a command that will make the climber motors coast instead of brake.
+     * Once done, climber motors will go back to braking.
+     * 
+     * @return Command that causes motors to coast
+     */
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
