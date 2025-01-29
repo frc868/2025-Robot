@@ -143,14 +143,12 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public Command moveToCurrentGoalCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position);
     }
 
     @Override
     public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().pos);
     }
 
     @Override
@@ -163,20 +161,17 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
+        return moveToArbitraryPositionCommand(() -> delta.get() + getPosition());
     }
 
     @Override
     public Command holdCurrentPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
+        return moveToArbitraryPositionCommand(() -> getPosition());
     }
 
     @Override
     public Command resetPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        return runOnce(this::resetPosition);
     }
 
     @Override
