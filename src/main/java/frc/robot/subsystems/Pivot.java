@@ -44,11 +44,15 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
             public static final double MM_JERK = 0; // TODO find good value
         }
 
-        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
-        
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive
+                                                                                              // or
+                                                                                              // CounterClockwise_Positive
+
         public static final double MAX_AMPS = 10; // TODO find good # amps
 
-        public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for encoder rotations -> radians (replace 0 with gear ratio)
+        public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
+                                                                                // encoder rotations -> radians (replace
+                                                                                // 0 with gear ratio)
 
         /** Positions that pivot subsystem can be in. */
         public static enum Position {
@@ -114,7 +118,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public double getPosition() {
         return pivotMotor.getPosition().getValueAsDouble();
-        // throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'getPosition'");
     }
 
     /**
@@ -123,7 +128,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public void resetPosition() {
         pivotMotor.setPosition(Constants.Position.RESET_POSITION.value);
-        // throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPosition'");
     }
 
     /**
@@ -140,7 +146,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     }
 
     /**
-     * Command to continuously have the pivot mechanism move to the currently set goal.
+     * Command to continuously have the pivot mechanism move to the currently set
+     * goal.
      * 
      * @return the command
      */
@@ -149,11 +156,12 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         return run(() -> {
             pivotMotor.setControl(mmRequest.withPosition(mmRequest.Position));
         }).withName("pivot.moveToCurrentGoalCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToCurrentGoalCommand'");
     }
 
     /**
-     * Command that sets the current goal to the setpoint, 
+     * Command that sets the current goal to the setpoint,
      * and cancels once the pivot mechanism has reached that goal.
      * 
      * @param goalPositionSupplier a supplier of an instance of the position enum
@@ -162,13 +170,18 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
         return Commands.sequence(
-            runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get().value))),
-            moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
+                runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get().value))),
+                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToPositionCommand'");
     }
 
-    /* couldn't find a method to see if motion magic has reached its goal, so... if statement, yay.
-    I doubt this works perfectly due to allowed tolerances in position probably being needed, but ¯\_(ツ)_/¯ */
+    /*
+     * couldn't find a method to see if motion magic has reached its goal, so... if
+     * statement, yay.
+     * I doubt this works perfectly due to allowed tolerances in position probably
+     * being needed, but ¯\_(ツ)_/¯
+     */
     public boolean atGoal() {
         if (mmRequest.Position == pivotMotor.getPosition().getValueAsDouble()) {
             return true;
@@ -176,9 +189,19 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
             return false;
         }
     }
-    
+
+    /*
+     * lifted straight from the source code assuming target velocity = 0
+     * https://github.wpilib.org/allwpilib/docs/release/java/src-html/edu/wpi/first/
+     * math/controller/PIDController.html#line-299
+     */
+    public boolean atGoal2(double errorTolerance, double errorDerivativeTolerance) {
+        return Math.abs(mmRequest.Position - pivotMotor.getPosition().getValueAsDouble()) < errorTolerance
+                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < errorDerivativeTolerance;
+    }
+
     /**
-     * Command that sets the current goal position to the setpoint, 
+     * Command that sets the current goal position to the setpoint,
      * and cancels once the pivot mechanism has reached that goal.
      * 
      * @param goalPositionSupplier a supplier of a position to move to, in radians
@@ -187,14 +210,16 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-            runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get()))),
-            moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
+                runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get()))),
+                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'moveToArbitraryPositionCommand'");
     }
 
     /**
      * Command that sets the current goal position to the setpoint plus
-     * the delta (the additional distance to move, relative to the current position), and
+     * the delta (the additional distance to move, relative to the current
+     * position), and
      * cancels once the pivot mechanism has reached that goal.
      * 
      * @param delta a supplier of a delta to move, in radians
@@ -203,8 +228,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
-            .withName("pivot.movePositionDeltaCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
+                .withName("pivot.movePositionDeltaCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'movePositionDeltaCommand'");
     }
 
     /**
@@ -216,18 +242,21 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command holdCurrentPositionCommand() {
         return movePositionDeltaCommand(() -> 0.0).withName("pivot.holdCurrentPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'holdCurrentPositionCommand'");
     }
 
     /**
-     * Creates an instantaneous command that resets the position of the pivot mechanism.
+     * Creates an instantaneous command that resets the position of the pivot
+     * mechanism.
      * 
      * @return the command
      */
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).withName("pivot.resetPosition");
-        // throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'resetPositionCommand'");
     }
 
     /**
@@ -239,12 +268,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
-            .withName("pivot.setOverriddenSpeedCommand");
-        // throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+                .withName("pivot.setOverriddenSpeedCommand");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'setOverridenSpeedCommand'");
     }
 
     /**
-     * Command to stop the motor, sets it to coast mode, and then set it back to brake mode on end. Allows for
+     * Command to stop the motor, sets it to coast mode, and then set it back to
+     * brake mode on end. Allows for
      * moving the pivot mechanism manually.
      * 
      * @return the command
@@ -252,16 +283,17 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command coastMotorsCommand() {
         return runOnce(pivotMotor::stopMotor)
-            .andThen(() -> {
-                pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-                pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure this is right (when we
-                                                                         // know stuff better)
-            }).finallyDo((d) -> {
-                pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-                pivotConfigurator.apply(pivotConfiguration.MotorOutput);
-            }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-            .withName("pivot.coastMotorsCommand");
+                .andThen(() -> {
+                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure this is right (when we
+                                                                             // know stuff better)
+                }).finallyDo((d) -> {
+                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+                    pivotConfigurator.apply(pivotConfiguration.MotorOutput);
+                }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("pivot.coastMotorsCommand");
 
-        // throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method
+        // 'coastMotorsCommand'");
     }
 }
