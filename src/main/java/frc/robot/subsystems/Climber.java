@@ -72,9 +72,12 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     }
 
+    // Use these to apply the configs
     private TalonFXConfigurator climberConfiguratorL = Constants.climberMotorLeft.getConfigurator();
     private TalonFXConfigurator climberConfiguratorR = Constants.climberMotorRight.getConfigurator();
+    // Current limits
     private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
+    // Convert rotations to usable output
     private FeedbackConfigs feedbackConfigs = new FeedbackConfigs();
     private MotorOutputConfigs outputConfigsL = new MotorOutputConfigs();
     private MotorOutputConfigs outputConfigsR = new MotorOutputConfigs();
@@ -84,32 +87,41 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Constants.Position.RESET_POSITION.pos);
 
     public Climber() {
-        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT; // Create current limits
+        // Create current limits
+        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
         limitConfigs.SupplyCurrentLimitEnable = true;
-        climberConfiguratorL.apply(limitConfigs); // Applies current limits
+        // Apply current limits
+        climberConfiguratorL.apply(limitConfigs);
         climberConfiguratorR.apply(limitConfigs);
 
+        // Make encoder output in terms of angular units for the climber's position
         feedbackConfigs.SensorToMechanismRatio = Constants.GEAR_RATIO;
         climberConfiguratorL.apply(feedbackConfigs);
         climberConfiguratorR.apply(feedbackConfigs);
 
+        // Set motor inversions
         outputConfigsL.Inverted = Constants.MOTOR_L_INVERTED;
         outputConfigsR.Inverted = Constants.MOTOR_R_INVERTED;
+        // Apply motor inversions
         climberConfiguratorL.apply(outputConfigsL);
         climberConfiguratorR.apply(outputConfigsR);
 
+        // Set PID constants
         controlConfigs.kP = Constants.PID.kP;
         controlConfigs.kI = Constants.PID.kI;
         controlConfigs.kD = Constants.PID.kD;
 
+        // Set feedforward constants
         controlConfigs.kA = Constants.Feedforward.kA;
         controlConfigs.kS = Constants.Feedforward.kS;
         controlConfigs.kV = Constants.Feedforward.kV;
 
+        // Set motion magic configurations
         motionMagicConfigs.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
         motionMagicConfigs.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
         motionMagicConfigs.MotionMagicJerk = Constants.Feedforward.MM_JERK;
 
+        // Apply feedforward, PID, and motion magic configs
         climberConfiguratorL.apply(controlConfigs);
         climberConfiguratorR.apply(controlConfigs);
 
