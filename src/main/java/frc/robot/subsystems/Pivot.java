@@ -1,16 +1,19 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.FeedbackConfigs;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.ArmFeedforward;
-import edu.wpi.first.math.controller.ProfiledPIDController;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -25,32 +28,32 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
             private static final int PIVOT_MOTOR = 0; // TODO get actual can ids
         }
 
-        public static class PID {
+        public static final class PID {
             public static final double kP = 0; // TODO find good value
             public static final double kI = 0; // TODO find good value
             public static final double kD = 0; // TODO find good value
         }
 
-        public static class FeedForward {
+        public static final class FeedForward {
             public static final double kS = 0; // TODO find good value
             public static final double kG = 0; // TODO find good value
             public static final double kV = 0; // TODO find good value
             public static final double kA = 0; // TODO find good value
+            public static final double MM_ACCEL = 0; // TODO find good value
+            public static final double MM_CRUISE = 0; // TODO find good value
+            public static final double MM_JERK = 0; // TODO find good value
         }
 
-        public static class MotionProfiling { // TODO everything
-            public static final double MAX_VELOCITY_METERS_PER_SECOND = 0.0;
-            public static final double MAX_ACCELERATION_METERS_PER_SECOND_SQUARED = 0.0;
-            public static final TrapezoidProfile.Constraints MOVEMENT_CONSTRAINTS = new TrapezoidProfile.Constraints(
-                    MAX_VELOCITY_METERS_PER_SECOND, MAX_ACCELERATION_METERS_PER_SECOND_SQUARED);
-        }
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
+        
+        public static final double MAX_AMPS = 10; // TODO find good # amps
 
-        public static final int MAX_AMPS = 10;
-        public static final double RESET_POSITION = 0; //TODO get real reset encoder value
+        public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for encoder rotations -> radians (replace 0 with gear ratio)
 
         /** Positions that pivot subsystem can be in. */
-        public enum Position {
-            TEMP(0);
+        public static enum Position {
+            TEMP(0),
+            RESET_POSITION(0);
 
             public final double value;
 
@@ -58,24 +61,50 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
                 this.value = value;
             }
         }
-
     }
 
-    private TalonFX pivotMotor = new TalonFX(Constants.CANIDs.PIVOT_MOTOR);
-    private TalonFXConfigurator pivotConfigurator = pivotMotor.getConfigurator();
-    private TalonFXConfiguration pivotConfiguration = new TalonFXConfiguration();
-    private CurrentLimitsConfigs pivotConfig_Current = new CurrentLimitsConfigs();
+    // Make motor object
+    private final TalonFX pivotMotor = new TalonFX(Constants.CANIDs.PIVOT_MOTOR);
 
+    // Make configs
+    private final TalonFXConfigurator pivotConfigurator = pivotMotor.getConfigurator();
+    private final TalonFXConfiguration pivotConfiguration = new TalonFXConfiguration();
+    private final CurrentLimitsConfigs pivotConfigCurrent = new CurrentLimitsConfigs();
+    private final FeedbackConfigs pivotConfigFeedback = new FeedbackConfigs();
+    private final Slot0Configs pivotConfigControl = new Slot0Configs();
+    private final MotionMagicConfigs mmConfig = new MotionMagicConfigs();
+    private final MotorOutputConfigs pivotConfigOutput = new MotorOutputConfigs();
+
+    // Make motion magic request object
+    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
+
+    // Constructor
     public Pivot() {
-        pivotConfig_Current.SupplyCurrentLimit = Constants.MAX_AMPS;
-        pivotConfig_Current.SupplyCurrentLimitEnable = true;
-        pivotConfigurator.apply(pivotConfig_Current);
-    }
+        // Apply configs
+        pivotConfigCurrent.SupplyCurrentLimit = Constants.MAX_AMPS;
+        pivotConfigCurrent.SupplyCurrentLimitEnable = true;
+        pivotConfigurator.apply(pivotConfigCurrent);
 
-    private ProfiledPIDController pidController = new ProfiledPIDController(Constants.PID.kP, Constants.PID.kI, Constants.PID.kD, Constants.MotionProfiling.MOVEMENT_CONSTRAINTS);
-    private ArmFeedforward feedforward = new ArmFeedforward(Constants.FeedForward.kS, Constants.FeedForward.kG, Constants.FeedForward.kV, Constants.FeedForward.kA);
-    private double feedbackVoltage = 0.0;
-    private double feedforwardVoltage = 0.0;
+        pivotConfigControl.kP = Constants.PID.kP;
+        pivotConfigControl.kI = Constants.PID.kI;
+        pivotConfigControl.kD = Constants.PID.kD;
+        pivotConfigControl.kS = Constants.FeedForward.kS;
+        pivotConfigControl.kG = Constants.FeedForward.kG;
+        pivotConfigControl.kV = Constants.FeedForward.kV;
+        pivotConfigControl.kA = Constants.FeedForward.kA;
+        pivotConfigurator.apply(pivotConfigControl);
+
+        pivotConfigFeedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
+        pivotConfigurator.apply(pivotConfigFeedback);
+
+        pivotConfigOutput.Inverted = Constants.MOTOR_DIRECTION;
+        pivotConfigurator.apply(pivotConfigOutput);
+
+        mmConfig.MotionMagicAcceleration = Constants.FeedForward.MM_ACCEL;
+        mmConfig.MotionMagicCruiseVelocity = Constants.FeedForward.MM_CRUISE;
+        mmConfig.MotionMagicJerk = Constants.FeedForward.MM_JERK;
+        pivotConfigurator.apply(mmConfig);
+    }
 
     /**
      * Gets the current position of the pivot mechanism.
@@ -85,8 +114,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public double getPosition() {
         return pivotMotor.getPosition().getValueAsDouble();
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'getPosition'");
+        // throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
     }
 
     /**
@@ -94,9 +122,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public void resetPosition() {
-        pivotMotor.setPosition(Constants.RESET_POSITION);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPosition'");
+        pivotMotor.setPosition(Constants.Position.RESET_POSITION.value);
+        // throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
     }
 
     /**
@@ -120,12 +147,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            feedbackVoltage = pidController.calculate(getPosition());
-            feedforwardVoltage = feedforward.calculate(getPosition(), 0); // TODO is velocity really 0?
-            setVoltage(feedbackVoltage + feedforwardVoltage);
+            pivotMotor.setControl(mmRequest.withPosition(mmRequest.Position));
         }).withName("pivot.moveToCurrentGoalCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToCurrentGoalCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
     }
 
     /**
@@ -138,19 +162,21 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
         return Commands.sequence(
-            runOnce(() -> pidController.reset(getPosition())),
-            runOnce(() -> pidController.setGoal(goalPositionSupplier.get().value)),
+            runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get().value))),
             moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
-
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
 
-    /* this was in the code last year so good enough */
+    /* couldn't find a method to see if motion magic has reached its goal, so... if statement, yay.
+    I doubt this works perfectly due to allowed tolerances in position probably being needed, but ¯\_(ツ)_/¯ */
     public boolean atGoal() {
-        return pidController.atGoal();
+        if (mmRequest.Position == pivotMotor.getPosition().getValueAsDouble()) {
+            return true;
+        } else {
+            return false;
+        }
     }
-
+    
     /**
      * Command that sets the current goal position to the setpoint, 
      * and cancels once the pivot mechanism has reached that goal.
@@ -161,11 +187,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-            runOnce(() -> pidController.reset(getPosition())),
-            runOnce(() -> pidController.setGoal(goalPositionSupplier.get())),
+            runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get()))),
             moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToArbitraryPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'moveToArbitraryPositionCommand'");
     }
 
     /**
@@ -178,10 +202,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> pidController.getGoal().position + delta.get())
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
             .withName("pivot.movePositionDeltaCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'movePositionDeltaCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
     }
 
     /**
@@ -193,8 +216,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command holdCurrentPositionCommand() {
         return movePositionDeltaCommand(() -> 0.0).withName("pivot.holdCurrentPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'holdCurrentPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
     }
 
     /**
@@ -205,8 +227,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).withName("pivot.resetPosition");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPositionCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
     }
 
     /**
@@ -219,8 +240,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
             .withName("pivot.setOverriddenSpeedCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'setOverridenSpeedCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
     }
 
     /**
@@ -239,11 +259,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
             }).finallyDo((d) -> {
                 pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
                 pivotConfigurator.apply(pivotConfiguration.MotorOutput);
-                pidController.reset(getPosition());
             }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
             .withName("pivot.coastMotorsCommand");
 
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'coastMotorsCommand'");
+        // throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
     }
 }
