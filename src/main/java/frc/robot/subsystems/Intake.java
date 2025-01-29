@@ -113,7 +113,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public Command resetPositionCommand() {
-        throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
+        return runOnce(this::resetPosition).ignoringDisable(true);
     }
 
     @Override
