@@ -7,11 +7,13 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Intake.Constants.Position;
 
@@ -118,7 +120,20 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public Command coastMotorsCommand() {
-        throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        return runOnce(() -> {
+            intakeMotorBar.stopMotor();
+            intakeMotorLift.stopMotor();
+        })
+                .andThen(() -> {
+                    intakeMotorLift.setNeutralMode(NeutralModeValue.Coast);
+                    intakeMotorBar.setNeutralMode(NeutralModeValue.Coast);
+                })
+                .finallyDo((s) -> {
+                    intakeMotorLift.setNeutralMode(NeutralModeValue.Brake);
+                    intakeMotorBar.setNeutralMode(NeutralModeValue.Brake);
+                })
+                .withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("intake.coastMotors");
     }
 
     @Override
