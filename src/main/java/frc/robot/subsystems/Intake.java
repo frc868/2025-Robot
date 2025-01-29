@@ -21,65 +21,67 @@ import frc.robot.subsystems.Intake.Constants.Position;
 public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJointedArm<Intake.Constants.Position> {
     /** Constant values of intake subsystem. */
     public static final class Constants {
-        public static final class CANIDS {
-            public static final int INTAKE_MOTOR_LIFT_CANID = 0; // TO DO
-            public static final int INTAKE_MOTOR_BAR_CANID = 0; // TO DO
-
+        public static final class CAN_IDs {
+            public static final int ARM_MOTOR = 0; // TO DO
+            public static final int INTAKE_MOTOR = 0; // TO DO
         }
 
         public static final double CURRENT_LIMIT = 0; // TO DO
 
-        public static final double VOLTAGE_BAR = 0; // TO DO
+        public static final double INTAKE_VOLTAGE = 0; // TO DO
 
-        public static final double VOLTAGE_LIFT = 0; // TO DO
+        /** Positions that intake arm can be in. */
+        public static enum Position {
+            STOW(0),
+            GROUND_INTAKE(0),
+            MANIPULATOR_INTAKE(0);
 
-        public static final double RESET_POSITION = 0; // Need a real value
+            public final double position;
 
-        public enum Position {
+            private Position(final double position) {
+                this.position = position;
+            }
         }
     }
 
+    private final TalonFX armMotor = new TalonFX(Constants.CAN_IDs.ARM_MOTOR);
+    private final TalonFXConfigurator armConfigurator = armMotor.getConfigurator();
+    private final TalonFXConfiguration armConfigs = new TalonFXConfiguration();
+
+    private final TalonFX intakeMotor = new TalonFX(Constants.CAN_IDs.INTAKE_MOTOR);
+    private final TalonFXConfigurator intakeConfigurator = intakeMotor.getConfigurator();
+    private final TalonFXConfiguration intakeConfigs = new TalonFXConfiguration();
+
+    private final CurrentLimitsConfigs armCurrentLimitConfigs = new CurrentLimitsConfigs();
+
     public Intake() {
-        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
-        limitConfigs.SupplyCurrentLimitEnable = true;
+        armCurrentLimitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
+        armCurrentLimitConfigs.SupplyCurrentLimitEnable = true;
 
-        configLiftData.CurrentLimits = limitConfigs;
-        configBarData.CurrentLimits = limitConfigs;
+        armConfigs.CurrentLimits = armCurrentLimitConfigs;
+        intakeConfigs.CurrentLimits = armCurrentLimitConfigs;
 
-        configLift.apply(configLiftData);
-        configBar.apply(configBarData);
+        armConfigurator.apply(armConfigs);
+        intakeConfigurator.apply(intakeConfigs);
     }
-
-    private TalonFX intakeMotorLift = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_LIFT_CANID);
-    private TalonFX intakeMotorBar = new TalonFX(Constants.CANIDS.INTAKE_MOTOR_BAR_CANID);
-
-    TalonFXConfigurator configLift = intakeMotorLift.getConfigurator();
-    TalonFXConfiguration configLiftData = new TalonFXConfiguration();
-
-    TalonFXConfigurator configBar = intakeMotorBar.getConfigurator();
-    TalonFXConfiguration configBarData = new TalonFXConfiguration();
-
-    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
 
     @Override
     public double getPosition() {
-        return intakeMotorLift.getPosition(true).getValueAsDouble();
+        return armMotor.getPosition(true).getValueAsDouble();
     }
 
     @Override
     public void resetPosition() {
-        // Resets the position of the climber mechanism to the stated position set in
-        intakeMotorLift.setPosition(Constants.RESET_POSITION);
-        intakeMotorBar.setPosition(Constants.RESET_POSITION);
+        armMotor.setPosition(Constants.RESET_POSITION);
     }
 
     @Override
     public void setVoltage(double voltage) {
-        intakeMotorLift.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        armMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     public void setVoltageBar(double voltage) {
-        intakeMotorBar.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        intakeMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     @Override
@@ -121,16 +123,16 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
-            intakeMotorBar.stopMotor();
-            intakeMotorLift.stopMotor();
+            intakeMotor.stopMotor();
+            armMotor.stopMotor();
         })
                 .andThen(() -> {
-                    intakeMotorLift.setNeutralMode(NeutralModeValue.Coast);
-                    intakeMotorBar.setNeutralMode(NeutralModeValue.Coast);
+                    armMotor.setNeutralMode(NeutralModeValue.Coast);
+                    intakeMotor.setNeutralMode(NeutralModeValue.Coast);
                 })
                 .finallyDo((s) -> {
-                    intakeMotorLift.setNeutralMode(NeutralModeValue.Brake);
-                    intakeMotorBar.setNeutralMode(NeutralModeValue.Brake);
+                    armMotor.setNeutralMode(NeutralModeValue.Brake);
+                    intakeMotor.setNeutralMode(NeutralModeValue.Brake);
                 })
                 .withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
                 .withName("intake.coastMotors");
