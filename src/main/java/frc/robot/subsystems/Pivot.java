@@ -50,6 +50,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
 
         public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for encoder rotations -> radians (replace 0 with gear ratio)
 
+        public static final double MM_TOLERANCE = .05; //The acceptable distance away from the goal that can be considered to be at the goal (the goal tolerance in radians)
+
         /** Positions that pivot subsystem can be in. */
         public static enum Position {
             TEMP(0),
@@ -170,7 +172,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     /* couldn't find a method to see if motion magic has reached its goal, so... if statement, yay.
     I doubt this works perfectly due to allowed tolerances in position probably being needed, but ¯\_(ツ)_/¯ */
     public boolean atGoal() {
-        if (mmRequest.Position == pivotMotor.getPosition().getValueAsDouble()) {
+        if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.MM_TOLERANCE && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.MM_TOLERANCE) {
             return true;
         } else {
             return false;
