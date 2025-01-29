@@ -118,8 +118,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-
-        throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+        return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0));
     }
 
     @Override
