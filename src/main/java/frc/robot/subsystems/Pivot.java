@@ -54,8 +54,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
                                                                                 // encoder rotations -> radians (replace
                                                                                 // 0 with gear ratio)
 
-        public static final double MM_TOLERANCE = .05; // The acceptable distance away from the goal that can be
-                                                       // considered to be at the goal (the goal tolerance in radians)
+        public static final double POS_TOLERANCE = .05; // The acceptable distance away from the goal that can be
+                                                        // considered to be at the goal (the goal tolerance in radians)
+        public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
 
         /** Positions that pivot subsystem can be in. */
         public static enum Position {
@@ -185,9 +186,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * I doubt this works perfectly due to allowed tolerances in position probably
      * being needed, but ¯\_(ツ)_/¯
      */
-    public boolean atGoal() {
-        if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.MM_TOLERANCE
-                && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.MM_TOLERANCE) {
+    public boolean atGoal2() {
+        if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.POS_TOLERANCE
+                && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.POS_TOLERANCE) {
             return true;
         } else {
             return false;
@@ -199,9 +200,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * https://github.wpilib.org/allwpilib/docs/release/java/src-html/edu/wpi/first/
      * math/controller/PIDController.html#line-299
      */
-    public boolean atGoal2(double errorTolerance, double errorDerivativeTolerance) {
-        return Math.abs(mmRequest.Position - pivotMotor.getPosition().getValueAsDouble()) < errorTolerance
-                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < errorDerivativeTolerance;
+    public boolean atGoal() {
+        return Math.abs(mmRequest.Position - pivotMotor.getPosition().getValueAsDouble()) < Constants.POS_TOLERANCE
+                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < Constants.VEL_TOLERANCE;
     }
 
     /**
