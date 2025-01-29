@@ -12,6 +12,7 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -53,13 +54,14 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     private final TalonFXConfiguration intakeConfigs = new TalonFXConfiguration();
 
     private final CurrentLimitsConfigs armCurrentLimitConfigs = new CurrentLimitsConfigs();
+    private final CurrentLimitsConfigs intakeCurrentLimitConfigs = new CurrentLimitsConfigs();
 
     public Intake() {
         armCurrentLimitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
         armCurrentLimitConfigs.SupplyCurrentLimitEnable = true;
 
         armConfigs.CurrentLimits = armCurrentLimitConfigs;
-        intakeConfigs.CurrentLimits = armCurrentLimitConfigs;
+        intakeConfigs.CurrentLimits = intakeCurrentLimitConfigs;
 
         armConfigurator.apply(armConfigs);
         intakeConfigurator.apply(intakeConfigs);
@@ -72,7 +74,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public void resetPosition() {
-        armMotor.setPosition(Constants.RESET_POSITION);
+        armMotor.setPosition(Constants.Position.STOW.position);
     }
 
     @Override
@@ -140,12 +142,12 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public Command runRollersCommand() {
-        return runOnce(() -> setVoltageBar(Constants.VOLTAGE_BAR)); // TO DO implement voltage
+        return runOnce(() -> setVoltageBar(Constants.INTAKE_VOLTAGE)); // TO DO implement voltage
     }
 
     @Override
     public Command reverseRollersCommand() {
-        return runOnce(() -> setVoltageBar(-Constants.VOLTAGE_BAR)); // TO DO implement voltage
+        return runOnce(() -> setVoltageBar(-Constants.INTAKE_VOLTAGE)); // TO DO implement voltage
 
     }
 }
