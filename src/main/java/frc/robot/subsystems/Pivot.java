@@ -54,6 +54,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
                                                                                 // encoder rotations -> radians (replace
                                                                                 // 0 with gear ratio)
 
+        public static final double MM_TOLERANCE = .05; // The acceptable distance away from the goal that can be
+                                                       // considered to be at the goal (the goal tolerance in radians)
+
         /** Positions that pivot subsystem can be in. */
         public static enum Position {
             TEMP(0),
@@ -183,7 +186,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * being needed, but ¯\_(ツ)_/¯
      */
     public boolean atGoal() {
-        if (mmRequest.Position == pivotMotor.getPosition().getValueAsDouble()) {
+        if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.MM_TOLERANCE
+                && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.MM_TOLERANCE) {
             return true;
         } else {
             return false;
