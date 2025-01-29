@@ -156,7 +156,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command moveToCurrentGoalCommand() {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position);
+        return moveToArbitraryPositionCommand(() -> mmRequest.Position).withName("climber.moveToCurrentGoal");
     }
 
     /**
@@ -167,7 +167,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().pos);
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().pos).withName("climber.moveToPosition");
     }
 
     /**
@@ -182,7 +182,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         return runOnce(() -> {
             Constants.climberMotorLeft.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
             Constants.climberMotorRight.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
-        });
+        }).withName("climber.moveToArbitraryPosition");
     }
 
     /**
@@ -195,7 +195,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> delta.get() + getPosition());
+        return moveToArbitraryPositionCommand(() -> delta.get() + getPosition()).withName("climber.movePositionDelta");
     }
 
     /**
@@ -206,7 +206,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command holdCurrentPositionCommand() {
-        return moveToArbitraryPositionCommand(() -> getPosition());
+        return moveToArbitraryPositionCommand(() -> getPosition()).withName("climber.holdCurrentPosition");
     }
 
     /**
@@ -218,7 +218,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command resetPositionCommand() {
-        return runOnce(this::resetPosition);
+        return runOnce(this::resetPosition).withName("climber.resetPosition");
     }
 
     /**
@@ -230,7 +230,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0));
+        return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0)).withName("climber.setOverridenSpeed");
     }
 
     /**
@@ -250,6 +250,6 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
         }).finallyDo(() -> {
             Constants.climberMotorLeft.setNeutralMode(NeutralModeValue.Brake);
             Constants.climberMotorRight.setNeutralMode(NeutralModeValue.Brake);
-        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("climber.coastMotors");
     }
 }
