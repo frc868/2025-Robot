@@ -22,11 +22,14 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         public static final class CANIDS {
             public static final int INTAKE_MOTOR_LIFT_CANID = 0; // TO DO
             public static final int INTAKE_MOTOR_BAR_CANID = 0; // TO DO
+
         }
 
         public static final double CURRENT_LIMIT = 0; // TO DO
 
-        public static final double VOLTAGE = 0; // TO DO
+        public static final double VOLTAGE_BAR = 0; // TO DO
+
+        public static final double VOLTAGE_LIFT = 0; // TO DO
 
         public static final double RESET_POSITION = 0; // Need a real value
 
@@ -71,6 +74,9 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     @Override
     public void setVoltage(double voltage) {
         intakeMotorLift.setVoltage(MathUtil.clamp(voltage, -12, 12));
+    }
+
+    public void setVoltageBar(double voltage) {
         intakeMotorBar.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
@@ -117,13 +123,12 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public Command runRollersCommand() {
-
-        throw new UnsupportedOperationException("Unimplemented method 'runRollersCommand'");
+        return runOnce(() -> setVoltageBar(Constants.VOLTAGE_BAR)); // TO DO implement voltage
     }
 
     @Override
     public Command reverseRollersCommand() {
+        return runOnce(() -> setVoltageBar(-Constants.VOLTAGE_BAR)); // TO DO implement voltage
 
-        throw new UnsupportedOperationException("Unimplemented method 'reverseRollersCommand'");
     }
 }
