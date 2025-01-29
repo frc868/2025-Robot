@@ -169,8 +169,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
         // throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
     }
 
-    /* couldn't find a method to see if motion magic has reached its goal, so... if statement, yay.
-    I doubt this works perfectly due to allowed tolerances in position probably being needed, but ¯\_(ツ)_/¯ */
+    /* couldn't find a method to see if motion magic has reached its goal, so... if statement, yay ¯\_(ツ)_/¯*/
     public boolean atGoal() {
         if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.MM_TOLERANCE && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.MM_TOLERANCE) {
             return true;
