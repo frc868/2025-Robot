@@ -9,11 +9,13 @@ import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import java.util.function.Supplier;
 
@@ -177,7 +179,15 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
 
     @Override
     public Command coastMotorsCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        return runOnce(() -> {
+            Constants.climberMotorLeft.stopMotor();
+            Constants.climberMotorRight.stopMotor();
+        }).andThen(() -> {
+            Constants.climberMotorLeft.setNeutralMode(NeutralModeValue.Coast);
+            Constants.climberMotorRight.setNeutralMode(NeutralModeValue.Coast);
+        }).finallyDo(() -> {
+            Constants.climberMotorLeft.setNeutralMode(NeutralModeValue.Brake);
+            Constants.climberMotorRight.setNeutralMode(NeutralModeValue.Brake);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
     }
 }
