@@ -26,8 +26,8 @@ public class RobotCommands {
 
     public static Command climbCommand(Climber climber) { // TODO probably useless?
         /** move the thing down until its all the way down */
-        return climber.moveToPositionCommand(() -> Climber.Constants.Position.RESET_POSITION); // TODO need real
-                                                                                               // constant
+        return climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT); // TODO need real
+                                                                                              // constant
         // throw new UnsupportedOperationException("Unimplemented command
         // 'climbCommand'");
     }
@@ -35,10 +35,17 @@ public class RobotCommands {
     public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
             Vision Vision, Drivetrain drivetrain) {
         /**
-         * use vision to align to the reef (maybe in a separate command?) then move the
-         * manipulator into position then run it
+         * use vision to align to the reef (probably in a separate command?) then move
+         * the manipulator into position then run it
+         * prepare position first, then move it in and then grab
          */
-        throw new UnsupportedOperationException("Unimplemented command 'intakeAlgaeReefCommand'");
+        return Commands.sequence( // TODO real constants
+                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
+                pivot.moveToPositionCommand(Pivot.Constants.Position.SOME_CONSTANT),
+                manipulator.runRollersCommand());
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'intakeAlgaeReefCommand'");
     }
 
     public static Command intakeAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
@@ -47,7 +54,14 @@ public class RobotCommands {
          * put the intake down then move the manipulator into position then run both the
          * intake and manipulator
          */
-        throw new UnsupportedOperationException("Unimplemented command 'intakeAlgaeGroundCommand'");
+        return Commands.sequence(
+                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
+                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
+                intake.runRollersCommand(),
+                manipulator.runRollersCommand());
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'intakeAlgaeGroundCommand'");
     }
 
     public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
