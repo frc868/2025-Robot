@@ -15,7 +15,7 @@ import frc.robot.subsystems.LEDs;
  */
 public class Controls {
     public static final class Constants {
-        public static final TunableDouble DEMO_SPEED = new TunableDouble("subsystems/drivetrain/DEMO_SPEED", 0.5);
+        public static final TunableDouble DEMO_SPEED = new TunableDouble("DEMO_SPEED", 1.0);
 
     }
 
