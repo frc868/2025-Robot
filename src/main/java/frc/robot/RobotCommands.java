@@ -13,9 +13,23 @@ import frc.robot.subsystems.Vision;
 /** Robot commands which involve multiple subsystems. */
 public class RobotCommands {
 
-    public static Command climbCommand(Climber climber) {
+    public static Command prepareClimbCommand(Intake intake, Elevator elevator, Pivot pivot, Climber climber) {
+        /** move pivot elevator and everything into position */
+        return Commands.parallel(intake.moveToPositionCommand(() -> Intake.Constants.Position.SOME_CONSTANT),
+                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT),
+                pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT)); // TODO need real
+                                                                                                // constants
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'climbCommand'");
+    }
+
+    public static Command climbCommand(Climber climber) { // TODO probably useless?
         /** move the thing down until its all the way down */
-        throw new UnsupportedOperationException("Unimplemented command 'climbCommand'");
+        return climber.moveToPositionCommand(() -> Climber.Constants.Position.RESET_POSITION); // TODO need real
+                                                                                               // constant
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'climbCommand'");
     }
 
     public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,

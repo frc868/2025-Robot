@@ -10,8 +10,9 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     /** Constant values of climber subsystem. */
     public static final class Constants {
         /** Positions that climber subsystem can be in. */
-        public enum Position {
+        public static enum Position {
         }
+
     }
 
     @Override
