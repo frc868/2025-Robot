@@ -43,7 +43,7 @@ public class RobotCommands {
                 Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
                         elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
                 pivot.moveToPositionCommand(Pivot.Constants.Position.SOME_CONSTANT),
-                manipulator.runRollersCommand());
+                manipulator.intakeGamePieceCommand());
         // throw new UnsupportedOperationException("Unimplemented command
         // 'intakeAlgaeReefCommand'");
     }
@@ -59,7 +59,7 @@ public class RobotCommands {
                         elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
                 intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
                 intake.runRollersCommand(),
-                manipulator.runRollersCommand());
+                manipulator.intakeGamePieceCommand());
         // throw new UnsupportedOperationException("Unimplemented command
         // 'intakeAlgaeGroundCommand'");
     }
