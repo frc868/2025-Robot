@@ -21,7 +21,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public static final class Constants {
         /** CAN IDs for the Manipulator Motor */
         public static final class CANIDS {
-            public static final int MANIPULATOR_MOTOR_CANID = 0;
+            public static final int MANIPULATOR_MOTOR_CANID = 14;
         }
 
         /** Maximum current limit for the manipulator motor */

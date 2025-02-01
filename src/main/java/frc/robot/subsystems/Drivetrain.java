@@ -91,15 +91,14 @@ import static edu.wpi.first.units.Units.*;
 @LoggedObject
 public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     public static final class Constants {
-
-        public static final int FRONT_LEFT_DRIVE_MOTOR_ID = 1; // TODO
-        public static final int FRONT_LEFT_STEER_MOTOR_ID = 2; // TODO
-        public static final int FRONT_RIGHT_DRIVE_MOTOR_ID = 3; // TODO
-        public static final int FRONT_RIGHT_STEER_MOTOR_ID = 4; // TODO
-        public static final int BACK_LEFT_DRIVE_MOTOR_ID = 5; // TODO
-        public static final int BACK_LEFT_STEER_MOTOR_ID = 6; // TODO
-        public static final int BACK_RIGHT_DRIVE_MOTOR_ID = 7; // TODO
-        public static final int BACK_RIGHT_STEER_MOTOR_ID = 8; // TODO
+        public static final int FRONT_LEFT_DRIVE_MOTOR_ID = 6;
+        public static final int FRONT_LEFT_STEER_MOTOR_ID = 5;
+        public static final int FRONT_RIGHT_DRIVE_MOTOR_ID = 8;
+        public static final int FRONT_RIGHT_STEER_MOTOR_ID = 7;
+        public static final int BACK_LEFT_DRIVE_MOTOR_ID = 2;
+        public static final int BACK_LEFT_STEER_MOTOR_ID = 1;
+        public static final int BACK_RIGHT_DRIVE_MOTOR_ID = 4;
+        public static final int BACK_RIGHT_STEER_MOTOR_ID = 3;
 
         public static final int FRONT_LEFT_STEER_ENCODER_ID = 0; // TODO
         public static final int FRONT_RIGHT_STEER_ENCODER_ID = 1; // TODO

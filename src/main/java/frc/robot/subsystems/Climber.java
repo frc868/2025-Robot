@@ -25,8 +25,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     public static final class Constants {
         // Declares motor CanIDs
         public static final class CANIDS {
-            public static final int CLIMBER_MOTOR_LEFT_CANID = 0; // Have not asked what the CanID should be yet
-            public static final int CLIMBER_MOTOR_RIGHT_CANID = 0; // Also have not asked what the CanID should be yet
+            public static final int CLIMBER_MOTOR_LEFT_CANID = 9; // Have not asked what the CanID should be yet
+            public static final int CLIMBER_MOTOR_RIGHT_CANID = 10; // Also have not asked what the CanID should be yet
         }
 
         public static class PID {

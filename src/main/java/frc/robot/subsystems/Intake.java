@@ -24,12 +24,13 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Intake.Constants.Intake_Constants.Position;
 
 /** Intake subsystem which intakes algae from ground. */
-public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJointedArm<Intake.Constants.Intake_Constants.Position> {
+public class Intake extends SubsystemBase
+        implements BaseIntake, BaseSingleJointedArm<Intake.Constants.Intake_Constants.Position> {
     /** Constant values of intake subsystem. */
     public static final class Constants {
         public static final class CAN_IDs {
-            public static final int ARM_MOTOR = 0; // TODO
-            public static final int INTAKE_MOTOR = 0; // TODO
+            public static final int ARM_MOTOR = 16; // TODO
+            public static final int INTAKE_MOTOR = 15; // TODO
         }
 
         public static final class Arm_Constants {
@@ -38,7 +39,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
                 public static final double kI = 0; // TODO find good value
                 public static final double kD = 0; // TODO find good value
             }
-    
+
             public static final class FeedForward {
                 public static final double kS = 0; // TODO find good value
                 public static final double kG = 0; // TODO find good value
@@ -49,23 +50,33 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
                 public static final double MM_JERK = 0; // TODO find good value
             }
 
-            public static final double VEL_TOLERANCE = 0; //TODO find good value
+            public static final double VEL_TOLERANCE = 0; // TODO find good value
             public static final double POS_TOLERANCE = .05;
 
             public static final double CURRENT_LIMIT = 0; // TODO
 
-            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for encoder rotations -> radians (replace 0 with gear ratio)
+            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
+                                                                                    // encoder rotations -> radians
+                                                                                    // (replace 0 with gear ratio)
 
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+                                                                                                  // Clockwise_Positive
+                                                                                                  // or
+                                                                                                  // CounterClockwise_Positive
         }
-        
+
         public static final class Intake_Constants {
 
             public static final double CURRENT_LIMIT = 0; // TODO
 
-            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for encoder rotations -> radians (replace 0 with gear ratio)
+            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
+                                                                                    // encoder rotations -> radians
+                                                                                    // (replace 0 with gear ratio)
 
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive or CounterClockwise_Positive
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+                                                                                                  // Clockwise_Positive
+                                                                                                  // or
+                                                                                                  // CounterClockwise_Positive
 
             public static final double VOLTAGE = 0; // TODO
 
@@ -166,52 +177,52 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         return run(() -> {
             armMotor.setControl(mmRequestArm.withPosition(mmRequestArm.Position));
         })
-        .withName("intake.moveToCurrentGoalCommand"); 
+                .withName("intake.moveToCurrentGoalCommand");
     }
 
     public final boolean atGoal() {
-        return Math.abs(mmRequestArm.Position - getPosition()) < Constants.Arm_Constants.POS_TOLERANCE && Math.abs(armMotor.getVelocity().getValueAsDouble()) < Constants.Arm_Constants.VEL_TOLERANCE;
+        return Math.abs(mmRequestArm.Position - getPosition()) < Constants.Arm_Constants.POS_TOLERANCE
+                && Math.abs(armMotor.getVelocity().getValueAsDouble()) < Constants.Arm_Constants.VEL_TOLERANCE;
     }
 
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
-        .withName("intake.moveToPositionCommand");
+                .withName("intake.moveToPositionCommand");
     }
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-            runOnce(() -> {
-                armMotor.setControl(mmRequestArm.withPosition(goalPositionSupplier.get()));
-            }),
-            moveToCurrentGoalCommand().until(this::atGoal)
-        )
-        .withName("intake.moveToArbitraryPositionCommand");
+                runOnce(() -> {
+                    armMotor.setControl(mmRequestArm.withPosition(goalPositionSupplier.get()));
+                }),
+                moveToCurrentGoalCommand().until(this::atGoal))
+                .withName("intake.moveToArbitraryPositionCommand");
     }
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> mmRequestArm.Position + delta.get())
-        .withName("intake.movePositionDeltaCommand");
+                .withName("intake.movePositionDeltaCommand");
     }
 
     @Override
     public Command holdCurrentPositionCommand() {
         return movePositionDeltaCommand(() -> 0.0)
-        .withName("intake.holdCurrentPositionCommand"); 
+                .withName("intake.holdCurrentPositionCommand");
     }
 
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).ignoringDisable(true)
-        .withName("intake.resetPositionCommand");
+                .withName("intake.resetPositionCommand");
     }
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
-        .withName("intake.setOverridenSpeedCommand"); 
+                .withName("intake.setOverridenSpeedCommand");
     }
 
     @Override
@@ -220,27 +231,27 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
             intakeMotor.stopMotor();
             armMotor.stopMotor();
         })
-        .andThen(() -> {
-            armMotor.setNeutralMode(NeutralModeValue.Coast);
-            intakeMotor.setNeutralMode(NeutralModeValue.Coast);
-        })
-        .finallyDo((s) -> {
-            armMotor.setNeutralMode(NeutralModeValue.Brake);
-            intakeMotor.setNeutralMode(NeutralModeValue.Brake);
-        })
-        .withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-        .withName("intake.coastMotorsCommand");
+                .andThen(() -> {
+                    armMotor.setNeutralMode(NeutralModeValue.Coast);
+                    intakeMotor.setNeutralMode(NeutralModeValue.Coast);
+                })
+                .finallyDo((s) -> {
+                    armMotor.setNeutralMode(NeutralModeValue.Brake);
+                    intakeMotor.setNeutralMode(NeutralModeValue.Brake);
+                })
+                .withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("intake.coastMotorsCommand");
     }
 
     @Override
     public Command runRollersCommand() {
         return runOnce(() -> setVoltageBar(Constants.Intake_Constants.VOLTAGE)) // TODO implement voltage
-        .withName("intake.runRollersCommand"); 
+                .withName("intake.runRollersCommand");
     }
 
     @Override
     public Command reverseRollersCommand() {
         return runOnce(() -> setVoltageBar(-Constants.Intake_Constants.VOLTAGE)) // TODO implement voltage
-        .withName("intake.reverseRollersCommand"); 
+                .withName("intake.reverseRollersCommand");
     }
 }

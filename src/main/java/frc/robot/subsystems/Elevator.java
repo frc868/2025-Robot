@@ -26,8 +26,8 @@ public class Elevator extends SubsystemBase
     /** Constant values of elevator subsystem. */
     public static final class Constants {
         private static final class CANIDs {
-            private static final int ELEVATOR_MOTOR_L = 0; // TODO get actual can ids
-            private static final int ELEVATOR_MOTOR_R = 0; // TODO get actual can ids
+            private static final int ELEVATOR_MOTOR_L = 11;
+            private static final int ELEVATOR_MOTOR_R = 12;
         }
 
         public static class PID {
