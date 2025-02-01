@@ -83,6 +83,10 @@ import static frc.robot.subsystems.Drivetrain.Constants.*;
 @LoggedObject
 public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     public static final class Constants {
+        public static final String CAN_BUS = "canivore";
+
+        public static final int PIGEON_ID = 0;
+
         public static final class FrontLeft {
             public static final int DRIVE_MOTOR_ID = 6;
             public static final int STEER_MOTOR_ID = 5;
@@ -111,19 +115,9 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             public static final double STEER_ENCODER_OFFSET = 0.498046875 - 0.003; // TODO
         }
 
-        public static final String CAN_BUS = "canivore"; // TODO
-
-        public static final int PIGEON_ID = 0; // TODO
-
         public static final boolean DRIVE_MOTORS_INVERTED = false; // TODO
         public static final boolean STEER_MOTORS_INVERTED = true; // TODO
         public static final boolean STEER_CANCODERS_INVERTED = RobotBase.isReal() ? false : true;
-
-        /** Distance between left and right wheels. */
-        public static final double TRACK_WIDTH_METERS = 0.527; // TODO
-        /** Distance between front and back wheels. */
-        public static final double WHEEL_BASE_METERS = 0.527; // TODO
-        public static final double DRIVE_BASE_RADIUS_METERS = 0.3727; // TODO
 
         public static final SwerveConstants SWERVE_CONSTANTS = new SwerveConstants();
         static {
@@ -143,7 +137,7 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             SWERVE_CONSTANTS.DRIVE_GEARING = 5.9; // Swerve Drive Specialties MK4n L2 ratio.
             SWERVE_CONSTANTS.STEER_GEARING = 18.75; // Swerve Drive Specialties MK4n ratio.
             SWERVE_CONSTANTS.COUPLING_RATIO = 50.0 / 16.0; // Inverse of swerve module first stage gear ratio.
-            SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE = 2.0 * Math.PI * 0.0491630791391; // TODO
+            SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE = 2.0 * Math.PI * Units.inchesToMeters(4.05);
             SWERVE_CONSTANTS.DRIVE_ENCODER_ROTATIONS_TO_METERS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE
                     / SWERVE_CONSTANTS.DRIVE_GEARING;
             SWERVE_CONSTANTS.STEER_ENCODER_ROTATIONS_TO_RADIANS = 2 * Math.PI
@@ -163,8 +157,13 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             SWERVE_CONSTANTS.STEER_MOI = 0.025; // TODO
         }
 
-        public static final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND = 10; // TODO
-        public static final double MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED = 30; // TODO
+        /** Distance between left and right wheels. */
+        public static final double TRACK_WIDTH_METERS = Units.inchesToMeters(24);
+        /** Distance between front and back wheels. */
+        public static final double WHEEL_BASE_METERS = Units.inchesToMeters(24);
+        public static final double MASS = 55.0; // KG, TODO
+        public static final double MOMENT_OF_INERTIA = 4.9; // KG m^2, TODO
+        public static final double SWERVE_WHEEL_RADIUS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE / (Math.PI * 2.0); // meters
 
         public static final Translation2d[] SWERVE_MODULE_LOCATIONS = new Translation2d[] {
                 new Translation2d(WHEEL_BASE_METERS / 2, TRACK_WIDTH_METERS / 2),
@@ -178,8 +177,8 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 SWERVE_MODULE_LOCATIONS[2],
                 SWERVE_MODULE_LOCATIONS[3]);
 
-        public static final double PATH_FOLLOWING_TRANSLATION_kP = 8.0; // TODO
-        public static final double PATH_FOLLOWING_ROTATION_kP = 8.0; // TODO
+        public static final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND = 10; // TODO
+        public static final double MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED = 30; // TODO
 
         public static final double TRANSLATION_kP = 1.4; // TODO
         public static final double TRANSLATION_kI = 0; // TODO
@@ -195,9 +194,8 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND,
                 MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED);
 
-        public static final double MASS = 55.0; // KG, TODO
-        public static final double MOMENT_OF_INERTIA = 4.9; // KG m^2, TODO
-        public static final double SWERVE_WHEEL_RADIUS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE / (Math.PI * 2.0); // meters
+        public static final double PATH_FOLLOWING_TRANSLATION_kP = 8.0; // TODO
+        public static final double PATH_FOLLOWING_ROTATION_kP = 8.0; // TODO
 
         public static final ModuleConfig MODULE_CONFIG = new ModuleConfig(SWERVE_WHEEL_RADIUS,
                 SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND, 1.0, SWERVE_CONSTANTS.DRIVE_GEARBOX_REPR,
@@ -205,7 +203,6 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         public static final RobotConfig ROBOT_CONFIG = new RobotConfig(MASS, MOMENT_OF_INERTIA, MODULE_CONFIG,
                 SWERVE_MODULE_LOCATIONS[0], SWERVE_MODULE_LOCATIONS[1], SWERVE_MODULE_LOCATIONS[2],
                 SWERVE_MODULE_LOCATIONS[3]);
-
     }
 
     @Log(groups = "modules")
