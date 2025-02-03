@@ -179,6 +179,26 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     /**
+     * Finds the voltage of the {@link #leftMotor motor}
+     * 
+     * @return Voltage of the motor, as a double
+     */
+    public double getVoltage() {
+        return leftMotor.getMotorVoltage().getValueAsDouble();
+    }
+
+    /**
+     * Finds the velocity of the mechanism controlled by the {@link #leftMotor
+     * motor}
+     * 
+     * @return Velocity of the mechanism, in
+     *         {@link edu.wpi.first.units.Units#MetersPerSecond Meters per Second}
+     */
+    public double getVelocity() {
+        return leftMotor.getVelocity().getValueAsDouble();
+    }
+
+    /**
      * Resets the position of the motors to a specified {@link Constants#ZERO
      * position} (Should be a hard stop)
      */
