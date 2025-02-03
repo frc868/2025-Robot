@@ -1,11 +1,6 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.FeedbackConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -19,115 +14,127 @@ import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import java.util.function.Supplier;
 
-/** Climber subsystem which hangs robot from deep cage. */
-public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
+import static frc.robot.subsystems.Climber.Constants.*;
+
+/** Subsystem which hangs robot from deep cage. */
+public class Climber extends SubsystemBase implements BaseSingleJointedArm<Position> {
     /** Constant values of climber subsystem. */
     public static final class Constants {
-        // Declares motor CanIDs
-        public static final class CANIDS {
-            public static final int CLIMBER_MOTOR_LEFT_CANID = 9; // Have not asked what the CanID should be yet
-            public static final int CLIMBER_MOTOR_RIGHT_CANID = 10; // Also have not asked what the CanID should be yet
-        }
+        /**
+         * Direction of motor rotation defined as positive rotation. Defined for
+         * climber motors to be rotation away from zero point.
+         */
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
+        /** Current limit of climber motors. */
+        public static final double CURRENT_LIMIT = 0; // TODO
+        public static final double GEAR_RATIO = 36 / (0.75 * Math.PI); // TODO
 
-        public static class PID {
-            public static final double kP = 0; // TODO find good value
-            public static final double kI = 0; // TODO find good value
-            public static final double kD = 0; // TODO find good value
-        }
+        /** CAN information of climber motors. */
+        public static final class CAN {
+            /** CAN bus climber motors are on. */
+            public static final String BUS = "canivore";
 
-        public static class Feedforward {
-            public static final double kS = 0; // TODO find good value
-            public static final double kV = 0; // TODO find good value
-            public static final double kA = 0; // TODO find good value
-            public static final double MM_ACCEL = 0; // TODO find good value
-            public static final double MM_CRUISE = 0; // TODO find good value
-            public static final double MM_JERK = 0; // TODO find good value
-        }
-
-        public static final double CURRENT_LIMIT = 0; // Max current limit for climber
-        // "Torque - we are not sure if we need it yet" - Sage Ryker and Noor(but
-        // written by Sage Ryker)
-
-        public static final double GEAR_RATIO = 36 / (.75 * Math.PI);
-
-        public static final double VOLTAGE = 0;
-
-        public static final InvertedValue MOTOR_L_INVERTED = InvertedValue.Clockwise_Positive;
-        public static final InvertedValue MOTOR_R_INVERTED = InvertedValue.Clockwise_Positive;
-
-        // Assign both climber motors to their specified CANID
-        private static TalonFX climberMotorLeft = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_LEFT_CANID);
-        private static TalonFX climberMotorRight = new TalonFX(Constants.CANIDS.CLIMBER_MOTOR_RIGHT_CANID);
-
-        public enum Position {
-            RESET_POSITION(0.0),
-            CLAMPED(0.0);
-
-            public final double pos;
-
-            Position(double pos) {
-                this.pos = pos;
+            /** CAN IDs of climber motors. */
+            public static final class IDs {
+                /** CAN ID of climber motor A. */
+                private static final int MOTOR_A = 9;
+                /** CAN ID of climber motor B. */
+                private static final int MOTOR_B = 10;
             }
         }
 
+        /** Positions climber can be in. */
+        public enum Position {
+            ZERO(0.0), // TODO
+            CLAMPED(0.0); // TODO
+
+            public final double position;
+
+            private Position(final double position) {
+                this.position = position;
+            }
+        }
+
+        /**
+         * Constants for feedforward control for moving to position setpoints.
+         */
+        public static final class Feedforward {
+            /** Voltage required to overcome gravity. */
+            public static final double kG = 0; // TODO find good value
+            /** Voltage required to overcome motor's static friction. */
+            public static final double kS = 0; // TODO find good value
+            /** Voltage required to maintain constant velocity on motor. */
+            public static final double kV = 0; // TODO find good value
+            /** Voltage required to induce a given acceleration on motor. */
+            public static final double kA = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for PID feedback control for error correction for moving to
+         * position setpoints.
+         */
+        public static final class Feedback {
+            /** Proportional term constant which drives error to zero proportionally. */
+            public static final double kP = 0; // TODO find good value
+            /**
+             * Integral term constant which overcomes steady-state error. Should be used
+             * with caution due to integral windup.
+             */
+            public static final double kI = 0; // TODO find good value
+            /** Derivative term constant which dampens rate of error correction. */
+            public static final double kD = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for CTRE's Motion Magic motion profiling for moving to position
+         * setpoints with consistent and smooth motion across entire course of motion.
+         */
+        public static final class MotionProfile {
+            /** Target cruise velocity along course of motion. */
+            public static final double CRUISE_VELOCITY = 0; // TODO
+            /** Target acceleration of beginning and end of course of motion. */
+            public static final double ACCELERATION = 0; // TODO
+            /** Target jerk along course of motion. */
+            public static final double JERK = 0; // TODO
+        }
     }
 
-    // Use these to apply the configs
-    private TalonFXConfigurator climberConfiguratorL = Constants.climberMotorLeft.getConfigurator();
-    private TalonFXConfigurator climberConfiguratorR = Constants.climberMotorRight.getConfigurator();
-    // Current limits
-    private CurrentLimitsConfigs limitConfigs = new CurrentLimitsConfigs();
-    // Convert rotations to usable output
-    private FeedbackConfigs feedbackConfigs = new FeedbackConfigs();
-    private MotorOutputConfigs outputConfigsL = new MotorOutputConfigs();
-    private MotorOutputConfigs outputConfigsR = new MotorOutputConfigs();
-    private MotionMagicConfigs motionMagicConfigs = new MotionMagicConfigs();
-    private Slot0Configs controlConfigs = new Slot0Configs();
+    /** Climber motor A. */
+    private final TalonFX motorA = new TalonFX(CAN.IDs.MOTOR_A, CAN.BUS);
+    /** Climber motor B. */
+    private final TalonFX motorB = new TalonFX(CAN.IDs.MOTOR_B, CAN.BUS);
+    /**
+     * Configuration object for configurations shared across both climber motors.
+     */
+    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
+    /**
+     * Request object for motor voltage according to Motion Magic motion profile.
+     */
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(
+            Position.ZERO.position);
 
-    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(Constants.Position.RESET_POSITION.pos);
-
+    /** Initial climber motors configurations. */
     public Climber() {
-        // Create current limits
-        limitConfigs.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
-        limitConfigs.SupplyCurrentLimitEnable = true;
-        // Apply current limits
-        climberConfiguratorL.apply(limitConfigs);
-        climberConfiguratorR.apply(limitConfigs);
+        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        // Make encoder output in terms of angular units for the climber's position
-        feedbackConfigs.SensorToMechanismRatio = Constants.GEAR_RATIO;
-        climberConfiguratorL.apply(feedbackConfigs);
-        climberConfiguratorR.apply(feedbackConfigs);
+        motorConfigs.Feedback.SensorToMechanismRatio = GEAR_RATIO;
 
-        // Set motor inversions
-        outputConfigsL.Inverted = Constants.MOTOR_L_INVERTED;
-        outputConfigsR.Inverted = Constants.MOTOR_R_INVERTED;
-        // Apply motor inversions
-        climberConfiguratorL.apply(outputConfigsL);
-        climberConfiguratorR.apply(outputConfigsR);
+        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
-        // Set PID constants
-        controlConfigs.kP = Constants.PID.kP;
-        controlConfigs.kI = Constants.PID.kI;
-        controlConfigs.kD = Constants.PID.kD;
+        motorConfigs.Slot0.kG = Feedforward.kG;
+        motorConfigs.Slot0.kS = Feedforward.kS;
+        motorConfigs.Slot0.kV = Feedforward.kV;
+        motorConfigs.Slot0.kA = Feedforward.kA;
+        motorConfigs.Slot0.kP = Feedback.kP;
+        motorConfigs.Slot0.kI = Feedback.kI;
+        motorConfigs.Slot0.kD = Feedback.kD;
 
-        // Set feedforward constants
-        controlConfigs.kA = Constants.Feedforward.kA;
-        controlConfigs.kS = Constants.Feedforward.kS;
-        controlConfigs.kV = Constants.Feedforward.kV;
+        motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionProfile.CRUISE_VELOCITY;
+        motorConfigs.MotionMagic.MotionMagicAcceleration = MotionProfile.ACCELERATION;
+        motorConfigs.MotionMagic.MotionMagicJerk = MotionProfile.JERK;
 
-        // Set motion magic configurations
-        motionMagicConfigs.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
-        motionMagicConfigs.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
-        motionMagicConfigs.MotionMagicJerk = Constants.Feedforward.MM_JERK;
-
-        // Apply feedforward, PID, and motion magic configs
-        climberConfiguratorL.apply(controlConfigs);
-        climberConfiguratorR.apply(controlConfigs);
-
-        climberConfiguratorL.apply(motionMagicConfigs);
-        climberConfiguratorR.apply(motionMagicConfigs);
-
+        motorA.getConfigurator().apply(motorConfigs);
+        motorB.getConfigurator().apply(motorConfigs);
     }
 
     /**
@@ -137,17 +144,17 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public double getPosition() {
-        return Constants.climberMotorLeft.getPosition(true).getValueAsDouble();
+        return motorA.getPosition(true).getValueAsDouble();
     }
 
     /**
      * Resets the position of the motors to the reset position specified in
-     * {@link Constants.Position#RESET_POSITION the constants}
+     * {@link Position#ZERO the constants}
      */
     @Override
     public void resetPosition() {
-        Constants.climberMotorLeft.setPosition(Constants.Position.RESET_POSITION.pos);
-        Constants.climberMotorRight.setPosition(Constants.Position.RESET_POSITION.pos);
+        motorA.setPosition(Position.ZERO.position);
+        motorB.setPosition(Position.ZERO.position);
     }
 
     /**
@@ -157,8 +164,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public void setVoltage(double voltage) {
-        Constants.climberMotorLeft.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        Constants.climberMotorRight.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motorA.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motorB.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     /**
@@ -168,18 +175,20 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      */
     @Override
     public Command moveToCurrentGoalCommand() {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position).withName("climber.moveToCurrentGoal");
+        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position)
+                .withName("climber.moveToCurrentGoal");
     }
 
     /**
      * Sets the goal and moves the climber motors to the supplied position from
-     * {@link Constants.Position the possible positions}
+     * {@link Position the possible positions}
      * 
      * @return Command that will move to one of the possible preset positions
      */
     @Override
-    public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().pos).withName("climber.moveToPosition");
+    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
+                .withName("climber.moveToPosition");
     }
 
     /**
@@ -190,10 +199,10 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      * @return Command that will move to a specified position
      */
     @Override
-    public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
+    public Command moveToArbitraryPositionCommand(final Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
-            Constants.climberMotorLeft.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
-            Constants.climberMotorRight.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+            motorA.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
+            motorB.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
         }).withName("climber.moveToArbitraryPosition");
     }
 
@@ -226,7 +235,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      * This is a Command based wrapper for {@link #resetPosition()}
      * 
      * @return Command that resets the position to
-     *         {@link Constants.Position#RESET_POSITION the reset position}
+     *         {@link Position#ZERO the reset position}
      */
     @Override
     public Command resetPositionCommand() {
@@ -241,7 +250,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
      *         then zero the voltage.
      */
     @Override
-    public Command setOverridenSpeedCommand(Supplier<Double> speed) {
+    public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
         return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0)).withName("climber.setOverridenSpeed");
     }
 
@@ -254,14 +263,14 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climb
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
-            Constants.climberMotorLeft.stopMotor();
-            Constants.climberMotorRight.stopMotor();
+            motorA.stopMotor();
+            motorB.stopMotor();
         }).andThen(() -> {
-            Constants.climberMotorLeft.setNeutralMode(NeutralModeValue.Coast);
-            Constants.climberMotorRight.setNeutralMode(NeutralModeValue.Coast);
+            motorA.setNeutralMode(NeutralModeValue.Coast);
+            motorB.setNeutralMode(NeutralModeValue.Coast);
         }).finallyDo(() -> {
-            Constants.climberMotorLeft.setNeutralMode(NeutralModeValue.Brake);
-            Constants.climberMotorRight.setNeutralMode(NeutralModeValue.Brake);
+            motorA.setNeutralMode(NeutralModeValue.Brake);
+            motorB.setNeutralMode(NeutralModeValue.Brake);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("climber.coastMotors");
     }
 }

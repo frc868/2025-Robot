@@ -2,14 +2,9 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.FeedbackConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -21,70 +16,46 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.Intake.Constants.Intake_Constants.Position;
 
-/** Intake subsystem which intakes algae from ground. */
-public class Intake extends SubsystemBase
-        implements BaseIntake, BaseSingleJointedArm<Intake.Constants.Intake_Constants.Position> {
+import frc.robot.subsystems.Intake.Constants.Pivot;
+import static frc.robot.subsystems.Intake.Constants.*;
+
+/** Subsystem which intakes algae from ground. */
+public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJointedArm<Pivot.Position> {
     /** Constant values of intake subsystem. */
     public static final class Constants {
-        public static final class CAN_IDs {
-            public static final int ARM_MOTOR = 16; // TODO
-            public static final int INTAKE_MOTOR = 15; // TODO
+        /** CAN information of intake motors. */
+        public static final class CAN {
+            /** CAN bus intake motors are on. */
+            public static final String BUS = "canivore";
+
+            /** CAN IDs of intake motors. */
+            public static final class IDs {
+                /** CAN ID of intake pivot motor. */
+                private static final int PIVOT = 16;
+                /** CAN ID of intake rollers motor. */
+                private static final int ROLLERS = 15;
+            }
         }
 
-        public static final class Arm_Constants {
-            public static final class PID {
-                public static final double kP = 0; // TODO find good value
-                public static final double kI = 0; // TODO find good value
-                public static final double kD = 0; // TODO find good value
-            }
-
-            public static final class FeedForward {
-                public static final double kS = 0; // TODO find good value
-                public static final double kG = 0; // TODO find good value
-                public static final double kV = 0; // TODO find good value
-                public static final double kA = 0; // TODO find good value
-                public static final double MM_ACCEL = 0; // TODO find good value
-                public static final double MM_CRUISE = 0; // TODO find good value
-                public static final double MM_JERK = 0; // TODO find good value
-            }
-
+        /** Constant values of intake pivot. */
+        public static final class Pivot {
+            /**
+             * Direction of motor rotation defined as positive rotation. Defined for intake
+             * pivot to be rotation away from zero point.
+             */
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+            public static final double ENCODER_CONVERSION_FACTOR = 0; // TODO get conversion factor for
+            /** Intake pivot motor current limit. */
+            public static final double CURRENT_LIMIT = 0; // TODO
             public static final double VEL_TOLERANCE = 0; // TODO find good value
             public static final double POS_TOLERANCE = .05;
 
-            public static final double CURRENT_LIMIT = 0; // TODO
-
-            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
-                                                                                    // encoder rotations -> radians
-                                                                                    // (replace 0 with gear ratio)
-
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-                                                                                                  // Clockwise_Positive
-                                                                                                  // or
-                                                                                                  // CounterClockwise_Positive
-        }
-
-        public static final class Intake_Constants {
-
-            public static final double CURRENT_LIMIT = 0; // TODO
-
-            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
-                                                                                    // encoder rotations -> radians
-                                                                                    // (replace 0 with gear ratio)
-
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-                                                                                                  // Clockwise_Positive
-                                                                                                  // or
-                                                                                                  // CounterClockwise_Positive
-
-            public static final double VOLTAGE = 0; // TODO
-
-            /** Positions that intake arm can be in. */
+            /** Positions intake pivot can be in. */
             public static enum Position {
-                STOW(0),
-                GROUND_INTAKE(0),
-                MANIPULATOR_INTAKE(0);
+                ZERO(0), // TODO
+                GROUND_INTAKE(0), // TODO
+                MANIPULATOR_INTAKE(0); // TODO
 
                 public final double position;
 
@@ -92,101 +63,142 @@ public class Intake extends SubsystemBase
                     this.position = position;
                 }
             }
+
+            /**
+             * Constants for feedforward control for moving to position setpoints.
+             */
+            public static final class Feedforward {
+                /** Voltage required to overcome gravity. */
+                public static final double kG = 0; // TODO find good value
+                /** Voltage required to overcome motor's static friction. */
+                public static final double kS = 0; // TODO find good value
+                /** Voltage required to maintain constant velocity on motor. */
+                public static final double kV = 0; // TODO find good value
+                /** Voltage required to induce a given acceleration on motor. */
+                public static final double kA = 0; // TODO find good value
+            }
+
+            /**
+             * Constants for PID feedback control for error correction for moving to
+             * position setpoints.
+             */
+            public static final class Feedback {
+                /** Proportional term constant which drives error to zero proportionally. */
+                public static final double kP = 0; // TODO find good value
+                /**
+                 * Integral term constant which overcomes steady-state error. Should be used
+                 * with caution due to integral windup.
+                 */
+                public static final double kI = 0; // TODO find good value
+                /** Derivative term constant which dampens rate of error correction. */
+                public static final double kD = 0; // TODO find good value
+            }
+
+            /**
+             * Constants for CTRE's Motion Magic motion profiling for moving to position
+             * setpoints with consistent and smooth motion across entire course of motion.
+             */
+            public static final class MotionMagic {
+                /** Target cruise velocity along course of motion. */
+                public static final double CRUISE_VELOCITY = 0; // TODO
+                /** Target acceleration of beginning and end of course of motion. */
+                public static final double ACCELERATION = 0; // TODO
+                /** Target jerk along course of motion. */
+                public static final double JERK = 0; // TODO
+            }
+        }
+
+        /** Constant values of intake rollers. */
+        public static final class Rollers {
+            /**
+             * Direction of motor rotation defined as positive rotation. Defined for intake
+             * rollers to be rotation which intakes algae.
+             */
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO
+            /** Intake rollers motor current limit. */
+            public static final double CURRENT_LIMIT = 0; // TODO
+            /** Voltage to run intake rollers motor at. */
+            public static final double VOLTAGE = 0; // TODO
         }
     }
 
-    private final TalonFX armMotor = new TalonFX(Constants.CAN_IDs.ARM_MOTOR);
-    private final TalonFXConfigurator armConfigurator = armMotor.getConfigurator();
-    private final TalonFXConfiguration armConfigs = new TalonFXConfiguration();
-    private final MotionMagicVoltage mmRequestArm = new MotionMagicVoltage(0);
+    /** Intake pivot motor. */
+    private final TalonFX pivotMotor = new TalonFX(CAN.IDs.PIVOT, CAN.BUS);
+    /** Intake pivot motor configuration object. */
+    private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
+    /**
+     * Request object for motor voltage according to Motion Magic motion profile.
+     */
+    private final MotionMagicVoltage pivotMotionMagicVoltageRequest = new MotionMagicVoltage(0);
 
-    private final TalonFX intakeMotor = new TalonFX(Constants.CAN_IDs.INTAKE_MOTOR);
-    private final TalonFXConfigurator intakeConfigurator = intakeMotor.getConfigurator();
-    private final TalonFXConfiguration intakeConfigs = new TalonFXConfiguration();
+    /** Intake rollers motor. */
+    private final TalonFX rollersMotor = new TalonFX(CAN.IDs.ROLLERS, CAN.BUS);
+    /** Intake rollers motor configuration object. */
+    private final TalonFXConfiguration rollersMotorConfigs = new TalonFXConfiguration();
+    /** Intake rollers motor voltage request object. */
+    private final VoltageOut rollersVoltageRequest = new VoltageOut(0);
 
-    private final CurrentLimitsConfigs armCurrentLimitConfigs = new CurrentLimitsConfigs();
-    private final CurrentLimitsConfigs intakeCurrentLimitConfigs = new CurrentLimitsConfigs();
-
-    private final FeedbackConfigs armConfigFeedback = new FeedbackConfigs();
-    private final FeedbackConfigs intakeConfigFeedback = new FeedbackConfigs();
-
-    private final Slot0Configs armControlConfig = new Slot0Configs();
-
-    private final MotionMagicConfigs mmArmConfig = new MotionMagicConfigs();
-
-    private final MotorOutputConfigs armConfigOutput = new MotorOutputConfigs();
-    private final MotorOutputConfigs intakeConfigOutput = new MotorOutputConfigs();
-
+    /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
-        armCurrentLimitConfigs.SupplyCurrentLimit = Constants.Arm_Constants.CURRENT_LIMIT;
-        armCurrentLimitConfigs.SupplyCurrentLimitEnable = true;
-        intakeCurrentLimitConfigs.SupplyCurrentLimit = Constants.Intake_Constants.CURRENT_LIMIT;
-        intakeCurrentLimitConfigs.SupplyCurrentLimitEnable = true;
-        armConfigs.CurrentLimits = armCurrentLimitConfigs;
-        intakeConfigs.CurrentLimits = intakeCurrentLimitConfigs;
+        pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
 
-        armConfigOutput.Inverted = Constants.Arm_Constants.MOTOR_DIRECTION;
-        intakeConfigOutput.Inverted = Constants.Intake_Constants.MOTOR_DIRECTION;
-        armConfigs.MotorOutput = armConfigOutput;
-        intakeConfigs.MotorOutput = intakeConfigOutput;
+        pivotMotorConfigs.Feedback.RotorToSensorRatio = Pivot.ENCODER_CONVERSION_FACTOR;
 
-        armConfigFeedback.RotorToSensorRatio = Constants.Arm_Constants.ENCODER_CONVERSION_FACTOR;
-        intakeConfigFeedback.RotorToSensorRatio = Constants.Intake_Constants.ENCODER_CONVERSION_FACTOR;
-        armConfigs.Feedback = armConfigFeedback;
-        intakeConfigs.Feedback = intakeConfigFeedback;
+        pivotMotorConfigs.MotorOutput.Inverted = Pivot.MOTOR_DIRECTION;
 
-        armControlConfig.kP = Constants.Arm_Constants.PID.kP;
-        armControlConfig.kI = Constants.Arm_Constants.PID.kI;
-        armControlConfig.kD = Constants.Arm_Constants.PID.kD;
-        armControlConfig.kS = Constants.Arm_Constants.FeedForward.kS;
-        armControlConfig.kG = Constants.Arm_Constants.FeedForward.kG;
-        armControlConfig.kV = Constants.Arm_Constants.FeedForward.kV;
-        armControlConfig.kA = Constants.Arm_Constants.FeedForward.kA;
-        armConfigs.Slot0 = armControlConfig;
+        pivotMotorConfigs.Slot0.kG = Pivot.Feedforward.kG;
+        pivotMotorConfigs.Slot0.kS = Pivot.Feedforward.kS;
+        pivotMotorConfigs.Slot0.kV = Pivot.Feedforward.kV;
+        pivotMotorConfigs.Slot0.kA = Pivot.Feedforward.kA;
+        pivotMotorConfigs.Slot0.kP = Pivot.Feedback.kP;
+        pivotMotorConfigs.Slot0.kI = Pivot.Feedback.kI;
+        pivotMotorConfigs.Slot0.kD = Pivot.Feedback.kD;
 
-        mmArmConfig.MotionMagicAcceleration = Constants.Arm_Constants.FeedForward.MM_ACCEL;
-        mmArmConfig.MotionMagicCruiseVelocity = Constants.Arm_Constants.FeedForward.MM_CRUISE;
-        mmArmConfig.MotionMagicJerk = Constants.Arm_Constants.FeedForward.MM_JERK;
-        armConfigs.MotionMagic = mmArmConfig;
+        pivotMotorConfigs.MotionMagic.MotionMagicCruiseVelocity = Pivot.MotionMagic.CRUISE_VELOCITY;
+        pivotMotorConfigs.MotionMagic.MotionMagicAcceleration = Pivot.MotionMagic.ACCELERATION;
+        pivotMotorConfigs.MotionMagic.MotionMagicJerk = Pivot.MotionMagic.JERK;
 
-        armConfigurator.apply(armConfigs);
-        intakeConfigurator.apply(intakeConfigs);
+        pivotMotor.getConfigurator().apply(pivotMotorConfigs);
+
+        rollersMotorConfigs.MotorOutput.Inverted = Rollers.MOTOR_DIRECTION;
+
+        rollersMotorConfigs.Feedback.RotorToSensorRatio = Rollers.ENCODER_CONVERSION_FACTOR;
+
+        rollersMotorConfigs.CurrentLimits.SupplyCurrentLimit = Rollers.CURRENT_LIMIT;
+
+        rollersMotor.getConfigurator().apply(rollersMotorConfigs);
     }
 
     @Override
     public double getPosition() {
-        return armMotor.getPosition(true).getValueAsDouble();
+        return pivotMotor.getPosition(true).getValueAsDouble();
     }
 
     @Override
     public void resetPosition() {
-        armMotor.setPosition(Constants.Intake_Constants.Position.STOW.position);
+        pivotMotor.setPosition(Pivot.Position.ZERO.position);
     }
 
     @Override
     public void setVoltage(double voltage) {
-        armMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
-    }
-
-    public void setVoltageBar(double voltage) {
-        intakeMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        pivotMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            armMotor.setControl(mmRequestArm.withPosition(mmRequestArm.Position));
-        })
-                .withName("intake.moveToCurrentGoalCommand");
+            pivotMotor.setControl(pivotMotionMagicVoltageRequest.withPosition(pivotMotionMagicVoltageRequest.Position));
+        }).withName("intake.moveToCurrentGoalCommand");
     }
 
     public final boolean atGoal() {
-        return Math.abs(mmRequestArm.Position - getPosition()) < Constants.Arm_Constants.POS_TOLERANCE
-                && Math.abs(armMotor.getVelocity().getValueAsDouble()) < Constants.Arm_Constants.VEL_TOLERANCE;
+        return Math.abs(pivotMotionMagicVoltageRequest.Position - getPosition()) < Pivot.POS_TOLERANCE
+                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < Pivot.VEL_TOLERANCE;
     }
 
     @Override
-    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
+    public Command moveToPositionCommand(Supplier<Pivot.Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("intake.moveToPositionCommand");
     }
@@ -195,7 +207,7 @@ public class Intake extends SubsystemBase
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> {
-                    armMotor.setControl(mmRequestArm.withPosition(goalPositionSupplier.get()));
+                    pivotMotor.setControl(pivotMotionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
                 }),
                 moveToCurrentGoalCommand().until(this::atGoal))
                 .withName("intake.moveToArbitraryPositionCommand");
@@ -203,7 +215,7 @@ public class Intake extends SubsystemBase
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> mmRequestArm.Position + delta.get())
+        return moveToArbitraryPositionCommand(() -> pivotMotionMagicVoltageRequest.Position + delta.get())
                 .withName("intake.movePositionDeltaCommand");
     }
 
@@ -228,30 +240,28 @@ public class Intake extends SubsystemBase
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
-            intakeMotor.stopMotor();
-            armMotor.stopMotor();
-        })
-                .andThen(() -> {
-                    armMotor.setNeutralMode(NeutralModeValue.Coast);
-                    intakeMotor.setNeutralMode(NeutralModeValue.Coast);
-                })
-                .finallyDo((s) -> {
-                    armMotor.setNeutralMode(NeutralModeValue.Brake);
-                    intakeMotor.setNeutralMode(NeutralModeValue.Brake);
-                })
-                .withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-                .withName("intake.coastMotorsCommand");
+            rollersMotor.stopMotor();
+            pivotMotor.stopMotor();
+        }).andThen(() -> {
+            pivotMotor.setNeutralMode(NeutralModeValue.Coast);
+            rollersMotor.setNeutralMode(NeutralModeValue.Coast);
+        }).finallyDo((s) -> {
+            pivotMotor.setNeutralMode(NeutralModeValue.Brake);
+            rollersMotor.setNeutralMode(NeutralModeValue.Brake);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("intake.coastMotorsCommand");
     }
 
     @Override
     public Command runRollersCommand() {
-        return runOnce(() -> setVoltageBar(Constants.Intake_Constants.VOLTAGE)) // TODO implement voltage
+        return startEnd(() -> rollersMotor.setControl(rollersVoltageRequest.withOutput(Rollers.VOLTAGE)),
+                () -> rollersMotor.stopMotor())
                 .withName("intake.runRollersCommand");
     }
 
     @Override
     public Command reverseRollersCommand() {
-        return runOnce(() -> setVoltageBar(-Constants.Intake_Constants.VOLTAGE)) // TODO implement voltage
+        return startEnd(() -> rollersMotor.setControl(rollersVoltageRequest.withOutput(-Rollers.VOLTAGE)),
+                () -> rollersMotor.stopMotor())
                 .withName("intake.reverseRollersCommand");
     }
 }

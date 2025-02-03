@@ -1,12 +1,6 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.FeedbackConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -18,100 +12,118 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
 import java.util.function.Supplier;
 
-/** Subsystem which rotates pivot subsystem. */
-public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.Constants.Position> {
-    /** Constant values of pivot subsystem. */
+import static frc.robot.subsystems.Pivot.Constants.*;
+
+/** Subsystem which rotates manipulator. */
+public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Position> {
+    /**
+     * Direction of motor rotation defined as positive rotation. Defined for
+     * manipulator pivot to be rotation away from zero point.
+     */
+    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+    /** Current limit of manipulator motor. */
+    public static final double CURRENT_LIMIT = 10; // TODO find good # amps
+    public static final double GEAR_RATIO = 0; // TODO
+    public static final double POS_TOLERANCE = .05; // TODO
+    public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
+
+    /** Constant values of manipualtor.. */
     public static final class Constants {
-        private static final class CANIDs {
-            private static final int PIVOT_MOTOR = 13;
+        /** CAN information of manipulator motor. */
+        public static final class CAN {
+            /** CAN bus pivot motor is on. */
+            public static final String BUS = "rio";
+            /** CAN ID of pivot motor. */
+            public static final int ID = 13;
         }
 
-        public static final class PID {
-            public static final double kP = 0; // TODO find good value
-            public static final double kI = 0; // TODO find good value
-            public static final double kD = 0; // TODO find good value
-        }
-
-        public static final class FeedForward {
-            public static final double kS = 0; // TODO find good value
-            public static final double kG = 0; // TODO find good value
-            public static final double kV = 0; // TODO find good value
-            public static final double kA = 0; // TODO find good value
-            public static final double MM_ACCEL = 0; // TODO find good value
-            public static final double MM_CRUISE = 0; // TODO find good value
-            public static final double MM_JERK = 0; // TODO find good value
-        }
-
-        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO Clockwise_Positive
-                                                                                              // or
-                                                                                              // CounterClockwise_Positive
-
-        public static final double MAX_AMPS = 10; // TODO find good # amps
-
-        public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO get conversion factor for
-                                                                                // encoder rotations -> radians (replace
-                                                                                // 0 with gear ratio)
-
-        public static final double POS_TOLERANCE = .05; // The acceptable distance away from the goal that can be
-                                                        // considered to be at the goal (the goal tolerance in radians)
-        public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
-
-        /** Positions that pivot subsystem can be in. */
+        /** Positions pivot can be in. */
         public static enum Position {
-            TEMP(0),
-            RESET_POSITION(0);
+            ZERO(0),
+            TEMP(0);
 
             public final double value;
 
-            private Position(double value) {
+            private Position(final double value) {
                 this.value = value;
             }
         }
+
+        /**
+         * Constants for feedforward control for moving to position setpoints.
+         */
+        public static final class Feedforward {
+            /** Voltage required to overcome gravity. */
+            public static final double kG = 0; // TODO find good value
+            /** Voltage required to overcome motor's static friction. */
+            public static final double kS = 0; // TODO find good value
+            /** Voltage required to maintain constant velocity on motor. */
+            public static final double kV = 0; // TODO find good value
+            /** Voltage required to induce a given acceleration on motor. */
+            public static final double kA = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for PID feedback control for error correction for moving to
+         * position setpoints.
+         */
+        public static final class Feedback {
+            /** Proportional term constant which drives error to zero proportionally. */
+            public static final double kP = 0; // TODO find good value
+            /**
+             * Integral term constant which overcomes steady-state error. Should be used
+             * with caution due to integral windup.
+             */
+            public static final double kI = 0; // TODO find good value
+            /** Derivative term constant which dampens rate of error correction. */
+            public static final double kD = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for CTRE's Motion Magic motion profiling for moving to position
+         * setpoints with consistent and smooth motion across entire course of motion.
+         */
+        public static final class MotionMagic {
+            /** Target cruise velocity along course of motion. */
+            public static final double CRUISE_VELOCITY = 0; // TODO
+            /** Target acceleration of beginning and end of course of motion. */
+            public static final double ACCELERATION = 0; // TODO
+            /** Target jerk along course of motion. */
+            public static final double JERK = 0; // TODO
+        }
     }
 
-    // Make motor object
-    private final TalonFX pivotMotor = new TalonFX(Constants.CANIDs.PIVOT_MOTOR);
+    /** Pivot motor */
+    private final TalonFX motor = new TalonFX(CAN.ID);
+    /** Pivot motor configuration object. */
+    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
+    /** Pivot motor Motion Magic voltage request object. */
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
 
-    // Make configs
-    private final TalonFXConfigurator pivotConfigurator = pivotMotor.getConfigurator();
-    private final TalonFXConfiguration pivotConfiguration = new TalonFXConfiguration();
-    private final CurrentLimitsConfigs pivotConfigCurrent = new CurrentLimitsConfigs();
-    private final FeedbackConfigs pivotConfigFeedback = new FeedbackConfigs();
-    private final Slot0Configs pivotConfigControl = new Slot0Configs();
-    private final MotionMagicConfigs mmConfig = new MotionMagicConfigs();
-    private final MotorOutputConfigs pivotConfigOutput = new MotorOutputConfigs();
-
-    // Make motion magic request object
-    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
-
-    // Constructor
+    /** Initialize pivot motor configurations. */
     public Pivot() {
-        // Apply configs
-        pivotConfigCurrent.SupplyCurrentLimit = Constants.MAX_AMPS;
-        pivotConfigCurrent.SupplyCurrentLimitEnable = true;
-        pivotConfigurator.apply(pivotConfigCurrent);
+        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        pivotConfigControl.kP = Constants.PID.kP;
-        pivotConfigControl.kI = Constants.PID.kI;
-        pivotConfigControl.kD = Constants.PID.kD;
-        pivotConfigControl.kS = Constants.FeedForward.kS;
-        pivotConfigControl.kG = Constants.FeedForward.kG;
-        pivotConfigControl.kV = Constants.FeedForward.kV;
-        pivotConfigControl.kA = Constants.FeedForward.kA;
-        pivotConfigurator.apply(pivotConfigControl);
+        motorConfigs.Feedback.RotorToSensorRatio = GEAR_RATIO;
 
-        pivotConfigFeedback.RotorToSensorRatio = Constants.ENCODER_CONVERSION_FACTOR;
-        pivotConfigurator.apply(pivotConfigFeedback);
+        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
-        pivotConfigOutput.Inverted = Constants.MOTOR_DIRECTION;
-        pivotConfigurator.apply(pivotConfigOutput);
+        motorConfigs.Slot0.kP = Feedback.kP;
+        motorConfigs.Slot0.kI = Feedback.kI;
+        motorConfigs.Slot0.kD = Feedback.kD;
+        motorConfigs.Slot0.kS = Feedforward.kS;
+        motorConfigs.Slot0.kG = Feedforward.kG;
+        motorConfigs.Slot0.kV = Feedforward.kV;
+        motorConfigs.Slot0.kA = Feedforward.kA;
 
-        mmConfig.MotionMagicAcceleration = Constants.FeedForward.MM_ACCEL;
-        mmConfig.MotionMagicCruiseVelocity = Constants.FeedForward.MM_CRUISE;
-        mmConfig.MotionMagicJerk = Constants.FeedForward.MM_JERK;
-        pivotConfigurator.apply(mmConfig);
+        motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionMagic.CRUISE_VELOCITY;
+        motorConfigs.MotionMagic.MotionMagicAcceleration = MotionMagic.ACCELERATION;
+        motorConfigs.MotionMagic.MotionMagicJerk = MotionMagic.JERK;
+
+        motor.getConfigurator().apply(motorConfigs);
     }
 
     /**
@@ -121,9 +133,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public double getPosition() {
-        return pivotMotor.getPosition().getValueAsDouble();
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'getPosition'");
+        return motor.getPosition().getValueAsDouble();
     }
 
     /**
@@ -131,9 +141,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public void resetPosition() {
-        pivotMotor.setPosition(Constants.Position.RESET_POSITION.value);
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPosition'");
+        motor.setPosition(Position.ZERO.value);
     }
 
     /**
@@ -142,11 +150,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * @param voltage the voltage [-12, 12]
      */
     @Override
-    public void setVoltage(double voltage) {
-        voltage = MathUtil.clamp(voltage, -12, 12);
-        // TODO safety stuff
-        pivotMotor.setVoltage(voltage);
-        // throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
+    public void setVoltage(final double voltage) {
+        motor.setVoltage(MathUtil.clamp(voltage, -12, 12));
     }
 
     /**
@@ -158,7 +163,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            pivotMotor.setControl(mmRequest.withPosition(mmRequest.Position));
+            motor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position));
         }).withName("pivot.moveToCurrentGoalCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'moveToCurrentGoalCommand'");
@@ -172,12 +177,11 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * @return the command
      */
     @Override
-    public Command moveToPositionCommand(Supplier<Constants.Position> goalPositionSupplier) {
+    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
         return Commands.sequence(
-                runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get().value))),
+                runOnce(() -> motor
+                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().value))),
                 moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToPositionCommand'");
     }
 
     /*
@@ -187,8 +191,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * being needed, but ¯\_(ツ)_/¯
      */
     public boolean atGoal2() {
-        if (mmRequest.Position <= pivotMotor.getPosition().getValueAsDouble() + Constants.POS_TOLERANCE
-                && mmRequest.Position >= pivotMotor.getPosition().getValueAsDouble() - Constants.POS_TOLERANCE) {
+        if (motionMagicVoltageRequest.Position <= motor.getPosition().getValueAsDouble() + POS_TOLERANCE
+                && motionMagicVoltageRequest.Position >= motor.getPosition().getValueAsDouble()
+                        - POS_TOLERANCE) {
             return true;
         } else {
             return false;
@@ -201,8 +206,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * math/controller/PIDController.html#line-299
      */
     public boolean atGoal() {
-        return Math.abs(mmRequest.Position - pivotMotor.getPosition().getValueAsDouble()) < Constants.POS_TOLERANCE
-                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < Constants.VEL_TOLERANCE;
+        return Math.abs(
+                motionMagicVoltageRequest.Position - motor.getPosition().getValueAsDouble()) < POS_TOLERANCE
+                && Math.abs(motor.getVelocity().getValueAsDouble()) < VEL_TOLERANCE;
     }
 
     /**
@@ -215,7 +221,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-                runOnce(() -> pivotMotor.setControl(mmRequest.withPosition(goalPositionSupplier.get()))),
+                runOnce(() -> motor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()))),
                 moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'moveToArbitraryPositionCommand'");
@@ -232,7 +238,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
+        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
                 .withName("pivot.movePositionDeltaCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'movePositionDeltaCommand'");
@@ -271,7 +277,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      * @return the command
      */
     @Override
-    public Command setOverridenSpeedCommand(Supplier<Double> speed) {
+    public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
                 .withName("pivot.setOverriddenSpeedCommand");
         // throw new UnsupportedOperationException("Unimplemented method
@@ -287,18 +293,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
      */
     @Override
     public Command coastMotorsCommand() {
-        return runOnce(pivotMotor::stopMotor)
-                .andThen(() -> {
-                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-                    pivotConfigurator.apply(pivotConfiguration.MotorOutput); // TODO make sure this is right (when we
-                                                                             // know stuff better)
-                }).finallyDo((d) -> {
-                    pivotConfiguration.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-                    pivotConfigurator.apply(pivotConfiguration.MotorOutput);
-                }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-                .withName("pivot.coastMotorsCommand");
-
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'coastMotorsCommand'");
+        return runOnce(motor::stopMotor).andThen(() -> {
+            motor.setNeutralMode(NeutralModeValue.Coast);
+        }).finallyDo((d) -> {
+            motor.setNeutralMode(NeutralModeValue.Coast);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("pivot.coastMotorsCommand");
     }
 }

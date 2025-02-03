@@ -68,6 +68,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.DeferredCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Controls;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import static edu.wpi.first.units.Units.Degrees;
@@ -76,10 +77,10 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
-import static frc.robot.Constants.Teleop.*;
 
 import static frc.robot.subsystems.Drivetrain.Constants.*;
 
+/** Subsystem which drives robot using a swerve drivetrain. */
 @LoggedObject
 public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     public static final class Constants {
@@ -88,29 +89,29 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         public static final int PIGEON_ID = 0;
 
         public static final class FrontLeft {
-            public static final int DRIVE_MOTOR_ID = 6;
-            public static final int STEER_MOTOR_ID = 5;
+            public static final int DRIVE_MOTOR_ID = 1;
+            public static final int STEER_MOTOR_ID = 2;
             public static final int STEER_ENCODER_ID = 0; // TODO
             public static final double STEER_ENCODER_OFFSET = 0.4521484375; // TODO
         }
 
         public static final class FrontRight {
-            public static final int DRIVE_MOTOR_ID = 8;
-            public static final int STEER_MOTOR_ID = 7;
+            public static final int DRIVE_MOTOR_ID = 3;
+            public static final int STEER_MOTOR_ID = 4;
             public static final int STEER_ENCODER_ID = 1; // TODO
             public static final double STEER_ENCODER_OFFSET = -0.179443359375 - 0.00634765625; // TODO
         }
 
         public static final class BackLeft {
-            public static final int DRIVE_MOTOR_ID = 2;
-            public static final int STEER_MOTOR_ID = 1;
+            public static final int DRIVE_MOTOR_ID = 5;
+            public static final int STEER_MOTOR_ID = 6;
             public static final int STEER_ENCODER_ID = 2; // TODO
             public static final double STEER_ENCODER_OFFSET = 0.242919921875; // TODO
         }
 
         public static final class BackRight {
-            public static final int DRIVE_MOTOR_ID = 4;
-            public static final int STEER_MOTOR_ID = 3;
+            public static final int DRIVE_MOTOR_ID = 7;
+            public static final int STEER_MOTOR_ID = 8;
             public static final int STEER_ENCODER_ID = 3; // TODO
             public static final double STEER_ENCODER_OFFSET = 0.498046875 - 0.003; // TODO
         }
@@ -335,7 +336,6 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     @Log
     private boolean initialized = false;
 
-    /** Initializes the drivetrain. */
     public Drivetrain() {
         poseEstimator = new SwerveDrivePoseEstimator(
                 KINEMATICS,
@@ -858,22 +858,23 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     @Override
     public Command teleopDriveCommand(DoubleSupplier xSpeedSupplier, DoubleSupplier ySpeedSupplier,
             DoubleSupplier thetaSpeedSupplier) {
-        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
-        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
-        SlewRateLimiter thetaSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter thetaSpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
 
         return run(() -> {
             double xSpeed = xSpeedSupplier.getAsDouble();
             double ySpeed = ySpeedSupplier.getAsDouble();
             double thetaSpeed = thetaSpeedSupplier.getAsDouble();
 
-            xSpeed = MathUtil.applyDeadband(xSpeed, JOYSTICK_INPUT_DEADBAND);
-            ySpeed = MathUtil.applyDeadband(ySpeed, JOYSTICK_INPUT_DEADBAND);
-            thetaSpeed = MathUtil.applyDeadband(thetaSpeed, JOYSTICK_INPUT_DEADBAND);
+            xSpeed = MathUtil.applyDeadband(xSpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
+            ySpeed = MathUtil.applyDeadband(ySpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
+            thetaSpeed = MathUtil.applyDeadband(thetaSpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
 
-            xSpeed = Math.copySign(Math.pow(xSpeed, JOYSTICK_CURVE_EXP), xSpeed);
-            ySpeed = Math.copySign(Math.pow(ySpeed, JOYSTICK_CURVE_EXP), ySpeed);
-            thetaSpeed = Math.copySign(Math.pow(thetaSpeed, JOYSTICK_ROT_CURVE_EXP), thetaSpeed);
+            xSpeed = Math.copySign(Math.pow(xSpeed, Controls.Constants.Teleop.JOYSTICK_CURVE_EXP), xSpeed);
+            ySpeed = Math.copySign(Math.pow(ySpeed, Controls.Constants.Teleop.JOYSTICK_CURVE_EXP), ySpeed);
+            thetaSpeed = Math.copySign(Math.pow(thetaSpeed, Controls.Constants.Teleop.JOYSTICK_ROT_CURVE_EXP),
+                    thetaSpeed);
 
             xSpeed = xSpeedLimiter.calculate(xSpeed);
             ySpeed = ySpeedLimiter.calculate(ySpeed);

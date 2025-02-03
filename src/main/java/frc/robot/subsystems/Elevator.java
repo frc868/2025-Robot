@@ -2,12 +2,8 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.FeedbackConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -20,44 +16,45 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-/** Subsystem which lifts manipulator subsystem. */
-public class Elevator extends SubsystemBase
-        implements BaseLinearMechanism<Elevator.Constants.Position> {
-    /** Constant values of elevator subsystem. */
+import static frc.robot.subsystems.Elevator.Constants.*;
+
+/** Subsystem which lifts manipulator and manipulator pivot. */
+public class Elevator extends SubsystemBase implements BaseLinearMechanism<Position> {
+    /** Constant values of elevator. */
     public static final class Constants {
-        private static final class CANIDs {
-            private static final int ELEVATOR_MOTOR_L = 11;
-            private static final int ELEVATOR_MOTOR_R = 12;
+        /**
+         * Direction of motor rotation defined as positive rotation. Defined for
+         * elevator motors to be rotation which pulls elevator up away from zero point.
+         * Left motor direction is opposite of right motor direction.
+         */
+        public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+        /**
+         * Direction of motor rotation defined as positive rotation. Defined for
+         * elevator motors to be rotation which pulls elevator up away from zero point.
+         * Right motor direction is opposite of left motor direction.
+         */
+        public static final InvertedValue RIGHT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO
+        /** Current limit of elevator motors. */
+        public static final double CURRENT_LIMIT = 10; // TODO
+
+        /** CAN information of elevator motors. */
+        public static final class CAN {
+            /** CAN bus elevator motors are on. */
+            public static final String BUS = "canivore";
+
+            /** CAN IDs of elevator motors. */
+            public static final class IDs {
+                /** CAN ID of elevator left motor. */
+                private static final int LEFT_MOTOR = 11;
+                /** CAN ID of elevator right motor. */
+                private static final int RIGHT_MOTOR = 12;
+            }
         }
 
-        public static class PID {
-            public static final double kP = 0; // TODO find good value
-            public static final double kI = 0; // TODO find good value
-            public static final double kD = 0; // TODO find good value
-        }
-
-        public static class Feedforward {
-            public static final double kS = 0; // TODO find good value
-            public static final double kV = 0; // TODO find good value
-            public static final double kA = 0; // TODO find good value
-            public static final double MM_ACCEL = 0; // TODO find good value
-            public static final double MM_CRUISE = 0; // TODO find good value
-            public static final double MM_JERK = 0; // TODO find good value
-        }
-
-        public static final InvertedValue L_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-                                                                                                // Clockwise_Positive or
-                                                                                                // CounterClockwise_Positive
-        public static final InvertedValue R_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-                                                                                                // Clockwise_Positive or
-                                                                                                // CounterClockwise_Positive
-        public static final double MAX_AMPS = 10; // TODO find good # amps
-        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO get conversion factor for encoder rotations ->
-                                                                  // linear distance
-
-        /** Positions that elevator subsystem can be in. */
+        /** Positions elevator can be in. */
         public static enum Position {
-            RESET_POS(0.0), // TODO get actual position
+            ZERO(0.0), // TODO get actual position
             GROUND(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
             L2(0.0), // TODO get actual position
@@ -66,94 +63,122 @@ public class Elevator extends SubsystemBase
             CORAL_INTAKE(0.0), // TODO get actual position
             PROCESSOR(0.0); // TODO get actual position
 
-            public final double value;
+            public final double position;
 
-            Position(double value) {
-                this.value = value;
+            private Position(final double position) {
+                this.position = position;
             }
+        }
+
+        /**
+         * Constants for feedforward control for moving to position setpoints.
+         */
+        public static final class Feedforward {
+            /** Voltage required to overcome gravity. */
+            public static final double kG = 0; // TODO find good value
+            /** Voltage required to overcome motor's static friction. */
+            public static final double kS = 0; // TODO find good value
+            /** Voltage required to maintain constant velocity on motor. */
+            public static final double kV = 0; // TODO find good value
+            /** Voltage required to induce a given acceleration on motor. */
+            public static final double kA = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for PID feedback control for error correction for moving to
+         * position setpoints.
+         */
+        public static final class Feedback {
+            /** Proportional term constant which drives error to zero proportionally. */
+            public static final double kP = 0; // TODO find good value
+            /**
+             * Integral term constant which overcomes steady-state error. Should be used
+             * with caution due to integral windup.
+             */
+            public static final double kI = 0; // TODO find good value
+            /** Derivative term constant which dampens rate of error correction. */
+            public static final double kD = 0; // TODO find good value
+        }
+
+        /**
+         * Constants for CTRE's Motion Magic motion profiling for moving to position
+         * setpoints with consistent and smooth motion across entire course of motion.
+         */
+        public static final class MotionProfile {
+            /** Target cruise velocity along course of motion. */
+            public static final double CRUISE_VELOCITY = 0; // TODO
+            /** Target acceleration of beginning and end of course of motion. */
+            public static final double ACCELERATION = 0; // TODO
+            /** Target jerk along course of motion. */
+            public static final double JERK = 0; // TODO
         }
     }
 
-    // Make motor objects
-    private final TalonFX elevatorMotorL = new TalonFX(Constants.CANIDs.ELEVATOR_MOTOR_L);
-    private final TalonFX elevatorMotorR = new TalonFX(Constants.CANIDs.ELEVATOR_MOTOR_R);
+    /** Elevator left motor. */
+    private final TalonFX leftMotor = new TalonFX(CAN.IDs.LEFT_MOTOR, CAN.BUS);
+    /** Elevator right motor. */
+    private final TalonFX rightMotor = new TalonFX(CAN.IDs.RIGHT_MOTOR, CAN.BUS);
+    /**
+     * Configuration object for configurations shared across both elevator motors.
+     */
+    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
+    /** Configuration object for setting the left motor's direction. */
+    private final MotorOutputConfigs leftMotorOutputConfigs = new MotorOutputConfigs();
+    /** Configuration object for setting the right motor's direction. */
+    private final MotorOutputConfigs rightMotorOutpurConfigs = new MotorOutputConfigs();
+    /**
+     * Request object for motor voltage according to Motion Magic motion profile.
+     */
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
+    /** Request object for setting elevator motors voltage directly. */
+    private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
-    // Get the motor configurators
-    private final TalonFXConfigurator elevatorConfigL = elevatorMotorL.getConfigurator();
-    private final TalonFXConfigurator elevatorConfigR = elevatorMotorR.getConfigurator();
-
-    // Make the configs that are applied to motors later
-    private final CurrentLimitsConfigs elevatorConfigCurrent = new CurrentLimitsConfigs();
-    private final FeedbackConfigs elevatorConfigFeedback = new FeedbackConfigs();
-    private final Slot0Configs controlConfig = new Slot0Configs();
-    private final MotionMagicConfigs mmConfig = new MotionMagicConfigs();
-    private final MotorOutputConfigs elevatorConfigOutputL = new MotorOutputConfigs();
-    private final MotorOutputConfigs elevatorConfigOutputR = new MotorOutputConfigs();
-
-    // Make the Motion Magic object that sets where the motors should go
-    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0);
-
-    // Make the voltage object
-    private final VoltageOut voltageRequest = new VoltageOut(0);
-
-    // Constructor (initialization)
     public Elevator() {
-        // Current limit config application
-        elevatorConfigCurrent.SupplyCurrentLimit = Constants.MAX_AMPS;
-        elevatorConfigCurrent.SupplyCurrentLimitEnable = true;
+        motorConfigs.Feedback.SensorToMechanismRatio = ENCODER_CONVERSION_FACTOR;
 
-        // Set inversions
-        elevatorConfigOutputL.Inverted = Constants.L_MOTOR_DIRECTION;
-        elevatorConfigOutputR.Inverted = Constants.R_MOTOR_DIRECTION;
+        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
-        // Convert motor rotations to a linear unit of measure for height
-        elevatorConfigFeedback.SensorToMechanismRatio = Constants.ENCODER_CONVERSION_FACTOR;
+        motorConfigs.Slot0.kG = Feedforward.kG;
+        motorConfigs.Slot0.kS = Feedforward.kS;
+        motorConfigs.Slot0.kV = Feedforward.kV;
+        motorConfigs.Slot0.kA = Feedforward.kA;
+        motorConfigs.Slot0.kP = Feedback.kP;
+        motorConfigs.Slot0.kI = Feedback.kI;
+        motorConfigs.Slot0.kD = Feedback.kD;
 
-        // PID config application
-        controlConfig.kP = Constants.PID.kP;
-        controlConfig.kI = Constants.PID.kI;
-        controlConfig.kD = Constants.PID.kD;
-        controlConfig.kS = Constants.Feedforward.kS;
-        controlConfig.kV = Constants.Feedforward.kV;
-        controlConfig.kA = Constants.Feedforward.kA;
+        motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionProfile.CRUISE_VELOCITY;
+        motorConfigs.MotionMagic.MotionMagicAcceleration = MotionProfile.ACCELERATION;
+        motorConfigs.MotionMagic.MotionMagicJerk = MotionProfile.JERK;
 
-        // Motion Magic config application
-        mmConfig.MotionMagicAcceleration = Constants.Feedforward.MM_ACCEL;
-        mmConfig.MotionMagicCruiseVelocity = Constants.Feedforward.MM_CRUISE;
-        mmConfig.MotionMagicJerk = Constants.Feedforward.MM_JERK;
+        leftMotorOutputConfigs.Inverted = LEFT_MOTOR_DIRECTION;
+        rightMotorOutpurConfigs.Inverted = RIGHT_MOTOR_DIRECTION;
 
-        // Apply the configs
-        elevatorConfigL.apply(elevatorConfigCurrent);
-        elevatorConfigL.apply(elevatorConfigFeedback);
-        elevatorConfigR.apply(elevatorConfigCurrent);
-        elevatorConfigR.apply(elevatorConfigFeedback);
-        elevatorConfigL.apply(elevatorConfigOutputL);
-        elevatorConfigR.apply(elevatorConfigOutputR);
-        elevatorConfigL.apply(controlConfig);
-        elevatorConfigR.apply(controlConfig);
-        elevatorConfigL.apply(mmConfig);
-        elevatorConfigR.apply(mmConfig);
+        leftMotor.getConfigurator().apply(motorConfigs);
+        leftMotor.getConfigurator().apply(leftMotorOutputConfigs);
+
+        rightMotor.getConfigurator().apply(motorConfigs);
+        rightMotor.getConfigurator().apply(rightMotorOutpurConfigs);
     }
 
     /**
-     * Finds the position of the {@link #elevatorMotorL motor}
+     * Finds the position of the {@link #leftMotor motor}
      * 
      * @return The position of the elevator (in whatever unit is used for the
      *         {@link Constants#ENCODER_CONVERSION_FACTOR conversion factor})
      */
     @Override
     public double getPosition() {
-        return elevatorMotorL.getPosition(true).getValueAsDouble();
+        return leftMotor.getPosition(true).getValueAsDouble();
     }
 
     /**
-     * Resets the position of the motors to a specified {@link Constants#RESET_POS
+     * Resets the position of the motors to a specified {@link Constants#ZERO
      * position} (Should be a hard stop)
      */
     @Override
     public void resetPosition() {
-        elevatorMotorL.setPosition(Constants.Position.RESET_POS.value);
-        elevatorMotorR.setPosition(Constants.Position.RESET_POS.value);
+        leftMotor.setPosition(Position.ZERO.position);
+        rightMotor.setPosition(Position.ZERO.position);
     }
 
     /**
@@ -162,8 +187,8 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public void setVoltage(double voltage) {
-        elevatorMotorL.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
-        elevatorMotorR.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        leftMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        rightMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
     /**
@@ -173,18 +198,18 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command moveToCurrentGoalCommand() {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position)
+        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position)
                 .withName("elevator.moveToCurrentGoalCommand");
     }
 
     /**
-     * Moves the motors to one of the main {@link Constants.Position positions}
+     * Moves the motors to one of the main {@link Position positions}
      * 
      * @return Command that will move the motors to the setpoint enum
      */
     @Override
-    public Command moveToPositionCommand(Supplier<Elevator.Constants.Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().value)
+    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("elevator.moveToPositionCommand");
     }
 
@@ -196,8 +221,8 @@ public class Elevator extends SubsystemBase
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
-            elevatorMotorL.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
-            elevatorMotorR.setControl(mmRequest.withPosition(goalPositionSupplier.get()));
+            leftMotor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
+            rightMotor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
         })
                 .withName("elevator.moveToArbitraryPositionCommand");
     }
@@ -210,7 +235,7 @@ public class Elevator extends SubsystemBase
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> mmRequest.Position + delta.get())
+        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
                 .withName("elevator.movePositionDeltaCommand");
     }
 
@@ -224,8 +249,8 @@ public class Elevator extends SubsystemBase
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
-            elevatorMotorL.setControl(mmRequest.withPosition(elevatorMotorL.getPosition(true).getValue()));
-            elevatorMotorR.setControl(mmRequest.withPosition(elevatorMotorR.getPosition(true).getValue()));
+            leftMotor.setControl(motionMagicVoltageRequest.withPosition(leftMotor.getPosition(true).getValue()));
+            rightMotor.setControl(motionMagicVoltageRequest.withPosition(rightMotor.getPosition(true).getValue()));
         })
                 .withName("elevator.holdCurrentPositionCommand");
     }
@@ -266,15 +291,14 @@ public class Elevator extends SubsystemBase
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
-            elevatorMotorL.stopMotor();
-            elevatorMotorR.stopMotor();
+            leftMotor.stopMotor();
+            rightMotor.stopMotor();
         }).andThen(() -> {
-            elevatorMotorL.setNeutralMode(NeutralModeValue.Coast);
-            elevatorMotorR.setNeutralMode(NeutralModeValue.Coast);
+            leftMotor.setNeutralMode(NeutralModeValue.Coast);
+            rightMotor.setNeutralMode(NeutralModeValue.Coast);
         }).finallyDo(() -> {
-            elevatorMotorL.setNeutralMode(NeutralModeValue.Brake);
-            elevatorMotorR.setNeutralMode(NeutralModeValue.Brake);
-        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
-                .withName("elevator.coastMotorsCommand");
+            leftMotor.setNeutralMode(NeutralModeValue.Brake);
+            rightMotor.setNeutralMode(NeutralModeValue.Brake);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("elevator.coastMotorsCommand");
     }
 }
