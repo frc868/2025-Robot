@@ -140,6 +140,27 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     /** Request object for setting elevator motors voltage directly. */
     private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
+    /** Mutable measure for voltages applied during sysId testing */
+    private final MutVoltage sysIdVoltage = Volts.mutable(0);
+    /** Mutable measure for distances traveled during sysId testing (Meters) */
+    private final MutDistance sysIdDistance = Meters.mutable(0);
+    /** Mutable measure for velocity during SysId testing (Meters/Second) */
+    private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
+
+    /**
+     * The sysIdRoutine object with default configuration and logging of voltage,
+     * velocity, and distance
+     */
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
+            new SysIdRoutine.Mechanism((voltage) -> {
+                setVoltage(voltage.magnitude());
+            }, (log) -> {
+                log.motor("Elevator")
+                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                        .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
+                        .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
+            }, this));
+
     public Elevator() {
         motorConfigs.Feedback.SensorToMechanismRatio = ENCODER_CONVERSION_FACTOR;
 
