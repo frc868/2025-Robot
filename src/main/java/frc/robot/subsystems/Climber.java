@@ -10,6 +10,11 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.subsystems.Climber.Constants.CAN;
+import frc.robot.subsystems.Climber.Constants.Feedback;
+import frc.robot.subsystems.Climber.Constants.Feedforward;
+import frc.robot.subsystems.Climber.Constants.MotionProfile;
+import frc.robot.subsystems.Climber.Constants.Position;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import java.util.function.Supplier;
@@ -145,6 +150,24 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
     @Override
     public double getPosition() {
         return motorA.getPosition(true).getValueAsDouble();
+    }
+
+    /**
+     * Finds the voltage of the {@link #motorA motor}
+     * 
+     * @return Voltage of the motor, as a double
+     */
+    public double getVoltage() {
+        return motorA.getMotorVoltage().getValueAsDouble();
+    }
+
+    /**
+     * Finds the velocity of the {@link #motorA motor}
+     * 
+     * @return velocity of the motor, as a double
+     */
+    public double getVelocity() {
+        return motorA.getVelocity().getValueAsDouble();
     }
 
     /**
