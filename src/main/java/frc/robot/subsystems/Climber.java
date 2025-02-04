@@ -8,8 +8,8 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.units.measure.MutDistance;
-import edu.wpi.first.units.measure.MutLinearVelocity;
+import edu.wpi.first.units.measure.MutAngle;
+import edu.wpi.first.units.measure.MutAngularVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -24,8 +24,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import java.util.function.Supplier;
 
 import static edu.wpi.first.units.Units.Volts;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static frc.robot.subsystems.Climber.Constants.*;
 
 /** Subsystem which hangs robot from deep cage. */
@@ -128,9 +128,9 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
     /** Mutable measure for voltages applied during sysId testing */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
     /** Mutable measure for distances traveled during sysId testing (Meters) */
-    private final MutDistance sysIdDistance = Meters.mutable(0);
+    private final MutAngle sysIdAngle = Degrees.mutable(0);
     /** Mutable measure for velocity during SysId testing (Meters/Second) */
-    private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
+    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);
     /**
      * The sysIdRoutine object with default configuration and logging of voltage,
      * velocity, and distance
@@ -141,8 +141,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
             }, (log) -> {
                 log.motor("Climber")
                         .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                        .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
-                        .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
+                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Degrees))
+                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond));
             }, this));
 
     /** Initial climber motors configurations. */
