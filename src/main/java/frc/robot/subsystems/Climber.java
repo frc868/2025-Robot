@@ -8,6 +8,9 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.MutDistance;
+import edu.wpi.first.units.measure.MutLinearVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Climber.Constants.CAN;
@@ -16,9 +19,13 @@ import frc.robot.subsystems.Climber.Constants.Feedforward;
 import frc.robot.subsystems.Climber.Constants.MotionProfile;
 import frc.robot.subsystems.Climber.Constants.Position;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import java.util.function.Supplier;
 
+import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import static frc.robot.subsystems.Climber.Constants.*;
 
 /** Subsystem which hangs robot from deep cage. */
@@ -117,6 +124,26 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
      */
     private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(
             Position.ZERO.position);
+
+    /** Mutable measure for voltages applied during sysId testing */
+    private final MutVoltage sysIdVoltage = Volts.mutable(0);
+    /** Mutable measure for distances traveled during sysId testing (Meters) */
+    private final MutDistance sysIdDistance = Meters.mutable(0);
+    /** Mutable measure for velocity during SysId testing (Meters/Second) */
+    private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
+    /**
+     * The sysIdRoutine object with default configuration and logging of voltage,
+     * velocity, and distance
+     */
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
+            new SysIdRoutine.Mechanism((voltage) -> {
+                setVoltage(voltage.magnitude());
+            }, (log) -> {
+                log.motor("Climber")
+                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                        .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
+                        .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
+            }, this));
 
     /** Initial climber motors configurations. */
     public Climber() {
