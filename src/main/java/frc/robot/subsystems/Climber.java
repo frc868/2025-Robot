@@ -323,4 +323,26 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
             motorB.setNeutralMode(NeutralModeValue.Brake);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("climber.coastMotors");
     }
+
+    /**
+     * Creates a command for the sysId quasistatic test, which gradually speeds up
+     * the mechanism to eliminate variation from acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the quasistatic test
+     */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction);
+    }
+
+    /**
+     * Creates a command for the sysId dynamic test, which will step up the speed to
+     * see how the mechanism behaves during acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the dynamic test
+     */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction);
+    }
 }
