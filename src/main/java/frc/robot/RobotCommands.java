@@ -25,13 +25,13 @@ import frc.robot.subsystems.Vision;
  * ground intake algae
  * - setup intake, run intake motors X,X
  * move manipulator to scoring position
- * - move to position
+ * - move to position X
  * toggle mode
  * - toggle mode
  * lock to target
  * - VISION, rotate to target X
  * score
- * - run manip motors
+ * - run manip motors 1/2
  */
 public class RobotCommands {
 
@@ -54,7 +54,9 @@ public class RobotCommands {
         // 'climbCommand'");
     }
 
+    // TODO add sideSupplier or whatever
     public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
+
         /**
          * PROBABLY ONLY WORKS WHEN YOURE REALLY CLOSE TO ONE SPECIFIC APRILTAG
          * 1. gets current pose
@@ -106,7 +108,7 @@ public class RobotCommands {
         // 'intakeAlgaeGroundCommand'");
     }
 
-    // TODO figure out how to add a position parameter
+    // TODO positionSupplier something
     public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
                                                                                                * maybe a parameter for
                                                                                                * position
