@@ -10,7 +10,29 @@ import frc.robot.subsystems.Manipulator;
 import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.Vision;
 
-/** Robot commands which involve multiple subsystems. */
+/**
+ * Robot commands which involve multiple subsystems.
+ * 
+ * 
+ * 
+ * List of commands needed:
+ * climbing
+ * - setup climb, run climb X,X
+ * align to reef branch X
+ * - VISION, move and rotate to target
+ * intake algae from reef
+ * - move to position X
+ * ground intake algae
+ * - setup intake, run intake motors X,X
+ * move manipulator to scoring position
+ * - move to position
+ * toggle mode
+ * - toggle mode
+ * lock to target
+ * - VISION, rotate to target X
+ * score
+ * - run manip motors
+ */
 public class RobotCommands {
 
     public static Command prepareClimbCommand(Intake intake, Elevator elevator, Pivot pivot, Climber climber) {
@@ -30,6 +52,26 @@ public class RobotCommands {
                                                                                               // constant
         // throw new UnsupportedOperationException("Unimplemented command
         // 'climbCommand'");
+    }
+
+    public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
+        /**
+         * PROBABLY ONLY WORKS WHEN YOURE REALLY CLOSE TO ONE SPECIFIC APRILTAG
+         * 1. gets current pose
+         * - getPose()
+         * 2. figures out which side of which reef we're on based on the april
+         * tag/closest side
+         * - for closest side: find i that gives min(getPose-apriltag_i) for i in {reef
+         * apriltag #s}
+         * 3. sets a target to move to
+         * - thats gonna be pose2d with specific perp. theta for the side, then x,y is
+         * pos of april tag + perp. vector pointing away a certain distance
+         * - w/ knowledge of field move to certain position
+         * 4. moves there
+         * - driveToPose (?)
+         */
+        return drivetrain.driveToPoseCommand(drivetrain::chooseTargetBranch); // TODO fix it
+
     }
 
     public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
@@ -58,8 +100,8 @@ public class RobotCommands {
                 Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
                         elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
                 intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
-                intake.runRollersCommand(),
-                manipulator.intakeGamePieceCommand());
+                Commands.parallel(intake.runRollersCommand(),
+                        manipulator.intakeGamePieceCommand()));
         // throw new UnsupportedOperationException("Unimplemented command
         // 'intakeAlgaeGroundCommand'");
     }
@@ -105,6 +147,20 @@ public class RobotCommands {
          * rotations of the pivot)
          */
         throw new UnsupportedOperationException("Unimplemented command 'scoreCoralCommand'");
+    }
+
+    public static Command lockOnCommand(Drivetrain drivetrain) { /**
+                                                                  * parameter for
+                                                                  * position
+                                                                  * reef or barge or processor
+                                                                  */
+
+        /**
+         * constantly target reef with targetpose
+         */
+        return drivetrain.targetPoseCommand(null); // TODO way to calculate target
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'scoreCoralCommand'");
     }
 
 }
