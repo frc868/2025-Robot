@@ -106,6 +106,7 @@ public class RobotCommands {
         // 'intakeAlgaeGroundCommand'");
     }
 
+    // TODO figure out how to add a position parameter
     public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
                                                                                                * maybe a parameter for
                                                                                                * position
