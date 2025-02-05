@@ -19,7 +19,7 @@ public class TargetAlign {
      * @param position The position of the target.
      * @return The Pose3d of the target.
      */
-    public Pose3d getReefPositionPose(int level, int position) {
+    public static Pose3d getReefPositionPose(int level, int position) {
         double height = Field.REEF_LEVEL_HEIGHTS[level];
         double radius = Field.REEF_LEVEL_RADII[level];
         double verticalAngle = Field.REEF_LEVEL_ANGLES[level]; // 0 is horizontal, positive is angle up
@@ -63,7 +63,7 @@ public class TargetAlign {
      * @param bluePosition The Pose2d of the blue alliance position.
      * @return The Pose2d of the red alliance position.
      */
-    public Pose2d getRedPosition(Pose2d bluePosition) {
+    public static Pose2d getRedPosition(Pose2d bluePosition) {
         double x = bluePosition.getX();
         double y = bluePosition.getY();
         double angle = bluePosition.getRotation().getRadians();
