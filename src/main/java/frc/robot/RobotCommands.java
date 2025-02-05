@@ -132,15 +132,15 @@ public class RobotCommands {
         throw new UnsupportedOperationException("Unimplemented command 'moveToCoralScoringPositionCommand'");
     }
 
-    public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { /**
-                                                                                                        * maybe a
-                                                                                                        * parameter for
-                                                                                                        * position
-                                                                                                        */
+    public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { // TODO
+                                                                                                       // parameters
         /**
-         * move the manipulator the right way
+         * just run the manipulator rollers (fast enough to throw the algae or slow
+         * enough to be precise at the processor)
          */
-        throw new UnsupportedOperationException("Unimplemented command 'scoreAlgaeCommand'");
+        return manipulator.reverseRollersCommand(); // TODO specific voltage?
+        // throw new UnsupportedOperationException("Unimplemented command
+        // 'scoreAlgaeCommand'");
     }
 
     public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { /**
@@ -149,8 +149,7 @@ public class RobotCommands {
                                                                                                         * position
                                                                                                         */
         /**
-         * move the manipulator the right way (maybe scoring coral will require
-         * rotations of the pivot)
+         * 
          */
         throw new UnsupportedOperationException("Unimplemented command 'scoreCoralCommand'");
     }
