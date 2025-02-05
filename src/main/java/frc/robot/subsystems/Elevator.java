@@ -12,10 +12,17 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.MutDistance;
+import edu.wpi.first.units.measure.MutLinearVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import static frc.robot.subsystems.Elevator.Constants.*;
 
 /** Subsystem which lifts manipulator and manipulator pivot. */
@@ -133,6 +140,27 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     /** Request object for setting elevator motors voltage directly. */
     private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
+    /** Mutable measure for voltages applied during sysId testing */
+    private final MutVoltage sysIdVoltage = Volts.mutable(0);
+    /** Mutable measure for distances traveled during sysId testing (Meters) */
+    private final MutDistance sysIdDistance = Meters.mutable(0);
+    /** Mutable measure for velocity during SysId testing (Meters/Second) */
+    private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
+
+    /**
+     * The sysIdRoutine object with default configuration and logging of voltage,
+     * velocity, and distance
+     */
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
+            new SysIdRoutine.Mechanism((voltage) -> {
+                setVoltage(voltage.magnitude());
+            }, (log) -> {
+                log.motor("Elevator")
+                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                        .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
+                        .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
+            }, this));
+
     public Elevator() {
         motorConfigs.Feedback.SensorToMechanismRatio = ENCODER_CONVERSION_FACTOR;
 
@@ -169,6 +197,26 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public double getPosition() {
         return leftMotor.getPosition(true).getValueAsDouble();
+    }
+
+    /**
+     * Finds the voltage of the {@link #leftMotor motor}
+     * 
+     * @return Voltage of the motor, as a double
+     */
+    public double getVoltage() {
+        return leftMotor.getMotorVoltage().getValueAsDouble();
+    }
+
+    /**
+     * Finds the velocity of the mechanism controlled by the {@link #leftMotor
+     * motor}
+     * 
+     * @return Velocity of the mechanism, in
+     *         {@link edu.wpi.first.units.Units#MetersPerSecond Meters per Second}
+     */
+    public double getVelocity() {
+        return leftMotor.getVelocity().getValueAsDouble();
     }
 
     /**
@@ -300,5 +348,27 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             leftMotor.setNeutralMode(NeutralModeValue.Brake);
             rightMotor.setNeutralMode(NeutralModeValue.Brake);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("elevator.coastMotorsCommand");
+    }
+
+    /**
+     * Creates a command for the sysId quasistatic test, which gradually speeds up
+     * the mechanism to eliminate variation from acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the quasistatic test
+     */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction);
+    }
+
+    /**
+     * Creates a command for the sysId dynamic test, which will step up the speed to
+     * see how the mechanism behaves during acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the dynamic test
+     */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction);
     }
 }
