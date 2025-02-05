@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import java.lang.annotation.Target;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -27,6 +28,7 @@ import com.techhounds.houndutil.houndauto.AutoManager;
 import com.techhounds.houndutil.houndauto.Reflector;
 import com.techhounds.houndutil.houndlib.ChassisAccelerations;
 import com.techhounds.houndutil.houndlib.MotorHoldMode;
+import com.techhounds.houndutil.houndlib.ShootOnTheFlyCalculator;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSwerveDrive;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSwerveDrive.DriveMode;
 import com.techhounds.houndutil.houndlib.swerve.CoaxialSwerveModule.SwerveConstants;
@@ -78,6 +80,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.DeferredCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.utils.TargetAlign;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import static frc.robot.Constants.Teleop.*;
@@ -1146,4 +1149,63 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             this.initialized = initialized;
         }).withName("drivetrain.setInitialized");
     }
+
+    /* TODO copy pasted from 2024-robot */
+
+    public Command targetPoseCommand(Supplier<Pose3d> targetPose) {
+        return controlledRotateCommand(() -> {
+            Pose2d target = targetPose.get().toPose2d();
+            Transform2d diff = getPose().minus(target);
+            Rotation2d rot = new Rotation2d(diff.getX(), diff.getY());
+            rot = rot.plus(new Rotation2d(Math.PI));
+            return rot.getRadians();
+        });
+    }
+
+    public Pose3d calculateEffectiveTargetLocation() {
+        return ShootOnTheFlyCalculator.calculateEffectiveTargetLocation(
+                getPose(), FieldConstants.SPEAKER_TARGET,
+                getFieldRelativeSpeeds(), getFieldRelativeAccelerations(),
+                (d) -> Constants.Shooter.getProjectileSpeed(d),
+                Constants.Shooter.GOAL_POSITION_ITERATIONS, Constants.Shooter.ACCELERATION_COMPENSATION_FACTOR);
+    }
+
+    /* TODO new targeting functions */
+    public Pose2d chooseTargetBranch() { // TODO parameter for side
+        /**
+         * PROBABLY ONLY WORKS WHEN YOURE REALLY CLOSE TO ONE SPECIFIC APRILTAG
+         * 1. gets current pose
+         * - getPose()
+         * 2. figures out which side of which reef we're on based on the april
+         * tag/closest side
+         * - for closest side: find i that gives min(getPose-apriltag_i) for i in {reef
+         * apriltag #s}
+         * 3. sets a target to move to
+         * - thats gonna be pose2d with specific perp. theta for the side, then x,y is
+         * pos of april tag + perp. vector pointing away a certain distance
+         * - w/ knowledge of field move to certain position
+         * 4. moves there
+         * - driveToPose (?)
+         */
+
+        // TODO really ugly
+        int targetIndex = 0;
+        double minDist = 100293580;// make this less arbitrary
+        for (int i = 0; i < 6; i++) {
+            Transform2d diff = getPose().minus(TargetAlign.getReefPositionPose(1, i).toPose2d()); // level shouldnt
+                                                                                                  // matter
+            Translation2d dist = new Translation2d(diff.getX(), diff.getY());
+            if (dist.getNorm() < minDist) {
+                minDist = dist.getNorm();
+                targetIndex = i;
+            }
+        }
+        Pose2d target = TargetAlign.getReefPositionPose(1, targetIndex).toPose2d();
+
+        return target.plus(Transform2d(new SomeTranslation2dConstant, 
+            target.getRotation().plus(new Rotation2d(Math.PI / 2)))); /**
+            TODO translation2d constant and make that pi/2 get added or subtracted based on the side you want to go to*/
+
+    }
+
 }
