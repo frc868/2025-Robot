@@ -19,7 +19,7 @@ import frc.robot.subsystems.Vision;
  * climbing
  * - setup climb, run climb X,X
  * align to reef branch X
- * - VISION, move and rotate to target
+ * - VISION, move and rotate to target X
  * intake algae from reef
  * - move to position X
  * ground intake algae
@@ -111,9 +111,11 @@ public class RobotCommands {
                                                                                                * position
                                                                                                */
         /**
-         * move elevator then pivot to the right position
+         * move elevator and pivot to the right position
          */
-        throw new UnsupportedOperationException("Unimplemented command 'moveToAlgaeScoringPositionCommand'");
+        return Commands.sequence(
+                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)));
     }
 
     public static Command moveToCoralScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
@@ -123,6 +125,9 @@ public class RobotCommands {
         /**
          * move elevator then pivot to the right position
          */
+        return Commands.sequence(
+                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)));
         throw new UnsupportedOperationException("Unimplemented command 'moveToCoralScoringPositionCommand'");
     }
 
