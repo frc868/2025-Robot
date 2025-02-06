@@ -19,6 +19,9 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.subsystems.Intake.Constants.Pivot;
 import static frc.robot.subsystems.Intake.Constants.*;
+import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
 
 /** Subsystem which intakes algae from ground. */
 public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJointedArm<Pivot.Position> {
@@ -138,6 +141,13 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     private final TalonFXConfiguration rollersMotorConfigs = new TalonFXConfiguration();
     /** Intake rollers motor voltage request object. */
     private final VoltageOut rollersVoltageRequest = new VoltageOut(0);
+
+    /** SysID weee */
+    private final MutVoltage sysIdVoltage = Volts.mutable(0);
+    private final MutAngle sysIdAngle = Degrees.mutable(0);
+    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);
+
+    
 
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
