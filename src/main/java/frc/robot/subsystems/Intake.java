@@ -289,4 +289,12 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
                 () -> rollersMotor.stopMotor())
                 .withName("intake.reverseRollersCommand");
     }
+
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction)) {
+        return sysIdRoutine.quasistatic(direction);
+    }
+
+    public Command sysIdDynamic(SysIdRoutine.Direction direction)) {
+        return sysIdRoutine.dynamic(direction);
+    }
 }
