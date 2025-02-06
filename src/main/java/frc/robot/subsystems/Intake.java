@@ -145,10 +145,17 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     /** SysID weee */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
     private final MutAngle sysIdAngle = Degrees.mutable(0);
-    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);
+    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);    
 
-    
-
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new sysIdRoutine.Config(),
+            new sysIdRoutine.Mechanism(voltage -> setVoltage(voltage.magnitude());
+            log -> {
+                log.motor("Intake")
+                .voltage(sysIdVoltage.mut_replace(getVoltage(), Voltage))
+                .angularPosition(sysIdAngle.mut_replace(getPosition(), Degrees))
+                .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond))
+            } this;)
+            );
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
         pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
@@ -183,6 +190,14 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     @Override
     public double getPosition() {
         return pivotMotor.getPosition(true).getValueAsDouble();
+    }
+
+    public double getVelocity() {
+        return pivotMotor.getVelocity().getValueAsDouble();
+    }
+
+    public double getVoltage() {
+        return pivotMotor.getMotorVoltage().getValueAsDouble();
     }
 
     @Override
