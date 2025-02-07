@@ -12,9 +12,13 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.MutAngle;
+import edu.wpi.first.units.measure.MutAngularVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.subsystems.Intake.Constants.Pivot;
@@ -145,17 +149,18 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     /** SysID weee */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
     private final MutAngle sysIdAngle = Degrees.mutable(0);
-    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);    
+    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);
 
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new sysIdRoutine.Config(),
-            new sysIdRoutine.Mechanism(voltage -> setVoltage(voltage.magnitude());
-            log -> {
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
+            new SysIdRoutine.Mechanism((voltage) -> {
+                setVoltage(voltage.magnitude());
+            }, (log) -> {
                 log.motor("Intake")
-                .voltage(sysIdVoltage.mut_replace(getVoltage(), Voltage))
-                .angularPosition(sysIdAngle.mut_replace(getPosition(), Degrees))
-                .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond))
-            } this;)
-            );
+                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Degrees))
+                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond));
+            }, this));
+
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
         pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
@@ -290,11 +295,11 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
                 .withName("intake.reverseRollersCommand");
     }
 
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction)) {
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
 
-    public Command sysIdDynamic(SysIdRoutine.Direction direction)) {
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.dynamic(direction);
     }
 }
