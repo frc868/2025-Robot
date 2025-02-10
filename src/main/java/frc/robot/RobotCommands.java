@@ -55,19 +55,8 @@ public class RobotCommands {
     public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
 
         /**
-         * PROBABLY ONLY WORKS WHEN YOURE REALLY CLOSE TO ONE SPECIFIC APRILTAG
-         * 1. gets current pose
-         * - getPose()
-         * 2. figures out which side of which reef we're on based on the april
-         * tag/closest side
-         * - for closest side: find i that gives min(getPose-apriltag_i) for i in {reef
-         * apriltag #s}
-         * 3. sets a target to move to
-         * - thats gonna be pose2d with specific perp. theta for the side, then x,y is
-         * pos of april tag + perp. vector pointing away a certain distance
-         * - w/ knowledge of field move to certain position
-         * 4. moves there
-         * - driveToPose (?)
+         * 1. locate april tag on reef
+         * 2. move to certain x y offset
          */
         return drivetrain.driveToPoseCommand(drivetrain::chooseTargetBranch); // TODO fix it
 
@@ -159,17 +148,24 @@ public class RobotCommands {
         return manipulator.reverseRollersCommand(); // TODO specific voltage?
     }
 
-    public static Command lockOnCommand(Drivetrain drivetrain) { /**
-                                                                  * parameter for
-                                                                  * position
-                                                                  * reef or barge or processor
-                                                                  */
+    public static Command lockOnCommand(Drivetrain drivetrain, boolean reef) { /**
+                                                                                * make it more descriptive
+                                                                                */
 
         /**
          * constantly target reef with targetpose
+         * 
+         * () -> DriverStation.getAlliance().isPresent()
+         * && DriverStation.getAlliance().get() == Alliance.Red
+         * ? Reflector.reflectPose3d(FieldConstants.SPEAKER_TARGET,
+         * FieldConstants.FIELD_LENGTH)
+         * : FieldConstants.SPEAKER_TARGET)
          */
-        return drivetrain.targetPoseCommand(null); // TODO way to calculate target
-        // throw new UnsupportedOperationException("Unimplemented command
+        return drivetrain
+                .targetPoseCommand(() -> reef ? FieldConstants.TEMP_REEF_TARGET : FieldConstants.TEMP_BARGE_TARGET); // TODO
+        // make
+        // it
+        // real
         // 'scoreCoralCommand'");
     }
 
