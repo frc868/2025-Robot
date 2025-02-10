@@ -113,7 +113,20 @@ public class RobotCommands {
                         manipulator.intakeGamePieceCommand()));
     }
 
-    // TODO positionSupplier something
+    public static Command ejectAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
+            Intake intake) {
+        /**
+         * put the intake down then move the manipulator into position then run both the
+         * intake and manipulator
+         */
+        return Commands.sequence(
+                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
+                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
+                Commands.parallel(intake.reverseRollersCommand(), // TODO iffy
+                        manipulator.reverseRollersCommand()));
+    }
+
     public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
         /**
          * move elevator and pivot to the right position
@@ -137,8 +150,6 @@ public class RobotCommands {
          * enough to be precise at the processor)
          */
         return manipulator.reverseRollersCommand(); // TODO specific voltage?
-        // throw new UnsupportedOperationException("Unimplemented command
-        // 'scoreAlgaeCommand'");
     }
 
     public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { /**
