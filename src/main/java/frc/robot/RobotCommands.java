@@ -152,15 +152,11 @@ public class RobotCommands {
         return manipulator.reverseRollersCommand(); // TODO specific voltage?
     }
 
-    public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { /**
-                                                                                                        * maybe a
-                                                                                                        * parameter for
-                                                                                                        * position
-                                                                                                        */
+    public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) {
         /**
          * reverse the rollers?
          */
-        throw new UnsupportedOperationException("Unimplemented command 'scoreCoralCommand'");
+        return manipulator.reverseRollersCommand(); // TODO specific voltage?
     }
 
     public static Command lockOnCommand(Drivetrain drivetrain) { /**
