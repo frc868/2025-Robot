@@ -9,6 +9,7 @@ import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Manipulator;
 import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.Vision;
+import frc.utils.GoalPositions;
 
 /**
  * Robot commands which involve multiple subsystems.
@@ -42,16 +43,12 @@ public class RobotCommands {
                 pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
                 climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT)); // TODO need real
                                                                                                 // constants
-        // throw new UnsupportedOperationException("Unimplemented command
-        // 'climbCommand'");
     }
 
     public static Command climbCommand(Climber climber) { // TODO probably useless?
         /** move the thing down until its all the way down */
         return climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT); // TODO need real
                                                                                               // constant
-        // throw new UnsupportedOperationException("Unimplemented command
-        // 'climbCommand'");
     }
 
     // TODO add sideSupplier or whatever
@@ -76,20 +73,30 @@ public class RobotCommands {
 
     }
 
-    public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
-            Vision Vision, Drivetrain drivetrain) {
+    /*
+     * list of positions we care about that need pivot+elevator+more:
+     * CORAL:
+     * - levels 1-4
+     * ALGAE:
+     * - processor
+     * - barge
+     * - lower reef algae
+     * - upper reef algae
+     * - ground
+     */
+
+    public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator, int level) {
         /**
          * use vision to align to the reef (probably in a separate command?) then move
          * the manipulator into position then run it
          * prepare position first, then move it in and then grab
          */
+
         return Commands.sequence( // TODO real constants
-                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
+                Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
+                        elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, true))),
                 pivot.moveToPositionCommand(Pivot.Constants.Position.SOME_CONSTANT),
                 manipulator.intakeGamePieceCommand());
-        // throw new UnsupportedOperationException("Unimplemented command
-        // 'intakeAlgaeReefCommand'");
     }
 
     public static Command intakeAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
@@ -104,34 +111,23 @@ public class RobotCommands {
                 intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
                 Commands.parallel(intake.runRollersCommand(),
                         manipulator.intakeGamePieceCommand()));
-        // throw new UnsupportedOperationException("Unimplemented command
-        // 'intakeAlgaeGroundCommand'");
     }
 
     // TODO positionSupplier something
-    public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
-                                                                                               * maybe a parameter for
-                                                                                               * position
-                                                                                               */
+    public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
         /**
          * move elevator and pivot to the right position
          */
-        return Commands.sequence(
-                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)));
+        return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
+                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, true)));
     }
 
-    public static Command moveToCoralScoringPositionCommand(Pivot pivot, Elevator elevator) { /**
-                                                                                               * maybe a parameter for
-                                                                                               * position
-                                                                                               */
+    public static Command moveToCoralScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
         /**
-         * move elevator then pivot to the right position
+         * move elevator and pivot to the right position
          */
-        return Commands.sequence(
-                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)));
-        throw new UnsupportedOperationException("Unimplemented command 'moveToCoralScoringPositionCommand'");
+        return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, false)),
+                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, false)));
     }
 
     public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { // TODO
@@ -151,7 +147,7 @@ public class RobotCommands {
                                                                                                         * position
                                                                                                         */
         /**
-         * 
+         * reverse the rollers?
          */
         throw new UnsupportedOperationException("Unimplemented command 'scoreCoralCommand'");
     }
