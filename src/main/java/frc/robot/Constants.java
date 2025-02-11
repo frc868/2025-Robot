@@ -21,6 +21,8 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 
 import com.techhounds.houndutil.houndlib.swerve.CoaxialSwerveModule.SwerveConstants;
+import com.techhounds.houndutil.houndlog.loggers.TunableDouble;
+
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 
 import edu.wpi.first.math.geometry.Translation2d;
@@ -38,6 +40,8 @@ public class Constants {
         public static final ControllerType CONTROLLER_TYPE = ControllerType.FlightStick;
 
         public static final double PERIOD = 0.020;
+
+        public static final TunableDouble DEMO_SPEED = new TunableDouble("subsystems/drivetrain/DEMO_SPEED", 1.0);
 
         public static final class Teleop {
                 /**
