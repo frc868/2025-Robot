@@ -24,9 +24,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      * manipulator pivot to be rotation away from zero point.
      */
     public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+    /** Ratio of motor rotations to pivot rotations. */
+    public static final double SENSOR_TO_MECHANISM = 12 / 1;
     /** Current limit of manipulator motor. */
     public static final double CURRENT_LIMIT = 10; // TODO find good # amps
-    public static final double GEAR_RATIO = 0; // TODO
     public static final double POS_TOLERANCE = .05; // TODO
     public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
 
@@ -107,17 +108,17 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Pivot() {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        motorConfigs.Feedback.RotorToSensorRatio = GEAR_RATIO;
+        motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
-        motorConfigs.Slot0.kP = Feedback.kP;
-        motorConfigs.Slot0.kI = Feedback.kI;
-        motorConfigs.Slot0.kD = Feedback.kD;
         motorConfigs.Slot0.kS = Feedforward.kS;
         motorConfigs.Slot0.kG = Feedforward.kG;
         motorConfigs.Slot0.kV = Feedforward.kV;
         motorConfigs.Slot0.kA = Feedforward.kA;
+        motorConfigs.Slot0.kP = Feedback.kP;
+        motorConfigs.Slot0.kI = Feedback.kI;
+        motorConfigs.Slot0.kD = Feedback.kD;
 
         motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionMagic.CRUISE_VELOCITY;
         motorConfigs.MotionMagic.MotionMagicAcceleration = MotionMagic.ACCELERATION;

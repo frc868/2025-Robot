@@ -23,7 +23,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
          * Direction of motor rotation defined as positive rotation. Defined for
          * manipulator pivot to be rotation away from zero point.
          */
-        public static final InvertedValue DIRECTION = InvertedValue.Clockwise_Positive;
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
         /** Manipulator motor current limit. */
         public static final double CURRENT_LIMIT = 0;
         /**
@@ -75,7 +75,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
         motorConfigs.CurrentLimits.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
-        motorConfigs.MotorOutput.Inverted = DIRECTION;
+        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
         motor.getConfigurator().apply(motorConfigs);
     }

@@ -12,6 +12,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.MutDistance;
 import edu.wpi.first.units.measure.MutLinearVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
@@ -41,7 +42,14 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          * Right motor direction is opposite of left motor direction.
          */
         public static final InvertedValue RIGHT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        public static final double ENCODER_CONVERSION_FACTOR = 1; // TODO
+        /** Ratio of motor rotations to elevator spool drum rotations. */
+        public static final double GEAR_RATIO = 3 / 1;
+        /** Radius of elevator spool drum. */
+        public static final double DRUM_RADIUS = Units.inchesToMeters(1.1);
+        /** Circumference of elevator spool drum. */
+        public static final double DRUM_CIRCUMFERENCE = 2 * Math.PI * DRUM_RADIUS;
+        /** Ratio of motor rotations to elevator height in meters. */
+        public static final double SENSOR_TO_MECHANISM = DRUM_CIRCUMFERENCE / GEAR_RATIO;
         /** Current limit of elevator motors. */
         public static final double CURRENT_LIMIT = 10; // TODO
 
@@ -162,7 +170,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             }, this));
 
     public Elevator() {
-        motorConfigs.Feedback.SensorToMechanismRatio = ENCODER_CONVERSION_FACTOR;
+        motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
@@ -192,7 +200,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      * Finds the position of the {@link #leftMotor motor}
      * 
      * @return The position of the elevator (in whatever unit is used for the
-     *         {@link Constants#ENCODER_CONVERSION_FACTOR conversion factor})
+     *         {@link Constants#SENSOR_TO_MECHANISM conversion factor})
      */
     @Override
     public double getPosition() {

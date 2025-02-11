@@ -45,7 +45,8 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
              * pivot to be rotation away from zero point.
              */
             public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-            public static final double ENCODER_CONVERSION_FACTOR = 0; // TODO get conversion factor for
+            /** Ratio of motor rotations to intake pivot rotations. */
+            public static final double SENSOR_TO_MECHANISM = 24.0 / 11.0;
             /** Intake pivot motor current limit. */
             public static final double CURRENT_LIMIT = 0; // TODO
             public static final double VEL_TOLERANCE = 0; // TODO find good value
@@ -141,11 +142,11 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
-        pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
-
-        pivotMotorConfigs.Feedback.RotorToSensorRatio = Pivot.ENCODER_CONVERSION_FACTOR;
-
         pivotMotorConfigs.MotorOutput.Inverted = Pivot.MOTOR_DIRECTION;
+
+        pivotMotorConfigs.Feedback.SensorToMechanismRatio = Pivot.SENSOR_TO_MECHANISM;
+
+        pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
 
         pivotMotorConfigs.Slot0.kG = Pivot.Feedforward.kG;
         pivotMotorConfigs.Slot0.kS = Pivot.Feedforward.kS;

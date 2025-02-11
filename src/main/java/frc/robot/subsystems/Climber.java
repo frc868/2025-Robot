@@ -13,11 +13,6 @@ import edu.wpi.first.units.measure.MutAngularVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.Climber.Constants.CAN;
-import frc.robot.subsystems.Climber.Constants.Feedback;
-import frc.robot.subsystems.Climber.Constants.Feedforward;
-import frc.robot.subsystems.Climber.Constants.MotionProfile;
-import frc.robot.subsystems.Climber.Constants.Position;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
@@ -36,10 +31,11 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
          * Direction of motor rotation defined as positive rotation. Defined for
          * climber motors to be rotation away from zero point.
          */
-        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+        /** Ratio of motor rotations to climber rotations. */
+        public static final double SENSOR_TO_MECHANISM = 36 / (0.75 * Math.PI);
         /** Current limit of climber motors. */
         public static final double CURRENT_LIMIT = 0; // TODO
-        public static final double GEAR_RATIO = 36 / (0.75 * Math.PI); // TODO
 
         /** CAN information of climber motors. */
         public static final class CAN {
@@ -145,11 +141,11 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
                         .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond));
             }, this));
 
-    /** Initial climber motors configurations. */
+    /** Initialize climber motors configurations. */
     public Climber() {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        motorConfigs.Feedback.SensorToMechanismRatio = GEAR_RATIO;
+        motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
