@@ -1,0 +1,94 @@
+package frc.utils;
+
+import java.util.function.Supplier;
+
+import frc.robot.subsystems.Elevator;
+import frc.robot.subsystems.Pivot;
+
+public class GoalPositions {
+    /*
+     * list of positions we care about that need pivot+elevator+more:
+     * CORAL:
+     * - levels 1-4
+     * ALGAE:
+     * - processor 2
+     * - barge 5
+     * - lower reef algae 3
+     * - upper reef algae 4
+     * - ground 1
+     */
+    // what the hell am i doing
+    public static Supplier<Pivot.Constants.Position> pivotLocation(int level, boolean algae) {
+        if (!algae) {
+            switch (level) {
+                case 1:
+                    return Pivot.Constants.Position.TEMP_CASE_ONE;
+                    break;
+                case 2:
+                    return Pivot.Constants.Position.TEMP_CASE_TWO;
+                    break;
+                case 3:
+                    return Pivot.Constants.Position.TEMP_CASE_THREE;
+                    break;
+                case 4:
+                    return Pivot.Constants.Position.TEMP_CASE_FOUR;
+                    break;
+            }
+        } else if (algae) {
+            switch (level) {
+                case 1:
+                    return Pivot.Constants.Position.TEMP_CASE_ONE;
+                    break;
+                case 2:
+                    return Pivot.Constants.Position.TEMP_CASE_TWO;
+                    break;
+                case 3:
+                    return Pivot.Constants.Position.TEMP_CASE_THREE;
+                    break;
+                case 4:
+                    return Pivot.Constants.Position.TEMP_CASE_FOUR;
+                    break;
+                case 5:
+                    return Pivot.Constants.Position.TEMP_CASE_FIVE;
+                    break;
+            }
+        }
+    }
+
+    public static Supplier<Elevator.Constants.Position> elevatorLocation(int level, boolean algae) {
+        if (!algae) {
+            switch (level) {
+                case 1:
+                    return Elevator.Constants.Position.TEMP_CASE_ONE;
+                    break;
+                case 2:
+                    return Elevator.Constants.Position.TEMP_CASE_TWO;
+                    break;
+                case 3:
+                    return Elevator.Constants.Position.TEMP_CASE_THREE;
+                    break;
+                case 4:
+                    return Elevator.Constants.Position.TEMP_CASE_FOUR;
+                    break;
+            }
+        } else if (algae) {
+            switch (level) {
+                case 1:
+                    return Elevator.Constants.Position.TEMP_CASE_ONE;
+                    break;
+                case 2:
+                    return Elevator.Constants.Position.TEMP_CASE_TWO;
+                    break;
+                case 3:
+                    return Elevator.Constants.Position.TEMP_CASE_THREE;
+                    break;
+                case 4:
+                    return Elevator.Constants.Position.TEMP_CASE_FOUR;
+                    break;
+                case 5:
+                    return Elevator.Constants.Position.TEMP_CASE_FIVE;
+                    break;
+            }
+        }
+    }
+}
