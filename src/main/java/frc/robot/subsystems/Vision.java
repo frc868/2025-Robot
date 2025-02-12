@@ -307,7 +307,7 @@ public class Vision implements BaseVision {
             if (bearings[i].id == ALGAE_OBJECT_ID) {
                 if (bearings[i].conf > MIN_OBJECT_CONFIDENCE) {
                     if (bearings[i].area > largestArea) {
-                        largestYaw = bearings[i].yaw;
+                        largestYaw = Units.degreesToRadians(bearings[i].yaw);
                         largestArea = bearings[i].area;
                     }
                 }
