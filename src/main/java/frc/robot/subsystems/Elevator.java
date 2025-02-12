@@ -64,8 +64,10 @@ public class Elevator extends SubsystemBase
             L3(0.0), // TODO get actual position
             L4(0.0), // TODO get actual position
             CORAL_INTAKE(0.0), // TODO get actual position
-            NET(0.0), // TODO get actual position
-            PROCESSOR(0.0); // TODO get actual position
+            PROCESSOR(0.0), // TODO get actual position
+            REEF_ALGAE_LOW(0.0),
+            REEF_ALGAE_HIGH(0.0),
+            NET(0.0); // TODO get actual position
 
             public final double value;
 

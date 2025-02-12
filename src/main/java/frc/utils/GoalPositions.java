@@ -37,19 +37,19 @@ public class GoalPositions {
         } else if (algae) {
             switch (level) {
                 case 1:
-                    return Pivot.Constants.Position.TEMP_CASE_ONE;
+                    return () -> Pivot.Constants.Position.GROUND;
                     break;
                 case 2:
-                    return Pivot.Constants.Position.TEMP_CASE_TWO;
+                    return () -> Pivot.Constants.Position.PROCESSOR;
                     break;
                 case 3:
-                    return Pivot.Constants.Position.TEMP_CASE_THREE;
+                    return () -> Pivot.Constants.Position.REEF_ALGAE_LOW;
                     break;
                 case 4:
-                    return Pivot.Constants.Position.TEMP_CASE_FOUR;
+                    return () -> Pivot.Constants.Position.REEF_ALGAE_HIGH;
                     break;
                 case 5:
-                    return Pivot.Constants.Position.TEMP_CASE_FIVE;
+                    return () -> Pivot.Constants.Position.NET;
                     break;
             }
         }
@@ -80,10 +80,10 @@ public class GoalPositions {
                     return () -> Elevator.Constants.Position.PROCESSOR;
                     break;
                 case 3:
-                    return Elevator.Constants.Position.TEMP_CASE_THREE;
+                    return () -> Elevator.Constants.Position.REEF_ALGAE_LOW;
                     break;
                 case 4:
-                    return Elevator.Constants.Position.TEMP_CASE_FOUR;
+                    return () -> Elevator.Constants.Position.REEF_ALGAE_HIGH;
                     break;
                 case 5:
                     return () -> Elevator.Constants.Position.NET;

@@ -11,6 +11,23 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Pivot.C
     public static final class Constants {
         /** Positions that pivot subsystem can be in. */
         public enum Position {
+            RESET_POS(0.0), // TODO get actual position
+            GROUND(0.0), // TODO get actual position
+            L1(0.0), // TODO get actual position
+            L2(0.0), // TODO get actual position
+            L3(0.0), // TODO get actual position
+            L4(0.0), // TODO get actual position
+            CORAL_INTAKE(0.0), // TODO get actual position
+            PROCESSOR(0.0), // TODO get actual position
+            REEF_ALGAE_LOW(0.0),
+            REEF_ALGAE_HIGH(0.0),
+            NET(0.0); // TODO get actual position
+
+            public final double value;
+
+            Position(double value) {
+                this.value = value;
+            }
         }
     }
 
