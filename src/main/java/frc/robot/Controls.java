@@ -133,7 +133,49 @@ public class Controls {
 
         public static void configureOperatorControls(int port, Drivetrain drivetrain, Intake intake, Elevator elevator,
                         Pivot pivot, Manipulator manipulator, Climber climber, LEDs leds) {
+                CommandXboxController controller = new CommandXboxController(port);
 
+                // coral intake, algae intake on bumper hold
+
+                controller.a()
+                                .and(controller.leftBumper().negate())
+                                .onTrue(manipulator.runRollersCommand());
+                controller.a()
+                                .and(controller.leftBumper())
+                                .onTrue(intake.runRollersCommand());
+
+                controller.b()
+                                .and(controller.leftBumper().negate())
+                                .onTrue(manipulator.reverseRollersCommand());
+                controller.b()
+                                .and(controller.leftBumper())
+                                .onTrue(intake.reverseRollersCommand());
+
+                // drivetrain uses both sticks for speed and bumpers for rotation
+                // TODO: add speed and rotation multipliers
+
+                drivetrain.setDefaultCommand(drivetrain.teleopDriveCommand(
+                                () -> controller.getLeftX(),
+                                () -> controller.getRightY(),
+                                () -> (controller.getRightTriggerAxis() - controller.getLeftTriggerAxis())));
+
+                // dpad controls for pivot and elevator
+                // TODO: change delta position to good values
+
+                controller.povUp()
+                                .whileTrue(elevator.movePositionDeltaCommand(() -> 0.1));
+                controller.povDown()
+                                .whileTrue(elevator.movePositionDeltaCommand(() -> -0.1));
+
+                controller.povRight()
+                                .whileTrue(pivot.movePositionDeltaCommand(() -> 0.1));
+                controller.povLeft()
+                                .whileTrue(pivot.movePositionDeltaCommand(() -> -0.1));
+
+                // climber
+                // TODO: change climber position to correct pos
+                controller.x()
+                                .toggleOnTrue(climber.moveToArbitraryPositionCommand(() -> 0.0));
         }
 
         public static void configureOverridesControls(int port, Drivetrain drivetrain, Intake intake, Elevator elevator,
