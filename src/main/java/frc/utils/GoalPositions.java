@@ -22,16 +22,16 @@ public class GoalPositions {
         if (!algae) {
             switch (level) {
                 case 1:
-                    return Pivot.Constants.Position.TEMP_CASE_ONE;
+                    return Pivot.Constants.Position.L1;
                     break;
                 case 2:
-                    return Pivot.Constants.Position.TEMP_CASE_TWO;
+                    return Pivot.Constants.Position.L2;
                     break;
                 case 3:
-                    return Pivot.Constants.Position.TEMP_CASE_THREE;
+                    return Pivot.Constants.Position.L3;
                     break;
                 case 4:
-                    return Pivot.Constants.Position.TEMP_CASE_FOUR;
+                    return Pivot.Constants.Position.L4;
                     break;
             }
         } else if (algae) {
@@ -59,25 +59,25 @@ public class GoalPositions {
         if (!algae) {
             switch (level) {
                 case 1:
-                    return Elevator.Constants.Position.TEMP_CASE_ONE;
+                    return () -> Elevator.Constants.Position.L1;
                     break;
                 case 2:
-                    return Elevator.Constants.Position.TEMP_CASE_TWO;
+                    return () -> Elevator.Constants.Position.L2;
                     break;
                 case 3:
-                    return Elevator.Constants.Position.TEMP_CASE_THREE;
+                    return () -> Elevator.Constants.Position.L3;
                     break;
                 case 4:
-                    return Elevator.Constants.Position.TEMP_CASE_FOUR;
+                    return () -> Elevator.Constants.Position.L4;
                     break;
             }
         } else if (algae) {
             switch (level) {
                 case 1:
-                    return Elevator.Constants.Position.TEMP_CASE_ONE;
+                    return () -> Elevator.Constants.Position.GROUND;
                     break;
                 case 2:
-                    return Elevator.Constants.Position.TEMP_CASE_TWO;
+                    return () -> Elevator.Constants.Position.PROCESSOR;
                     break;
                 case 3:
                     return Elevator.Constants.Position.TEMP_CASE_THREE;
@@ -86,7 +86,7 @@ public class GoalPositions {
                     return Elevator.Constants.Position.TEMP_CASE_FOUR;
                     break;
                 case 5:
-                    return Elevator.Constants.Position.TEMP_CASE_FIVE;
+                    return () -> Elevator.Constants.Position.NET;
                     break;
             }
         }

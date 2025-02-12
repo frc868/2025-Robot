@@ -2,6 +2,7 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Drivetrain;
@@ -13,6 +14,8 @@ import frc.robot.subsystems.Pivot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
+import frc.robot.RobotCommands;
+
 /**
  * Controls configurations for each member of drive team.
  * Each member has a static method which configures their controls.
@@ -22,6 +25,7 @@ public class Controls {
         private static boolean alignLeft = false; // default to aligning to the rightmost coral
         private static boolean inCoralMode = true; // default to coral mode
         private static int level = 1; // default to level 1
+        private static boolean climbReady = false;
 
         public static void configureDriverControls(int port, Drivetrain drivetrain, Intake intake, Elevator elevator,
                         Pivot pivot, Manipulator manipulator, Climber climber, LEDs leds) {
@@ -50,22 +54,58 @@ public class Controls {
                                 changeMode(true));
 
                 // if in coral mode, go to correct position
-                joystick.bottomHatUp().and(() -> inCoralMode).onTrue(Commands.parallel(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4),
-                                changeLevel(4)));
-                joystick.bottomHatRight().and(() -> inCoralMode).onTrue(Commands.parallel(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L3), changeLevel(3)));
-                joystick.bottomHatDown().and(() -> inCoralMode).onTrue(Commands.parallel(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2), changeLevel(2)));
-                joystick.bottomHatLeft().and(() -> inCoralMode).onTrue(Commands.parallel(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L1), changeLevel(1)));
+                joystick.bottomHatUp().and(() -> inCoralMode)
+                                .onTrue(RobotCommands.moveToCoralScoringPositionCommand(pivot, elevator, 4)
+                                                .andThen(changeLevel(4)));
+                joystick.bottomHatRight().and(() -> inCoralMode)
+                                .onTrue(RobotCommands.moveToCoralScoringPositionCommand(pivot, elevator, 3)
+                                                .andThen(changeLevel(3)));
+                joystick.bottomHatDown().and(() -> inCoralMode)
+                                .onTrue(RobotCommands.moveToCoralScoringPositionCommand(pivot, elevator, 2)
+                                                .andThen(changeLevel(2)));
+                joystick.bottomHatLeft().and(() -> inCoralMode)
+                                .onTrue(RobotCommands.moveToCoralScoringPositionCommand(pivot, elevator, 1)
+                                                .andThen(changeLevel(1)));
+
                 // if in coral mode, go to correct position
-                joystick.bottomHatUp().and(() -> !inCoralMode).onTrue(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.NET));
-                joystick.bottomHatDown().and(() -> !inCoralMode).onTrue(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.PROCESSOR));
+                joystick.bottomHatUp().and(() -> !inCoralMode)
+                                .onTrue(RobotCommands.moveToAlgaeScoringPositionCommand(pivot, elevator, 5)
+                                                .andThen(changeLevel(5)));
+                joystick.bottomHatDown().and(() -> !inCoralMode)
+                                .onTrue(RobotCommands.moveToAlgaeScoringPositionCommand(pivot, elevator, 2)
+                                                .andThen(changeLevel(2)));
 
                 // joystick.centerBottomHatUp().onTrue(intake.intakeCommand());
+
+                // when the red button is pressed, prepare for the climb, then wait for a second
+                // press to climb
+                joystick.redButton().and(() -> !climbReady)
+                                .onTrue(RobotCommands.prepareClimbCommand(intake, elevator, pivot, climber));
+                joystick.redButton().and(() -> climbReady)
+                                .onTrue(RobotCommands.climbCommand(climber));
+
+                // intake algae from reef
+                joystick.blackThumbButton()
+                                .whileTrue(RobotCommands.intakeAlgaeReefCommand(pivot, manipulator, elevator, 3 / 4)); // TODO
+                                                                                                                       // some
+                                                                                                                       // way
+                                                                                                                       // to
+                                                                                                                       // change
+                                                                                                                       // reef
+                                                                                                                       // levels
+                // intake/eject algae from the ground
+                joystick.centerBottomHatUp().whileTrue(
+                                RobotCommands.intakeAlgaeGroundCommand(pivot, manipulator, elevator, intake));
+                joystick.centerBottomHatDown().whileTrue(
+                                RobotCommands.ejectAlgaeGroundCommand(pivot, manipulator, elevator, intake));
+
+                // trigger presses
+                // score coral/algae
+                joystick.triggerHardPress().and(() -> inCoralMode)
+                                .onTrue(RobotCommands.scoreCoralCommand(pivot, elevator, manipulator));
+                joystick.triggerHardPress().and(() -> !inCoralMode)
+                                .onTrue(RobotCommands.scoreAlgaeCommand(pivot, elevator, manipulator));
+
         }
 
         /**
