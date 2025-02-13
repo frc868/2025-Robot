@@ -36,137 +36,150 @@ import frc.utils.GoalPositions;
  */
 public class RobotCommands {
 
-    public static Command prepareClimbCommand(Intake intake, Elevator elevator, Pivot pivot, Climber climber) {
-        /** move pivot elevator and everything into position */
-        return Commands.parallel(intake.moveToPositionCommand(() -> Intake.Constants.Position.SOME_CONSTANT),
-                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT),
-                pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT)); // TODO need real
-                                                                                                // constants
-    }
+        public static Command prepareClimbCommand(Intake intake, Elevator elevator, Pivot pivot, Climber climber) {
+                /** move pivot elevator and everything into position */
+                return Commands.parallel(intake.moveToPositionCommand(() -> Intake.Constants.Position.SOME_CONSTANT),
+                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT),
+                                pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
+                                climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT)); // TODO
+                                                                                                                // need
+                                                                                                                // real
+                                                                                                                // constants
+        }
 
-    public static Command climbCommand(Climber climber) { // TODO probably useless?
-        /** move the thing down until its all the way down */
-        return climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT); // TODO need real
-                                                                                              // constant
-    }
+        public static Command climbCommand(Climber climber) { // TODO probably useless?
+                /** move the thing down until its all the way down */
+                return climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT); // TODO need real
+                                                                                                      // constant
+        }
 
-    // TODO add sideSupplier or whatever
-    public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
+        // TODO add sideSupplier or whatever
+        public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
 
-        /**
-         * 1. locate april tag on reef
-         * 2. move to certain x y offset
-         */
-        return drivetrain.driveToPoseCommand(drivetrain::chooseTargetBranch); // TODO fix it
+                /**
+                 * 1. locate april tag on reef
+                 * 2. move to certain x y offset
+                 */
+                return drivetrain.driveToPoseCommand(drivetrain::chooseTargetBranch); // TODO fix it
 
-    }
+        }
 
-    /*
-     * list of positions we care about that need pivot+elevator+more:
-     * CORAL:
-     * - levels 1-4
-     * ALGAE:
-     * - processor
-     * - barge
-     * - lower reef algae
-     * - upper reef algae
-     * - ground
-     */
-
-    public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator, int level) {
-        /**
-         * use vision to align to the reef (probably in a separate command?) then move
-         * the manipulator into position then run it
-         * prepare position first, then move it in and then grab
+        /*
+         * list of positions we care about that need pivot+elevator+more:
+         * CORAL:
+         * - levels 1-4
+         * ALGAE:
+         * - processor
+         * - barge
+         * - lower reef algae
+         * - upper reef algae
+         * - ground
          */
 
-        return Commands.sequence( // TODO real constants
-                Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
-                        elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, true))),
-                pivot.moveToPositionCommand(Pivot.Constants.Position.SOME_CONSTANT),
-                manipulator.intakeGamePieceCommand());
-    }
+        public static Command intakeAlgaeReefCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
+                        int level) {
+                /**
+                 * use vision to align to the reef (probably in a separate command?) then move
+                 * the manipulator into position then run it
+                 * prepare position first, then move it in and then grab
+                 */
 
-    public static Command intakeAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
-            Intake intake) {
-        /**
-         * put the intake down then move the manipulator into position then run both the
-         * intake and manipulator
-         */
-        return Commands.sequence(
-                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
-                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
-                Commands.parallel(intake.runRollersCommand(),
-                        manipulator.intakeGamePieceCommand()));
-    }
+                return Commands.sequence( // TODO real constants
+                                Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
+                                                elevator.moveToPositionCommand(
+                                                                GoalPositions.elevatorLocation(level, true))),
+                                pivot.moveToPositionCommand(Pivot.Constants.Position.SOME_CONSTANT),
+                                manipulator.intakeGamePieceCommand());
+        }
 
-    public static Command ejectAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
-            Intake intake) {
-        /**
-         * put the intake down then move the manipulator into position then run both the
-         * intake and manipulator
-         */
-        return Commands.sequence(
-                Commands.parallel(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SOME_CONSTANT),
-                        elevator.moveToPositionCommand(() -> Elevator.Constants.Position.SOME_CONSTANT)),
-                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
-                Commands.parallel(intake.reverseRollersCommand(), // TODO iffy
-                        manipulator.reverseRollersCommand()));
-    }
+        public static Command intakeAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
+                        Intake intake) {
+                /**
+                 * put the intake down then move the manipulator into position then run both the
+                 * intake and manipulator
+                 */
+                return Commands.sequence(
+                                Commands.parallel(
+                                                pivot.moveToPositionCommand(
+                                                                () -> Pivot.Constants.Position.SOME_CONSTANT),
+                                                elevator.moveToPositionCommand(
+                                                                () -> Elevator.Constants.Position.SOME_CONSTANT)),
+                                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
+                                Commands.parallel(intake.runRollersCommand(),
+                                                manipulator.intakeGamePieceCommand()));
+        }
 
-    public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
-        /**
-         * move elevator and pivot to the right position
-         */
-        return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
-                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, true)));
-    }
+        public static Command ejectAlgaeGroundCommand(Pivot pivot, Manipulator manipulator, Elevator elevator,
+                        Intake intake) {
+                /**
+                 * put the intake down then move the manipulator into position then run both the
+                 * intake and manipulator
+                 */
+                return Commands.sequence(
+                                Commands.parallel(
+                                                pivot.moveToPositionCommand(
+                                                                () -> Pivot.Constants.Position.SOME_CONSTANT),
+                                                elevator.moveToPositionCommand(
+                                                                () -> Elevator.Constants.Position.SOME_CONSTANT)),
+                                intake.moveToPositionCommand(Intake.Constants.Position.SOME_CONSTANT),
+                                Commands.parallel(intake.reverseRollersCommand(), // TODO iffy
+                                                manipulator.reverseRollersCommand()));
+        }
 
-    public static Command moveToCoralScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
-        /**
-         * move elevator and pivot to the right position
-         */
-        return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, false)),
-                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, false)));
-    }
+        public static Command moveToAlgaeScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
+                /**
+                 * move elevator and pivot to the right position
+                 */
+                return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, true)),
+                                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, true)));
+        }
 
-    public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { // TODO
-                                                                                                       // parameters
-        /**
-         * just run the manipulator rollers (fast enough to throw the algae or slow
-         * enough to be precise at the processor)
-         */
-        return manipulator.reverseRollersCommand(); // TODO specific voltage?
-    }
+        public static Command moveToCoralScoringPositionCommand(Pivot pivot, Elevator elevator, int level) {
+                /**
+                 * move elevator and pivot to the right position
+                 */
+                return Commands.parallel(pivot.moveToPositionCommand(GoalPositions.pivotLocation(level, false)),
+                                elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, false)));
+        }
 
-    public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) {
-        /**
-         * reverse the rollers?
-         */
-        return manipulator.reverseRollersCommand(); // TODO specific voltage?
-    }
+        public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { // TODO
+                                                                                                           // parameters
+                /**
+                 * just run the manipulator rollers (fast enough to throw the algae or slow
+                 * enough to be precise at the processor)
+                 */
+                return manipulator.reverseRollersCommand(); // TODO specific voltage?
+        }
 
-    public static Command lockOnCommand(Drivetrain drivetrain, boolean reef) { /**
-                                                                                * make it more descriptive
-                                                                                */
+        public static Command scoreCoralCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) {
+                /**
+                 * reverse the rollers?
+                 */
+                return manipulator.reverseRollersCommand(); // TODO specific voltage?
+        }
 
-        /**
-         * constantly target reef with targetpose
-         * 
-         * () -> DriverStation.getAlliance().isPresent()
-         * && DriverStation.getAlliance().get() == Alliance.Red
-         * ? Reflector.reflectPose3d(FieldConstants.SPEAKER_TARGET,
-         * FieldConstants.FIELD_LENGTH)
-         * : FieldConstants.SPEAKER_TARGET)
-         */
-        return drivetrain
-                .targetPoseCommand(() -> reef ? FieldConstants.TEMP_REEF_TARGET : FieldConstants.TEMP_BARGE_TARGET); // TODO
-        // make
-        // it
-        // real
-        // 'scoreCoralCommand'");
-    }
+        public static Command lockOnCommand(Drivetrain drivetrain, int item, boolean leftSide) { // TODO better
+                                                                                                 // param for stage
+                                                                                                 // objects
+
+                /**
+                 * while scoring:
+                 * - for reef: go to a certain position on the closest side based on side
+                 * alignment
+                 * - for barge: aim towards it
+                 * - for processor: aim towards it?
+                 */
+                if (item == 1) { // reef
+                        return drivetrain.driveToPoseCommand(() -> drivetrain.chooseTargetBranch(leftSide));
+                } else if (item == 2) { // barge
+                        return drivetrain.targetPoseCommand(Constants.Field.barge); // TODO this doesnt exist
+                } else if (item == 3) { // processor
+                        return drivetrain.targetPoseCommand(() -> Constants.Field.PROCESSOR_OPENING);
+                } else { // somethings wrong
+                        throw new UnsupportedOperationException("lockOnCommand screwed up"); // TODO fix
+                                                                                             // this
+                }
+
+        }
 
 }

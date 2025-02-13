@@ -100,6 +100,10 @@ public class Controls {
                                 RobotCommands.ejectAlgaeGroundCommand(pivot, manipulator, elevator, intake));
 
                 // trigger presses
+                // lock to target
+                joystick.triggerSoftPress().whileTrue(RobotCommands.lockOnCommand(drivetrain, alignLeft)); // TODO this
+                                                                                                           // command
+                                                                                                           // isnt real
                 // score coral/algae
                 joystick.triggerHardPress().and(() -> inCoralMode)
                                 .onTrue(RobotCommands.scoreCoralCommand(pivot, elevator, manipulator));

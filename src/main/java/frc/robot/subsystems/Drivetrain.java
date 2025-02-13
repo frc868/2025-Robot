@@ -1170,29 +1170,19 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 Constants.Shooter.GOAL_POSITION_ITERATIONS, Constants.Shooter.ACCELERATION_COMPENSATION_FACTOR);
     }
 
-    /* TODO new targeting functions */
-    public Pose2d chooseTargetBranch() { // TODO parameter for side
+    public Pose2d chooseTargetBranch(boolean leftSide) {
         /**
-         * PROBABLY ONLY WORKS WHEN YOURE REALLY CLOSE TO ONE SPECIFIC APRILTAG
-         * 1. gets current pose
-         * - getPose()
-         * 2. figures out which side of which reef we're on based on the april
-         * tag/closest side
-         * - for closest side: find i that gives min(getPose-apriltag_i) for i in {reef
-         * apriltag #s}
-         * 3. sets a target to move to
-         * - thats gonna be pose2d with specific perp. theta for the side, then x,y is
-         * pos of april tag + perp. vector pointing away a certain distance
-         * - w/ knowledge of field move to certain position
-         * 4. moves there
-         * - driveToPose (?)
+         * will only really work when its close
+         * find the closest side with a for loop
+         * set that side as our target
+         * return a pose based on the side and left/right we want to go to
          */
 
         // TODO really ugly
         int targetIndex = 0;
         double minDist = 100293580;// make this less arbitrary
         for (int i = 0; i < 6; i++) {
-            Transform2d diff = getPose().minus(TargetAlign.getReefPositionPose(1, i).toPose2d()); // level shouldnt
+            Transform2d diff = getPose().minus(TargetAlign.getReefPositionPose(0, i).toPose2d()); // level shouldnt
                                                                                                   // matter
             Translation2d dist = new Translation2d(diff.getX(), diff.getY());
             if (dist.getNorm() < minDist) {
@@ -1200,11 +1190,18 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 targetIndex = i;
             }
         }
-        Pose2d target = TargetAlign.getReefPositionPose(1, targetIndex).toPose2d();
+        Pose2d target = TargetAlign.getReefPositionPose(0, targetIndex).toPose2d();
 
-        return target.plus(Transform2d(new SomeTranslation2dConstant, 
-            target.getRotation().plus(new Rotation2d(Math.PI / 2)))); /**
-            TODO translation2d constant and make that pi/2 get added or subtracted based on the side you want to go to*/
+        int Xmultiplier = leftSide ? -1 : 1;
+
+        /*
+         * given our target pose, with the x,y coordinates and angle of the
+         * reef side, we add an offset vector that's also rotated based on the angle
+         */
+
+        return target
+                .plus(Transform2d(new Translation2d(Constants.TEMP_VARIABLE * Xmultiplier, Constants.TEMP_VARIABLE),
+                        target.getRotation().plus(new Rotation2d(Constants.TEMP_VARIABLE)))); // TODO temp variables
 
     }
 
