@@ -51,6 +51,8 @@ public class Constants {
                 public static final double REEF_L3_INSET = 0.041;
                 public static final double REEF_L4_INSET = 0.027;
 
+                public static final double REEF_INITIAL_POINT_RADIUS = REEF_RADIUS + 1.5;
+
                 public static final double REEF_LEVEL_RADII[] = { REEF_RADIUS - REEF_L1_INSET,
                                 REEF_RADIUS - REEF_L2_INSET, REEF_RADIUS - REEF_L3_INSET, REEF_RADIUS - REEF_L4_INSET };
 

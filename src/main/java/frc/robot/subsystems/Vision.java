@@ -357,7 +357,8 @@ public class Vision implements BaseVision {
         }
 
         if (numCanSeeTag++ < 1) {
-            return null;
+            return TargetAlign.getInitialPoint(side);
+            // return null;
         } else {
             for (int i = 0; i < 2; i++) {
                 averagedTransform = averagedTransform.plus(transforms[i]);
