@@ -22,6 +22,8 @@ import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -34,10 +36,12 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 
 import static frc.robot.subsystems.Vision.Constants.*;
 import frc.robot.subsystems.ObjectPhotonCamera;
 import frc.robot.subsystems.ObjectPhotonCamera.*;
+import frc.utils.TargetAlign;
 
 public class Vision implements BaseVision {
     public static final class Constants {
@@ -72,6 +76,9 @@ public class Vision implements BaseVision {
             OBJECT_CAMERA_CONSTANTS.STDDEV_LATENCY = 15; // TODO
 
         }
+
+        public static final int[] sideToTagIDBlue = { 18, 17, 22, 21, 20, 19 };
+        public static final int[] sideToTagIDRed = { 7, 8, 9, 10, 11, 6 };
 
         // 2/17/24
         public static final Transform3d[] ROBOT_TO_CAMS = new Transform3d[] {
@@ -317,5 +324,57 @@ public class Vision implements BaseVision {
         if (largestArea == 0)
             return -10000.0;
         return largestYaw;
+    }
+
+    /**
+     * Provides the pose3d needed to be driven to to score based on the front 2
+     * cameras, assuming both can see the tag related to the scoring position.
+     * Returns null if cannot detect tag.
+     * 
+     * @param tagID the ID of the tag to score on
+     * @param left  whether to score on the leftside or rightside.
+     */
+    @Log
+    public Pose2d getScoringPosition(int side, boolean left) {
+        int tagID;
+        if (DriverStation.getAlliance().orElse(null) == Alliance.Red) {
+            tagID = sideToTagIDRed[side];
+        } else {
+            tagID = sideToTagIDBlue[side];
+        }
+
+        Transform3d transforms[] = new Transform3d[2];
+        Transform3d averagedTransform = new Transform3d();
+        int numCanSeeTag = 0;
+        for (int i = 0; i < 2; i++) {
+            Transform3d transform = cameras[i].getRelativeTransformsOfTarget(tagID);
+            if (transform == null) {
+                continue;
+            } else {
+                transforms[i] = transform;
+                numCanSeeTag++;
+            }
+        }
+
+        if (numCanSeeTag++ < 1) {
+            return null;
+        } else {
+            for (int i = 0; i < 2; i++) {
+                averagedTransform = averagedTransform.plus(transforms[i]);
+            }
+            averagedTransform = averagedTransform.times(1.0 / numCanSeeTag);
+        }
+        Transform2d transform = new Transform2d(
+                new Translation2d(averagedTransform.getX(), averagedTransform.getY()),
+                new Rotation2d(averagedTransform.getRotation().getZ()));
+
+        updatePoseEstimator();
+        Pose2d targetPose = new Pose2d(
+                poseEstimator.getEstimatedPosition().plus(transform)
+                        .plus(TargetAlign.getTargetTransformFromAprilTag(left, side)).getX(),
+                poseEstimator.getEstimatedPosition().plus(transform)
+                        .plus(TargetAlign.getTargetTransformFromAprilTag(left, side)).getY(),
+                TargetAlign.getTargetRotation(side));
+        return targetPose;
     }
 }

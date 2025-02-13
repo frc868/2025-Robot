@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.Constants.Field.*;
 import frc.robot.Constants.*;
+import edu.wpi.first.math.geometry.Transform2d;
 
 public class TargetAlign {
 
@@ -19,7 +20,7 @@ public class TargetAlign {
      * @param position The position of the target.
      * @return The Pose3d of the target.
      */
-    public Pose3d getReefPositionPose(int level, int position) {
+    public static Pose3d getReefPositionPose(int level, int position) {
         double height = Field.REEF_LEVEL_HEIGHTS[level];
         double radius = Field.REEF_LEVEL_RADII[level];
         double verticalAngle = Field.REEF_LEVEL_ANGLES[level]; // 0 is horizontal, positive is angle up
@@ -55,6 +56,18 @@ public class TargetAlign {
         return pose;
     }
 
+    public static Rotation2d getTargetRotation(int side) {
+        double horizontalAngle = 2.0 * Math.PI / Field.REEF_SIDES * side + Math.PI;
+        return new Rotation2d(horizontalAngle);
+    }
+
+    public static Transform2d getTargetTransformFromAprilTag(boolean left, int side) {
+        int offsetDirection = left ? 1 : -1;
+        double x = offsetDirection * Field.REEF_RADIUS_OFFSET * Math.sin(getTargetRotation(side).getRadians());
+        double y = -offsetDirection * Field.REEF_RADIUS_OFFSET * Math.cos(getTargetRotation(side).getRadians());
+        return new Transform2d(x, y, new Rotation2d(0));
+    }
+
     /**
      * Converts from blue alliance position to red alliance position. Takes the
      * difference of the center of the field and the blue position, and adds it back
@@ -63,7 +76,7 @@ public class TargetAlign {
      * @param bluePosition The Pose2d of the blue alliance position.
      * @return The Pose2d of the red alliance position.
      */
-    public Pose2d getRedPosition(Pose2d bluePosition) {
+    public static Pose2d getRedPosition(Pose2d bluePosition) {
         double x = bluePosition.getX();
         double y = bluePosition.getY();
         double angle = bluePosition.getRotation().getRadians();
