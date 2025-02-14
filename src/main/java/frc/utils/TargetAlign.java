@@ -76,8 +76,10 @@ public class TargetAlign {
      */
     public static Transform2d getTargetTransformFromAprilTag(boolean left, int side) {
         int offsetDirection = left ? 1 : -1;
-        double x = offsetDirection * Field.REEF_RADIUS_OFFSET * Math.sin(getTargetRotation(side).getRadians());
-        double y = -offsetDirection * Field.REEF_RADIUS_OFFSET * Math.cos(getTargetRotation(side).getRadians());
+        double x = offsetDirection * Field.REEF_RADIUS_OFFSET * Math.sin(getTargetRotation(side).getRadians())
+                + Field.REEF_SCORING_POS_OFFSET_FROM_FROM_APRILTAG * Math.cos(getTargetRotation(side).getRadians());
+        double y = -offsetDirection * Field.REEF_RADIUS_OFFSET * Math.cos(getTargetRotation(side).getRadians())
+                + Field.REEF_SCORING_POS_OFFSET_FROM_FROM_APRILTAG * Math.sin(getTargetRotation(side).getRadians());
         return new Transform2d(x, y, new Rotation2d(0));
     }
 
