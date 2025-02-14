@@ -3,6 +3,7 @@ package frc.robot.subsystems;
 import java.util.function.Supplier;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -31,8 +32,10 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
             /** CAN IDs of intake motors. */
             public static final class IDs {
-                /** CAN ID of intake pivot motor. */
-                private static final int PIVOT = 16;
+                /** CAN ID of intake pivot left motor. */
+                private static final int PIVOT_LEFT = 17;
+                /** CAN ID of intake pivot right motor. */
+                private static final int PIVOT_RIGHT = 16;
                 /** CAN ID of intake rollers motor. */
                 private static final int ROLLERS = 15;
             }
@@ -44,13 +47,11 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
              * Direction of motor rotation defined as positive rotation. Defined for intake
              * pivot to be rotation away from zero point.
              */
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+            public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
             /** Ratio of motor rotations to intake pivot rotations. */
             public static final double SENSOR_TO_MECHANISM = 24.0 / 11.0;
             /** Intake pivot motor current limit. */
             public static final double CURRENT_LIMIT = 0; // TODO
-            public static final double VEL_TOLERANCE = 0; // TODO find good value
-            public static final double POS_TOLERANCE = .05;
 
             /** Positions intake pivot can be in. */
             public static enum Position {
@@ -115,8 +116,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
              * Direction of motor rotation defined as positive rotation. Defined for intake
              * rollers to be rotation which intakes algae.
              */
-            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-            public static final double ENCODER_CONVERSION_FACTOR = 0 * 2 * Math.PI; // TODO
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TOD
             /** Intake rollers motor current limit. */
             public static final double CURRENT_LIMIT = 0; // TODO
             /** Voltage to run intake rollers motor at. */
@@ -124,14 +124,18 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         }
     }
 
-    /** Intake pivot motor. */
-    private final TalonFX pivotMotor = new TalonFX(CAN.IDs.PIVOT, CAN.BUS);
+    /** Intake pivot left motor. */
+    private final TalonFX pivotLeftMotor = new TalonFX(CAN.IDs.PIVOT_LEFT, CAN.BUS);
+    /** Intake pivot right motor. */
+    private final TalonFX pivotRightMotor = new TalonFX(CAN.IDs.PIVOT_RIGHT, CAN.BUS);
     /** Intake pivot motor configuration object. */
     private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
     /**
      * Request object for motor voltage according to Motion Magic motion profile.
      */
-    private final MotionMagicVoltage pivotMotionMagicVoltageRequest = new MotionMagicVoltage(0);
+    private final MotionMagicVoltage pivotMotionMagicVoltageRequest = new MotionMagicVoltage(
+            Pivot.Position.ZERO.position);
+    private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
     /** Intake rollers motor. */
     private final TalonFX rollersMotor = new TalonFX(CAN.IDs.ROLLERS, CAN.BUS);
@@ -142,7 +146,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
-        pivotMotorConfigs.MotorOutput.Inverted = Pivot.MOTOR_DIRECTION;
+        pivotMotorConfigs.MotorOutput.Inverted = Pivot.LEFT_MOTOR_DIRECTION;
 
         pivotMotorConfigs.Feedback.SensorToMechanismRatio = Pivot.SENSOR_TO_MECHANISM;
 
@@ -160,11 +164,12 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
         pivotMotorConfigs.MotionMagic.MotionMagicAcceleration = Pivot.MotionMagic.ACCELERATION;
         pivotMotorConfigs.MotionMagic.MotionMagicJerk = Pivot.MotionMagic.JERK;
 
-        pivotMotor.getConfigurator().apply(pivotMotorConfigs);
+        pivotLeftMotor.getConfigurator().apply(pivotMotorConfigs);
+        pivotRightMotor.getConfigurator().apply(pivotMotorConfigs);
+
+        pivotRightMotor.setControl(new Follower(pivotLeftMotor.getDeviceID(), true));
 
         rollersMotorConfigs.MotorOutput.Inverted = Rollers.MOTOR_DIRECTION;
-
-        rollersMotorConfigs.Feedback.RotorToSensorRatio = Rollers.ENCODER_CONVERSION_FACTOR;
 
         rollersMotorConfigs.CurrentLimits.SupplyCurrentLimit = Rollers.CURRENT_LIMIT;
 
@@ -173,29 +178,26 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
     @Override
     public double getPosition() {
-        return pivotMotor.getPosition(true).getValueAsDouble();
+        return pivotLeftMotor.getPosition().getValueAsDouble();
     }
 
     @Override
     public void resetPosition() {
-        pivotMotor.setPosition(Pivot.Position.ZERO.position);
+        pivotLeftMotor.setPosition(Pivot.Position.ZERO.position);
+        pivotRightMotor.setPosition(Pivot.Position.ZERO.position);
     }
 
     @Override
     public void setVoltage(double voltage) {
-        pivotMotor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        pivotLeftMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            pivotMotor.setControl(pivotMotionMagicVoltageRequest.withPosition(pivotMotionMagicVoltageRequest.Position));
+            pivotLeftMotor
+                    .setControl(pivotMotionMagicVoltageRequest.withPosition(pivotMotionMagicVoltageRequest.Position));
         }).withName("intake.moveToCurrentGoalCommand");
-    }
-
-    public final boolean atGoal() {
-        return Math.abs(pivotMotionMagicVoltageRequest.Position - getPosition()) < Pivot.POS_TOLERANCE
-                && Math.abs(pivotMotor.getVelocity().getValueAsDouble()) < Pivot.VEL_TOLERANCE;
     }
 
     @Override
@@ -208,10 +210,8 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> {
-                    pivotMotor.setControl(pivotMotionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
-                }),
-                moveToCurrentGoalCommand().until(this::atGoal))
-                .withName("intake.moveToArbitraryPositionCommand");
+                    pivotLeftMotor.setControl(pivotMotionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
+                }), moveToCurrentGoalCommand()).withName("intake.moveToArbitraryPositionCommand");
     }
 
     @Override
@@ -241,14 +241,11 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
-            rollersMotor.stopMotor();
-            pivotMotor.stopMotor();
+            pivotLeftMotor.stopMotor();
         }).andThen(() -> {
-            pivotMotor.setNeutralMode(NeutralModeValue.Coast);
-            rollersMotor.setNeutralMode(NeutralModeValue.Coast);
+            pivotLeftMotor.setNeutralMode(NeutralModeValue.Coast);
         }).finallyDo((s) -> {
-            pivotMotor.setNeutralMode(NeutralModeValue.Brake);
-            rollersMotor.setNeutralMode(NeutralModeValue.Brake);
+            pivotLeftMotor.setNeutralMode(NeutralModeValue.Brake);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("intake.coastMotorsCommand");
     }
 

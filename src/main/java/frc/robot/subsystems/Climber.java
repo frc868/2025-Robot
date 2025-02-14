@@ -1,7 +1,9 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -15,6 +17,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.subsystems.Climber.Constants.CAN;
+import frc.robot.subsystems.Climber.Constants.Feedback;
+import frc.robot.subsystems.Climber.Constants.Feedforward;
+import frc.robot.subsystems.Climber.Constants.MotionProfile;
+import frc.robot.subsystems.Climber.Constants.Position;
 
 import java.util.function.Supplier;
 
@@ -120,6 +127,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
      */
     private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(
             Position.ZERO.position);
+    private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
     /** Mutable measure for voltages applied during sysId testing */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
@@ -163,6 +171,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
 
         motorA.getConfigurator().apply(motorConfigs);
         motorB.getConfigurator().apply(motorConfigs);
+
+        motorB.setControl(new Follower(motorA.getDeviceID(), false));
     }
 
     /**
@@ -210,8 +220,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
      */
     @Override
     public void setVoltage(double voltage) {
-        motorA.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        motorB.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motorA.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
     /**

@@ -4,6 +4,7 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -137,10 +138,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      * Configuration object for configurations shared across both elevator motors.
      */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /** Configuration object for setting the left motor's direction. */
-    private final MotorOutputConfigs leftMotorOutputConfigs = new MotorOutputConfigs();
-    /** Configuration object for setting the right motor's direction. */
-    private final MotorOutputConfigs rightMotorOutpurConfigs = new MotorOutputConfigs();
+
     /**
      * Request object for motor voltage according to Motion Magic motion profile.
      */
@@ -154,7 +152,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     private final MutDistance sysIdDistance = Meters.mutable(0);
     /** Mutable measure for velocity during SysId testing (Meters/Second) */
     private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
-
     /**
      * The sysIdRoutine object with default configuration and logging of voltage,
      * velocity, and distance
@@ -172,6 +169,8 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     public Elevator() {
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
+        motorConfigs.MotorOutput.Inverted = LEFT_MOTOR_DIRECTION;
+
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
         motorConfigs.Slot0.kG = Feedforward.kG;
@@ -186,14 +185,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         motorConfigs.MotionMagic.MotionMagicAcceleration = MotionProfile.ACCELERATION;
         motorConfigs.MotionMagic.MotionMagicJerk = MotionProfile.JERK;
 
-        leftMotorOutputConfigs.Inverted = LEFT_MOTOR_DIRECTION;
-        rightMotorOutpurConfigs.Inverted = RIGHT_MOTOR_DIRECTION;
-
         leftMotor.getConfigurator().apply(motorConfigs);
-        leftMotor.getConfigurator().apply(leftMotorOutputConfigs);
-
         rightMotor.getConfigurator().apply(motorConfigs);
-        rightMotor.getConfigurator().apply(rightMotorOutpurConfigs);
+
+        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
     }
 
     /**
@@ -204,7 +199,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public double getPosition() {
-        return leftMotor.getPosition(true).getValueAsDouble();
+        return leftMotor.getPosition().getValueAsDouble();
     }
 
     /**
@@ -244,7 +239,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public void setVoltage(double voltage) {
         leftMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
-        rightMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
     /**
@@ -278,9 +272,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return runOnce(() -> {
             leftMotor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
-            rightMotor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
-        })
-                .withName("elevator.moveToArbitraryPositionCommand");
+        }).withName("elevator.moveToArbitraryPositionCommand");
     }
 
     /**
@@ -295,18 +287,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                 .withName("elevator.movePositionDeltaCommand");
     }
 
-    /**
-     * Creates a command that sets the elevator motor goal to the current position,
-     * and moves to
-     * that goal.
-     * 
-     * @return command to hold current position
-     */
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
-            leftMotor.setControl(motionMagicVoltageRequest.withPosition(leftMotor.getPosition(true).getValue()));
-            rightMotor.setControl(motionMagicVoltageRequest.withPosition(rightMotor.getPosition(true).getValue()));
+            leftMotor.setControl(motionMagicVoltageRequest.withPosition(getPosition()));
         })
                 .withName("elevator.holdCurrentPositionCommand");
     }
