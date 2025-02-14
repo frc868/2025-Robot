@@ -10,6 +10,7 @@ import frc.robot.subsystems.Manipulator;
 import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.Vision;
 import frc.utils.GoalPositions;
+import frc.utils.TargetAlign;
 
 /**
  * Robot commands which involve multiple subsystems.
@@ -51,17 +52,6 @@ public class RobotCommands {
                 /** move the thing down until its all the way down */
                 return climber.moveToPositionCommand(() -> Climber.Constants.Position.SOME_CONSTANT); // TODO need real
                                                                                                       // constant
-        }
-
-        // TODO add sideSupplier or whatever
-        public static Command alignToBranchCommand(Drivetrain drivetrain) { // TODO this probably belongs in drivetrain
-
-                /**
-                 * 1. locate april tag on reef
-                 * 2. move to certain x y offset
-                 */
-                return drivetrain.driveToPoseCommand(drivetrain::chooseTargetBranch); // TODO fix it
-
         }
 
         /*
@@ -142,8 +132,7 @@ public class RobotCommands {
                                 elevator.moveToPositionCommand(GoalPositions.elevatorLocation(level, false)));
         }
 
-        public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) { // TODO
-                                                                                                           // parameters
+        public static Command scoreAlgaeCommand(Pivot pivot, Elevator elevator, Manipulator manipulator) {
                 /**
                  * just run the manipulator rollers (fast enough to throw the algae or slow
                  * enough to be precise at the processor)
@@ -158,9 +147,7 @@ public class RobotCommands {
                 return manipulator.reverseRollersCommand(); // TODO specific voltage?
         }
 
-        public static Command lockOnCommand(Drivetrain drivetrain, int item, boolean leftSide) { // TODO better
-                                                                                                 // param for stage
-                                                                                                 // objects
+        public static Command lockOnCommand(Drivetrain drivetrain, Vision vision, int item, boolean leftSide) {
 
                 /**
                  * while scoring:
@@ -170,14 +157,16 @@ public class RobotCommands {
                  * - for processor: aim towards it?
                  */
                 if (item == 1) { // reef
-                        return drivetrain.driveToPoseCommand(() -> drivetrain.chooseTargetBranch(leftSide));
+                        return drivetrain.driveToPoseCommand(() -> vision
+                                        .getScoringPosition(TargetAlign.getClosestSide(drivetrain.getPose()),
+                                                        leftSide));
                 } else if (item == 2) { // barge
                         return drivetrain.targetPoseCommand(Constants.Field.barge); // TODO this doesnt exist
                 } else if (item == 3) { // processor
                         return drivetrain.targetPoseCommand(() -> Constants.Field.PROCESSOR_OPENING);
                 } else { // somethings wrong
-                        throw new UnsupportedOperationException("lockOnCommand screwed up"); // TODO fix
-                                                                                             // this
+                        throw new UnsupportedOperationException("lockOnCommand screwed up"); // TODO idk better error
+                                                                                             // message
                 }
 
         }

@@ -37,6 +37,7 @@ import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 import com.techhounds.houndutil.houndlog.annotations.SendableLog;
 import com.techhounds.houndutil.houndlog.loggers.*;
+import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Matrix;
@@ -1203,6 +1204,28 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 .plus(Transform2d(new Translation2d(Constants.TEMP_VARIABLE * Xmultiplier, Constants.TEMP_VARIABLE),
                         target.getRotation().plus(new Rotation2d(Constants.TEMP_VARIABLE)))); // TODO temp variables
 
+    }
+
+    public Pose2d precisionAlignmentPose(boolean leftSide) {
+        /*
+         * difference of (relative pose to april tag) and (relative pose from april tag
+         * to branch) added to current pose
+         */
+        int Xmultiplier = leftSide ? -1 : 1;
+        Transform2d toAprilTag = getRelativePosesOfTargets[0].toPose2d;
+
+        Translation2d toAprilTagTranslation = new Translation2d(toAprilTag.getX(), toAprilTag.getY());
+
+        Translation2d toBranch = new Translation2d(Constants.TEMP_VARIABLE * Xmultiplier, Constants.TEMP_VARIABLE);
+        Translation2d movement = toAprilTagTranslation.minus(toBranch);
+
+        return getPose().plus(new Transform2d(movement.getX(), movement.getY(), null));
+
+    }
+
+    public Pose2d reefAlignPosition(boolean leftSide) {
+        return vision.getScoringPosition(TargetAlign.getClosestSide(drivetrain.getPose()),
+                leftSide);
     }
 
 }

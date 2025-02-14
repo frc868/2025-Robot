@@ -11,6 +11,7 @@ import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.LEDs;
 import frc.robot.subsystems.Manipulator;
 import frc.robot.subsystems.Pivot;
+import frc.robot.subsystems.Vision;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 
@@ -28,7 +29,7 @@ public class Controls {
         private static boolean climbReady = false;
 
         public static void configureDriverControls(int port, Drivetrain drivetrain, Intake intake, Elevator elevator,
-                        Pivot pivot, Manipulator manipulator, Climber climber, LEDs leds) {
+                        Pivot pivot, Manipulator manipulator, Climber climber, LEDs leds, Vision vision) {
                 CommandVirpilJoystick joystick = new CommandVirpilJoystick(port);
                 new Trigger(() -> (Math.abs(joystick.getTwist()) > 0.05))
                                 .whileTrue(drivetrain.disableControlledRotateCommand());
@@ -101,9 +102,13 @@ public class Controls {
 
                 // trigger presses
                 // lock to target
-                joystick.triggerSoftPress().whileTrue(RobotCommands.lockOnCommand(drivetrain, alignLeft)); // TODO this
-                                                                                                           // command
-                                                                                                           // isnt real
+                joystick.triggerSoftPress().and(() -> inCoralMode)
+                                .whileTrue(RobotCommands.lockOnCommand(drivetrain, vision, 1, alignLeft));
+                joystick.triggerSoftPress().and(() -> !inCoralMode).and(() -> level == 5)
+                                .whileTrue(RobotCommands.lockOnCommand(drivetrain, vision, 2, alignLeft));
+                joystick.triggerSoftPress().and(() -> !inCoralMode).and(() -> level == 2)
+                                .whileTrue(RobotCommands.lockOnCommand(drivetrain, vision, 3, alignLeft));
+
                 // score coral/algae
                 joystick.triggerHardPress().and(() -> inCoralMode)
                                 .onTrue(RobotCommands.scoreCoralCommand(pivot, elevator, manipulator));
