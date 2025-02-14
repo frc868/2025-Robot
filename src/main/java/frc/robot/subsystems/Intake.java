@@ -204,11 +204,11 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
     }
 
     public double getVelocity() {
-        return pivotMotor.getVelocity().getValueAsDouble();
+        return pivotLeftMotor.getVelocity().getValueAsDouble();
     }
 
     public double getVoltage() {
-        return pivotMotor.getMotorVoltage().getValueAsDouble();
+        return pivotLeftMotor.getMotorVoltage().getValueAsDouble();
     }
 
     @Override
