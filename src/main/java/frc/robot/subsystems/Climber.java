@@ -39,8 +39,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
          * climber motors to be rotation away from zero point.
          */
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        /** Ratio of motor rotations to climber rotations. */
-        public static final double SENSOR_TO_MECHANISM = 36 / (0.75 * Math.PI);
+        /** Ratio of motor rotations to string contraction. */
+        public static final double SENSOR_TO_MECHANISM = Units.inchesToMeters(7 / (0.75 * Math.PI) * 9);
         /** Current limit of climber motors. */
         public static final double CURRENT_LIMIT = 0; // TODO
 

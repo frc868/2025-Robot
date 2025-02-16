@@ -45,11 +45,11 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         /** Ratio of motor rotations to elevator spool drum rotations. */
         public static final double GEAR_RATIO = 3 / 1;
         /** Radius of elevator spool drum. */
-        public static final double DRUM_RADIUS = Units.inchesToMeters(1.1);
+        public static final double DRUM_RADIUS = Units.inchesToMeters(1.05);
         /** Circumference of elevator spool drum. */
         public static final double DRUM_CIRCUMFERENCE = 2 * Math.PI * DRUM_RADIUS;
         /** Ratio of motor rotations to elevator height in meters. */
-        public static final double SENSOR_TO_MECHANISM = DRUM_CIRCUMFERENCE / GEAR_RATIO;
+        public static final double SENSOR_TO_MECHANISM = GEAR_RATIO / DRUM_CIRCUMFERENCE;
         /** Current limit of elevator motors. */
         public static final double CURRENT_LIMIT = 10; // TODO
 

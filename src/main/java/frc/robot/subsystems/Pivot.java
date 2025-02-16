@@ -25,7 +25,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
     /** Ratio of motor rotations to pivot rotations. */
-    public static final double SENSOR_TO_MECHANISM = 12 / 1;
+    public static final double GEAR_RATIO = 12 / 1;
+    /** Ratio of motor rotations to pivot rotations, in radians. */
+    public static final double SENSOR_TO_MECHANISM = GEAR_RATIO / (2 * Math.PI);
     /** Current limit of manipulator motor. */
     public static final double CURRENT_LIMIT = 10; // TODO find good # amps
     public static final double POS_TOLERANCE = .05; // TODO
