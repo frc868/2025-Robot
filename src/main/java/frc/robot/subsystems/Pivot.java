@@ -8,6 +8,7 @@ import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 import com.techhounds.houndutil.houndlog.loggers.TunableDouble;
 
@@ -69,8 +70,12 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         /** Positions pivot can be in. */
         public static enum Position {
-            HARD_STOP(0.135009765625 - 2.83056640625),
+            HARD_STOP(0.40625),
             ZERO(0),
+            L1(0),
+            L2(-0.0385),
+            L3(-0.0385),
+            L4(-0.0725),
             SOFT_STOP(0.092);
 
             public final double position;
@@ -129,7 +134,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     /** Pivot motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
     /** Pivot motor Motion Magic voltage request object. */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0.2);
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
     private final NeutralOut stop = new NeutralOut();
 
     /** Mutable measure for voltages applied during sysId testing */
@@ -144,9 +149,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     private SysIdRoutine sysIdRoutine;
 
+    private PositionTracker positionTracker;
+
     /** Initialize pivot motor configurations. */
-    public Pivot() {
-        SmartDashboard.putNumber("kP", 0);
+    public Pivot(PositionTracker positionTracker) {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
@@ -184,9 +190,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
                             .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RotationsPerSecond));
                 }, this));
 
-        // \[]
+        this.positionTracker = positionTracker;
+        positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        // setDefaultCommand(moveToArbitraryPositionCommand(() -> -0.1));
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     public double getVoltage() {
@@ -266,10 +273,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return Commands.sequence(
-                runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().position))),
-                moveToCurrentGoalCommand()).withName("pivot.moveToPositionCommand");
+        return runOnce(() -> motor
+                .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().position)))
+                .withName("pivot.moveToPositionCommand");
     }
 
     /**
@@ -314,7 +320,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command holdCurrentPositionCommand() {
-        return movePositionDeltaCommand(() -> 0.0).withName("pivot.holdCurrentPositionCommand");
+        return runOnce(() -> motor.setControl(motionMagicVoltageRequest.withPosition(getPosition())))
+                .withName("pivot.holdCurrentPositionCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'holdCurrentPositionCommand'");
     }

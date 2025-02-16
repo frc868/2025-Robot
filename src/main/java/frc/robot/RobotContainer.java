@@ -6,6 +6,7 @@ package frc.robot;
 
 import java.util.function.Supplier;
 
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.SendableLog;
 
@@ -24,10 +25,11 @@ import frc.robot.subsystems.Pivot;
 
 public class RobotContainer {
     @Log(groups = "subsystems")
+    private final PositionTracker positionTracker = new PositionTracker();
     private final Drivetrain drivetrain = new Drivetrain();
     private final Intake intake = new Intake();
-    private final Elevator elevator = new Elevator();
-    private final Pivot pivot = new Pivot();
+    private final Elevator elevator = new Elevator(positionTracker);
+    private final Pivot pivot = new Pivot(positionTracker);
     private final Manipulator manipulator = new Manipulator();
     private final Climber climber = new Climber();
     private final LEDs leds = new LEDs();

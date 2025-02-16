@@ -12,6 +12,7 @@ import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 
 import edu.wpi.first.math.MathUtil;
@@ -84,9 +85,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             ZERO(0.0), // TODO get actual position
             GROUND(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(0.0), // TODO get actual position
-            L3(0.0), // TODO get actual position
-            L4(0.0), // TODO get actual positions
+            L2(0.44831), // TODO get actual position
+            L3(0.84455), // TODO get actual position
+            L4(1.58115), // TODO get actual positions
             PROCESSOR(0.0), // TODO get actual position
             SOFT_STOP(1.455);
 
@@ -104,11 +105,11 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             /** Voltage required to overcome gravity. */
             public static final double kG = 0.3; // TODO find good value
             /** Voltage required to overcome motor's static friction. */
-            public static final double kS = 0.45; // TODO find good value
+            public static final double kS = 0.2; // TODO find good value
             /** Voltage required to maintain constant velocity on motor. */
-            public static final double kV = 2.22 / DRUM_CIRCUMFERENCE; // TODO find good value
+            public static final double kV = 2.22 * DRUM_CIRCUMFERENCE; // TODO find good value
             /** Voltage required to induce a given acceleration on motor. */
-            public static final double kA = 0.05 / DRUM_CIRCUMFERENCE; // TODO find good value
+            public static final double kA = 0.05 * DRUM_CIRCUMFERENCE; // TODO find good value
         }
 
         /**
@@ -117,7 +118,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class Feedback {
             /** Proportional term constant which drives error to zero proportionally. */
-            public static final double kP = 0.25; // TODO find good value
+            public static final double kP = 50; // TODO find good value
             /**
              * Integral term constant which overcomes steady-state error. Should be used
              * with caution due to integral windup.
@@ -133,9 +134,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 0.25; // TODO
+            public static final double CRUISE_VELOCITY = 2; // TODO
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 0.25; // TODO
+            public static final double ACCELERATION = 2; // TODO
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
@@ -180,7 +181,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                         .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
             }, this));
 
-    public Elevator() {
+    private final PositionTracker positionTracker;
+
+    public Elevator(PositionTracker positionTracker) {
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
         motorConfigs.MotorOutput.Inverted = LEFT_MOTOR_DIRECTION;
@@ -207,7 +210,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
         rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
 
-        setDefaultCommand(moveToArbitraryPositionCommand(() -> 0.01));
+        this.positionTracker = positionTracker;
+        positionTracker.addPositionSupplier("Elevator", this::getPosition);
+
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -260,14 +266,18 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         leftMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
-    public boolean shouldEnforceSafeties(double currentPosition, double goalPosition) {
+    public boolean shouldEnforceSafeties(double currentPosition, double goalPosition, double pivotPosition) {
         boolean positiveTravel = goalPosition - currentPosition > 0;
 
-        if (positiveTravel) {
-            return currentPosition >= Position.SOFT_STOP.position;
-        } else {
-            return currentPosition <= Position.HARD_STOP.position;
-        }
+        // if (positiveTravel) {
+        // return currentPosition >= Position.SOFT_STOP.position - 0.05 || pivotPosition
+        // >= 0.041922;
+        // } else {
+        // return currentPosition <= Position.HARD_STOP.position + 0.05 || pivotPosition
+        // >= 0.041922;
+        // }
+
+        return pivotPosition >= 0.041922;
     }
 
     /**
@@ -287,9 +297,16 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         // }
         // }).withName("elevator.moveToCurrentGoalCommand");
 
-        return run(() -> leftMotor.setControl(
-                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position / DRUM_CIRCUMFERENCE)
-                        .withEnableFOC(true)));
+        return run(() -> {
+            if (shouldEnforceSafeties(getPosition(), motionMagicVoltageRequest.Position,
+                    positionTracker.getPosition("Pivot"))) {
+                leftMotor.setControl(stop);
+            } else {
+                leftMotor.setControl(
+                        motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
+                                .withEnableFOC(true));
+            }
+        });
     }
 
     /**
@@ -299,7 +316,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
+        return runOnce(() -> leftMotor
+                .setControl(motionMagicVoltageRequest
+                        .withPosition(goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE)))
                 .withName("elevator.moveToPositionCommand");
     }
 
@@ -325,7 +344,8 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
+        return moveToArbitraryPositionCommand(
+                () -> (motionMagicVoltageRequest.Position + delta.get()) / DRUM_CIRCUMFERENCE)
                 .withName("elevator.movePositionDeltaCommand");
     }
 

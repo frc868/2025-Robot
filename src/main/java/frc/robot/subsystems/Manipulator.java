@@ -48,7 +48,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** The voltage that will hold a game piece in place inside the intake */
             HOLD(0.0),
             /** The voltage that will be used to intake a game piece */
-            INTAKE(40),
+            INTAKE(80),
             /** The voltage that will be used to push out a game piece */
             OUTTAKE(-20);
 

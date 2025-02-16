@@ -2,6 +2,7 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.Climber;
@@ -56,6 +57,14 @@ public class Controls {
         drivetrain.setDefaultCommand(
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
+
+        // joystick.bottomHatUp().onTrue(Commands.sequence(pivot.moveToPositionCommand(()
+        // -> Pivot.Constants.Position.L4),
+        // elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
+        joystick.bottomHatDown()
+                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L2)
+                        .andThen(
+                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2)));
     }
 
     /**
@@ -91,7 +100,8 @@ public class Controls {
 
         controller.y().onTrue(pivot.resetPositionCommand().ignoringDisable(true));
         controller.x().onTrue(pivot.moveToArbitraryPositionCommand(() -> 0.1));
-        controller.a().onTrue(pivot.moveToArbitraryPositionCommand(() -> -0.1));
+        controller.a().onTrue(pivot.moveToArbitraryPositionCommand(() -> -0.0385));
+        controller.b().onTrue(elevator.moveToArbitraryPositionCommand(() -> 0.5));
     }
 
     /**
