@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -77,9 +77,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             L1(0.0), // TODO get actual position
             L2(0.0), // TODO get actual position
             L3(0.0), // TODO get actual position
-            L4(0.0), // TODO get actual position
-            CORAL_INTAKE(0.0), // TODO get actual position
-            PROCESSOR(0.0); // TODO get actual position
+            L4(0.0), // TODO get actual positions
+            PROCESSOR(0.0), // TODO get actual position
+            SOFT_STOP(1.455);
 
             public final double position;
 
@@ -144,7 +144,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     /**
      * Request object for motor voltage according to Motion Magic motion profile.
      */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
+    private final MotionMagicTorqueCurrentFOC motionMagicVoltageRequest = new MotionMagicTorqueCurrentFOC(0);
     /** Request object for setting elevator motors voltage directly. */
     private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
@@ -175,7 +175,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
         motorConfigs.MotorOutput.Inverted = LEFT_MOTOR_DIRECTION;
 
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
+        // motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
         motorConfigs.Slot0.kG = Feedforward.kG;
         motorConfigs.Slot0.kS = Feedforward.kS;
@@ -194,7 +194,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
         leftMotor.setNeutralMode(NeutralModeValue.Brake);
         rightMotor.setNeutralMode(NeutralModeValue.Brake);
-        
+
         rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
     }
 

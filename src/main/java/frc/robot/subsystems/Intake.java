@@ -13,6 +13,7 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.MutAngle;
 import edu.wpi.first.units.measure.MutAngularVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
@@ -55,8 +56,9 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
              * pivot to be rotation away from zero point.
              */
             public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+            public static final double GEAR_RATIO = 24.0 / 11.0;
             /** Ratio of motor rotations to intake pivot rotations. */
-            public static final double SENSOR_TO_MECHANISM = 24.0 / 11.0;
+            public static final double SENSOR_TO_MECHANISM = Units.rotationsToRadians(GEAR_RATIO);
             /** Intake pivot motor current limit. */
             public static final double CURRENT_LIMIT = 0; // TODO
 
@@ -172,7 +174,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
 
         pivotMotorConfigs.Feedback.SensorToMechanismRatio = Pivot.SENSOR_TO_MECHANISM;
 
-        pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
+        // pivotMotorConfigs.CurrentLimits.SupplyCurrentLimit = Pivot.CURRENT_LIMIT;
 
         pivotMotorConfigs.Slot0.kG = Pivot.Feedforward.kG;
         pivotMotorConfigs.Slot0.kS = Pivot.Feedforward.kS;

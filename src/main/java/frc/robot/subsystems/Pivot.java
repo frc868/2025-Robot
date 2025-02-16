@@ -2,7 +2,7 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -32,15 +32,13 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      * Direction of motor rotation defined as positive rotation. Defined for
      * manipulator pivot to be rotation away from zero point.
      */
-    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive; // TODO
     /** Ratio of motor rotations to pivot rotations. */
     public static final double GEAR_RATIO = 12 / 1;
     /** Ratio of motor rotations to pivot rotations, in radians. */
     public static final double SENSOR_TO_MECHANISM = GEAR_RATIO / (2 * Math.PI);
     /** Current limit of manipulator motor. */
-    public static final double CURRENT_LIMIT = 10; // TODO find good # amps
-    public static final double POS_TOLERANCE = .05; // TODO
-    public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
+    public static final double CURRENT_LIMIT = 10; // TODO find good # amps\\
 
     /** Constant values of manipualtor.. */
     public static final class Constants {
@@ -55,7 +53,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         /** Positions pivot can be in. */
         public static enum Position {
             ZERO(0),
-            TEMP(0);
+            TEMP(0),
+            SOFT_STOP(0.092);
 
             public final double value;
 
@@ -109,11 +108,11 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     }
 
     /** Pivot motor */
-    private final TalonFX motor = new TalonFX(CAN.ID);
+    private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Pivot motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
     /** Pivot motor Motion Magic voltage request object. */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
+    private final MotionMagicTorqueCurrentFOC motionMagicTorqueCurrentRequest = new MotionMagicTorqueCurrentFOC(0);
 
     /** Mutable measure for voltages applied during sysId testing */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
@@ -143,7 +142,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
+        // motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
         motorConfigs.Slot0.kS = Feedforward.kS;
         motorConfigs.Slot0.kG = Feedforward.kG;
@@ -195,7 +194,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public void setVoltage(final double voltage) {
-        motor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motor.setVoltage(voltage);
     }
 
     /**
@@ -207,7 +206,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            motor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position));
+            motor.setControl(motionMagicTorqueCurrentRequest.withPosition(motionMagicTorqueCurrentRequest.Position));
         }).withName("pivot.moveToCurrentGoalCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'moveToCurrentGoalCommand'");
@@ -224,35 +223,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().value))),
-                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
-    }
-
-    /*
-     * couldn't find a method to see if motion magic has reached its goal, so... if
-     * statement, yay.
-     * I doubt this works perfectly due to allowed tolerances in position probably
-     * being needed, but ¯\_(ツ)_/¯
-     */
-    public boolean atGoal2() {
-        if (motionMagicVoltageRequest.Position <= motor.getPosition().getValueAsDouble() + POS_TOLERANCE
-                && motionMagicVoltageRequest.Position >= motor.getPosition().getValueAsDouble()
-                        - POS_TOLERANCE) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /*
-     * lifted straight from the source code assuming target velocity = 0
-     * https://github.wpilib.org/allwpilib/docs/release/java/src-html/edu/wpi/first/
-     * math/controller/PIDController.html#line-299
-     */
-    public boolean atGoal() {
-        return Math.abs(
-                motionMagicVoltageRequest.Position - motor.getPosition().getValueAsDouble()) < POS_TOLERANCE
-                && Math.abs(motor.getVelocity().getValueAsDouble()) < VEL_TOLERANCE;
+                        .setControl(motionMagicTorqueCurrentRequest.withPosition(goalPositionSupplier.get().value))),
+                moveToCurrentGoalCommand()).withName("pivot.moveToPositionCommand");
     }
 
     /**
@@ -265,8 +237,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-                runOnce(() -> motor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()))),
-                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
+                runOnce(() -> motor
+                        .setControl(motionMagicTorqueCurrentRequest.withPosition(goalPositionSupplier.get()))),
+                moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'moveToArbitraryPositionCommand'");
     }
@@ -282,7 +255,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
+        return moveToArbitraryPositionCommand(() -> motionMagicTorqueCurrentRequest.Position + delta.get())
                 .withName("pivot.movePositionDeltaCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'movePositionDeltaCommand'");

@@ -2,9 +2,10 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 
 import edu.wpi.first.math.MathUtil;
@@ -43,19 +44,19 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         /**
          * Voltages to set the manipulator motor to, each accomplishing a different task
          */
-        public enum Voltages {
+        public enum Currents {
             /** The voltage that will hold a game piece in place inside the intake */
             HOLD(0.0),
             /** The voltage that will be used to intake a game piece */
-            INTAKE(0.0),
+            INTAKE(40),
             /** The voltage that will be used to push out a game piece */
-            OUTTAKE(0.0);
+            OUTTAKE(-20);
 
             /** This is used to access the values each name corresponds to, in volts */
-            public final double volts;
+            public final double current;
 
-            private Voltages(final double volts) {
-                this.volts = volts;
+            private Currents(final double current) {
+                this.current = current;
             }
         };
     }
@@ -67,14 +68,14 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     /** Stator current status signal of manipulator motor. */
     private final StatusSignal<Current> motorTorqueCurrent = motor.getTorqueCurrent();
     /** Manipulator motor voltage request object. */
-    private final VoltageOut voltageRequest = new VoltageOut(0);
+    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Debouncer for filtering out current spike outliers. */
     private final Debouncer currentSpikeDebouncer = new Debouncer(0.2);
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
+        motorConfigs.CurrentLimits.SupplyCurrentLimit = 100;
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
         motor.getConfigurator().apply(motorConfigs);
@@ -90,9 +91,9 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that will set the voltage to the input provided once
      */
     public Command setVoltageCommand(double voltage) {
-        return this.runOnce(() -> {
-            motor.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
-        }).withName("manipulator.setVoltage");
+        return runEnd(() -> {
+            motor.setControl(torqueCurrentRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        }, () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.setVoltage");
     }
 
     /**
@@ -103,7 +104,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command runRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.INTAKE.volts).withName("manipulator.runRollers");
+        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
+                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.runRollers");
     }
 
     /**
@@ -114,7 +116,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command reverseRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.OUTTAKE.volts).withName("manipulator.reverseRollers");
+        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
+                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.reverseRollers");
     }
 
     /**
@@ -133,7 +136,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Command that keeps the intaked game pieces in place
      */
     public Command holdRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.HOLD.volts).withName("manipulator.holdRollers");
+        return run(() -> torqueCurrentRequest.withOutput(0)).withName("manipulator.holdRollers");
     }
 
     /**
