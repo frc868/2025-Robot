@@ -87,6 +87,11 @@ public class Controls {
      */
     public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+        CommandXboxController controller = new CommandXboxController(port);
+
+        controller.y().onTrue(pivot.resetPositionCommand().ignoringDisable(true));
+        controller.x().onTrue(pivot.moveToArbitraryPositionCommand(() -> 0.1));
+        controller.a().onTrue(pivot.moveToArbitraryPositionCommand(() -> -0.1));
     }
 
     /**
