@@ -78,6 +78,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
         motor.getConfigurator().apply(motorConfigs);
+
+        motor.setNeutralMode(NeutralModeValue.Brake);
     }
 
     /**

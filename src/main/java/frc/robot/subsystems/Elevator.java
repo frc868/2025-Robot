@@ -187,6 +187,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         leftMotor.getConfigurator().apply(motorConfigs);
         rightMotor.getConfigurator().apply(motorConfigs);
 
+        leftMotor.setNeutralMode(NeutralModeValue.Brake);
+        rightMotor.setNeutralMode(NeutralModeValue.Brake);
+        
         rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
     }
 

@@ -173,6 +173,9 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
         motorB.getConfigurator().apply(motorConfigs);
 
         motorB.setControl(new Follower(motorA.getDeviceID(), false));
+
+        motorA.setNeutralMode(NeutralModeValue.Brake);
+        motorB.setNeutralMode(NeutralModeValue.Brake);
     }
 
     /**

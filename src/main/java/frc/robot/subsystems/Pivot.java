@@ -125,6 +125,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         motorConfigs.MotionMagic.MotionMagicJerk = MotionMagic.JERK;
 
         motor.getConfigurator().apply(motorConfigs);
+
+        motor.setNeutralMode(NeutralModeValue.Brake);
     }
 
     /**
