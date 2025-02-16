@@ -277,7 +277,13 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         // >= 0.041922;
         // }
 
-        return pivotPosition >= 0.041922;
+        // return pivotPosition >= 0.041922;
+
+        if (pivotPosition >= 0.041922) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -316,9 +322,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return runOnce(() -> leftMotor
+        return Commands.sequence(runOnce(() -> leftMotor
                 .setControl(motionMagicVoltageRequest
-                        .withPosition(goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE)))
+                        .withPosition(goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE).withEnableFOC(true))),
+                moveToCurrentGoalCommand())
                 .withName("elevator.moveToPositionCommand");
     }
 

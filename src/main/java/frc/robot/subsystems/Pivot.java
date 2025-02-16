@@ -273,8 +273,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return runOnce(() -> motor
-                .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().position)))
+        return Commands.sequence(
+                runOnce(() -> motor
+                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().position))),
+                moveToCurrentGoalCommand())
                 .withName("pivot.moveToPositionCommand");
     }
 
@@ -320,7 +322,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command holdCurrentPositionCommand() {
-        return runOnce(() -> motor.setControl(motionMagicVoltageRequest.withPosition(getPosition())))
+        return runOnce(
+                () -> motor.setControl(motionMagicVoltageRequest.withPosition(getPosition()).withEnableFOC(true)))
                 .withName("pivot.holdCurrentPositionCommand");
         // throw new UnsupportedOperationException("Unimplemented method
         // 'holdCurrentPositionCommand'");
