@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -7,13 +8,21 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
-import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.units.measure.MutAngle;
+import edu.wpi.first.units.measure.MutAngularVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import java.util.function.Supplier;
+
+import static edu.wpi.first.units.Units.Radian;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.Volts;
 
 import static frc.robot.subsystems.Pivot.Constants.*;
 
@@ -106,6 +115,28 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     /** Pivot motor Motion Magic voltage request object. */
     private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
 
+    /** Mutable measure for voltages applied during sysId testing */
+    private final MutVoltage sysIdVoltage = Volts.mutable(0);
+    /** Mutable measure for distances traveled during sysId testing (Meters) */
+    private final MutAngle sysIdAngle = Radian.mutable(0);
+    /** Mutable measure for velocity during SysId testing (Meters/Second) */
+    private final MutAngularVelocity sysIdVelocity = RadiansPerSecond.mutable(0);
+    /**
+     * The sysIdRoutine object with default configuration and logging of voltage,
+     * velocity, and distance
+     */
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(Volts.of(0.25).per(Second), Volts.of(1), null,
+                    state -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(voltage -> {
+                setVoltage(voltage.magnitude());
+            }, log -> {
+                log.motor("Pivot")
+                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Radian))
+                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RadiansPerSecond));
+            }, this));
+
     /** Initialize pivot motor configurations. */
     public Pivot() {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
@@ -129,6 +160,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         motor.getConfigurator().apply(motorConfigs);
 
         motor.setNeutralMode(NeutralModeValue.Brake);
+    }
+
+    public double getVoltage() {
+        return motor.getMotorVoltage().getValueAsDouble();
+    }
+
+    public double getVelocity() {
+        return motor.getVelocity().getValueAsDouble();
     }
 
     /**
@@ -303,5 +342,27 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         }).finallyDo((d) -> {
             motor.setNeutralMode(NeutralModeValue.Coast);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("pivot.coastMotorsCommand");
+    }
+
+    /**
+     * Creates a command for the sysId quasistatic test, which gradually speeds up
+     * the mechanism to eliminate variation from acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the quasistatic test
+     */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction);
+    }
+
+    /**
+     * Creates a command for the sysId dynamic test, which will step up the speed to
+     * see how the mechanism behaves during acceleration
+     * 
+     * @param direction Direction to run the motors in
+     * @return Command that runs the dynamic test
+     */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction);
     }
 }

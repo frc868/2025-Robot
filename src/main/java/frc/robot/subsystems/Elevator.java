@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
@@ -24,6 +25,8 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static edu.wpi.first.units.Units.Volts;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Second;
+
 import static frc.robot.subsystems.Elevator.Constants.*;
 
 /** Subsystem which lifts manipulator and manipulator pivot. */
@@ -155,10 +158,12 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      * The sysIdRoutine object with default configuration and logging of voltage,
      * velocity, and distance
      */
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
-            new SysIdRoutine.Mechanism((voltage) -> {
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(Volts.of(0.5).per(Second), Volts.of(3), null,
+                    state -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(voltage -> {
                 setVoltage(voltage.magnitude());
-            }, (log) -> {
+            }, log -> {
                 log.motor("Elevator")
                         .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
                         .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
