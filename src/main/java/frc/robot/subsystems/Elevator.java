@@ -85,9 +85,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             ZERO(0.0), // TODO get actual position
             GROUND(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(0.44831 / 2), // TODO get actual position
-            L3(0.84455), // TODO get actual position
-            L4(1.58115), // TODO get actual positions
+            L2(2.5742), // TODO get actual position
+            L3(5), // TODO get actual position
+            L4(8.6), // TODO get actual positions
             PROCESSOR(0.0), // TODO get actual position
             SOFT_STOP(1.455);
 
@@ -308,7 +308,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE)
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("elevator.moveToPositionCommand");
     }
 
@@ -321,7 +321,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(runOnce(() -> {
             leftMotor
-                    .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get() / DRUM_CIRCUMFERENCE)
+                    .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get())
                             .withEnableFOC(true));
         }), moveToCurrentGoalCommand()).withName("elevator.moveToArbitraryPositionCommand");
     }
@@ -335,7 +335,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(
-                () -> (motionMagicVoltageRequest.Position + delta.get()) / DRUM_CIRCUMFERENCE)
+                () -> (motionMagicVoltageRequest.Position + delta.get()))
                 .withName("elevator.movePositionDeltaCommand");
     }
 

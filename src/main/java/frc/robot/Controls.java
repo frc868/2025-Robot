@@ -60,10 +60,20 @@ public class Controls {
         // joystick.bottomHatUp().onTrue(Commands.sequence(pivot.moveToPositionCommand(()
         // -> Pivot.Constants.Position.L4),
         // elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
+        joystick.bottomHatUp()
+                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L4)
+                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L4.position) <= 0.1)
+                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
+
         joystick.bottomHatDown()
                 .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L2)
                         .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L2.position) <= 0.1)
                         .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2)));
+
+        joystick.bottomHatRight()
+                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L3)
+                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L3.position) <= 0.1)
+                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L3)));
     }
 
     /**
@@ -99,7 +109,7 @@ public class Controls {
         CommandXboxController controller = new CommandXboxController(port);
 
         controller.y().onTrue(pivot.resetPositionCommand().ignoringDisable(true));
-        controller.x().onTrue(pivot.moveToArbitraryPositionCommand(() -> 0.1));
+        controller.x().onTrue(drivetrain.resetGyroCommand());
         controller.a().onTrue(pivot.moveToArbitraryPositionCommand(() -> -0.0385));
         controller.b().onTrue(elevator.moveToArbitraryPositionCommand(() -> 0.5));
     }

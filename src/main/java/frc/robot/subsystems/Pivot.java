@@ -64,9 +64,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             HARD_STOP(0.40625),
             ZERO(0),
             L1(0),
-            L2(-0.185),
-            L3(-0.0385),
-            L4(-0.0725),
+            L2(-0.06),
+            L3(-0.06),
+            L4(-0.06),
             SOFT_STOP(0.092);
 
             public final double position;
@@ -96,7 +96,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static final class Feedback {
             /** Proportional term constant which drives error to zero proportionally. */
-            public static double kP = 0.5; // TODO find good value
+            public static double kP = 25; // TODO find good value
             /**
              * Integral term constant which overcomes steady-state error. Should be used
              * with caution due to integral windup.

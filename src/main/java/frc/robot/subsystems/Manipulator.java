@@ -50,7 +50,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** The voltage that will be used to intake a game piece */
             INTAKE(80),
             /** The voltage that will be used to push out a game piece */
-            OUTTAKE(-80);
+            OUTTAKE(-40);
 
             /** This is used to access the values each name corresponds to, in volts */
             public final double current;
@@ -116,7 +116,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Override
     public Command reverseRollersCommand() {
-        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
+        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.OUTTAKE.current)),
                 () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.reverseRollers");
     }
 
