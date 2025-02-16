@@ -2,7 +2,6 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -10,19 +9,13 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
-import com.techhounds.houndutil.houndlog.loggers.TunableDouble;
-
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.MutAngle;
 import edu.wpi.first.units.measure.MutAngularVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.subsystems.Pivot.Constants.CAN;
 import frc.robot.subsystems.Pivot.Constants.Feedback;
@@ -38,8 +31,6 @@ import static edu.wpi.first.units.Units.Rotation;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
-
-import static frc.robot.subsystems.Pivot.Constants.*;
 
 /** Subsystem which rotates manipulator. */
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Position> {
@@ -73,7 +64,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             HARD_STOP(0.40625),
             ZERO(0),
             L1(0),
-            L2(-0.0385),
+            L2(-0.185),
             L3(-0.0385),
             L4(-0.0725),
             SOFT_STOP(0.092);
@@ -94,9 +85,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             /** Voltage required to overcome motor's static friction. */
             public static final double kS = 0.832; // TODO find good value
             /** Voltage required to maintain constant velocity on motor. */
-            public static final double kV = 0.24 * 2 * Math.PI; // TODO find good value
+            public static final double kV = 1.49; // TODO find good value
             /** Voltage required to induce a given acceleration on motor. */
-            public static final double kA = 0.02 * 2 * Math.PI; // TODO find good value
+            public static final double kA = 0.13; // TODO find good value
         }
 
         /**
@@ -105,14 +96,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static final class Feedback {
             /** Proportional term constant which drives error to zero proportionally. */
-            public static double kP = 8; // TODO find good value
+            public static double kP = 0.5; // TODO find good value
             /**
              * Integral term constant which overcomes steady-state error. Should be used
              * with caution due to integral windup.
              */
             public static final double kI = 0; // TODO find good value
             /** Derivative term constant which dampens rate of error correction. */
-            public static final double kD = 4; // TODO find good value
+            public static final double kD = 0; // TODO find good value
         }
 
         /**
@@ -193,7 +184,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     public double getVoltage() {
@@ -260,8 +251,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         // }
         // }).withName("pivot.moveToCurrentGoalCommand");
 
-        return run(() -> motor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
-                .withEnableFOC(true)));
+        return run(() -> motor.setControl(
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true)));
     }
 
     /**
@@ -273,10 +264,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return Commands.sequence(
-                runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().position))),
-                moveToCurrentGoalCommand())
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("pivot.moveToPositionCommand");
     }
 
@@ -291,10 +279,9 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()))),
+                        .setControl(motionMagicVoltageRequest
+                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true))),
                 moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToArbitraryPositionCommand'");
     }
 
     /**
@@ -310,8 +297,6 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
                 .withName("pivot.movePositionDeltaCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'movePositionDeltaCommand'");
     }
 
     /**
@@ -325,8 +310,6 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return runOnce(
                 () -> motor.setControl(motionMagicVoltageRequest.withPosition(getPosition()).withEnableFOC(true)))
                 .withName("pivot.holdCurrentPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'holdCurrentPositionCommand'");
     }
 
     /**
@@ -338,8 +321,6 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).withName("pivot.resetPosition");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPositionCommand'");
     }
 
     /**
@@ -352,8 +333,6 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
                 .withName("pivot.setOverriddenSpeedCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'setOverridenSpeedCommand'");
     }
 
     /**

@@ -85,7 +85,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             ZERO(0.0), // TODO get actual position
             GROUND(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(0.44831), // TODO get actual position
+            L2(0.44831 / 2), // TODO get actual position
             L3(0.84455), // TODO get actual position
             L4(1.58115), // TODO get actual positions
             PROCESSOR(0.0), // TODO get actual position
@@ -213,7 +213,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -269,21 +269,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     public boolean shouldEnforceSafeties(double currentPosition, double goalPosition, double pivotPosition) {
         boolean positiveTravel = goalPosition - currentPosition > 0;
 
-        // if (positiveTravel) {
-        // return currentPosition >= Position.SOFT_STOP.position - 0.05 || pivotPosition
-        // >= 0.041922;
-        // } else {
-        // return currentPosition <= Position.HARD_STOP.position + 0.05 || pivotPosition
-        // >= 0.041922;
-        // }
-
-        // return pivotPosition >= 0.041922;
-
-        if (pivotPosition >= 0.041922) {
-            return true;
-        } else {
-            return false;
-        }
+        return pivotPosition >= 0.04922;
     }
 
     /**
@@ -322,10 +308,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return Commands.sequence(runOnce(() -> leftMotor
-                .setControl(motionMagicVoltageRequest
-                        .withPosition(goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE).withEnableFOC(true))),
-                moveToCurrentGoalCommand())
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position / DRUM_CIRCUMFERENCE)
                 .withName("elevator.moveToPositionCommand");
     }
 

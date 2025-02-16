@@ -50,7 +50,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** The voltage that will be used to intake a game piece */
             INTAKE(80),
             /** The voltage that will be used to push out a game piece */
-            OUTTAKE(-20);
+            OUTTAKE(-80);
 
             /** This is used to access the values each name corresponds to, in volts */
             public final double current;

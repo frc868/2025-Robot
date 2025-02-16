@@ -2,7 +2,6 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.Climber;
@@ -63,12 +62,13 @@ public class Controls {
         // elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
         joystick.bottomHatDown()
                 .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L2)
-                        .andThen(
-                                elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2)));
+                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L2.position) <= 0.1)
+                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2)));
     }
 
     /**
-     * Configure operator controls on Xbox controller for manual overrides in case
+     * // * Configure operator controls on Xbox controller for manual overrides in
+     * case
      * automatic features stop working.
      * 
      * @param port       port that controller is connected to
