@@ -124,17 +124,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      * The sysIdRoutine object with default configuration and logging of voltage,
      * velocity, and distance
      */
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
-            new SysIdRoutine.Config(Volts.of(0.25).per(Second), Volts.of(1), null,
-                    state -> SignalLogger.writeString("state", state.toString())),
-            new SysIdRoutine.Mechanism(voltage -> {
-                setVoltage(voltage.magnitude());
-            }, log -> {
-                log.motor("Pivot")
-                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Radian))
-                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RadiansPerSecond));
-            }, this));
+    private SysIdRoutine sysIdRoutine;
 
     /** Initialize pivot motor configurations. */
     public Pivot() {
@@ -159,6 +149,21 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         motor.getConfigurator().apply(motorConfigs);
 
         motor.setNeutralMode(NeutralModeValue.Brake);
+
+        sysIdRoutine = new SysIdRoutine(
+                new SysIdRoutine.Config(Volts.of(0.25).per(Second), Volts.of(1), null,
+                        state -> {
+                            SignalLogger.writeString("state", state.toString());
+                            sysIdRoutine.recordState(state);
+                        }),
+                new SysIdRoutine.Mechanism(voltage -> {
+                    setVoltage(voltage.magnitude());
+                }, log -> {
+                    log.motor("Pivot")
+                            .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
+                            .angularPosition(sysIdAngle.mut_replace(getPosition(), Rotation))
+                            .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RotationsPerSecond));
+                }, this));
     }
 
     public double getVoltage() {
