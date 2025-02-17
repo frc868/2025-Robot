@@ -7,6 +7,11 @@ public class RobotStates {
     public static ReefLevel targetLevel = ReefLevel.L3;
 
     public static ReefLevel getTargetLevel() {
+        targetLevel = ReefLevel.L2;
         return targetLevel;
+    }
+
+    public static void setTargetLevel(ReefLevel reefLevel) {
+        targetLevel = reefLevel;
     }
 }

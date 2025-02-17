@@ -13,9 +13,9 @@ import frc.robot.subsystems.Pivot;
 public class RobotCommands {
     public static Command setTargetReefLevelCommand(ReefLevel reefLevel) {
         return Commands.runOnce(() -> {
-            RobotStates.targetLevel = reefLevel;
+            RobotStates.setTargetLevel(reefLevel);
             System.out.println("Current target level:" + reefLevel);
-            System.out.println("Current robot state target level: " + RobotStates.targetLevel);
+            System.out.println("Current robot state target level: " + RobotStates.getTargetLevel());
         });
     }
 
