@@ -57,9 +57,6 @@ public class Controls {
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        // joystick.bottomHatUp().onTrue(Commands.sequence(pivot.moveToPositionCommand(()
-        // -> Pivot.Constants.Position.L4),
-        // elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
         joystick.bottomHatUp()
                 .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L4)
                         .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L4.position) <= 0.1)
@@ -74,12 +71,13 @@ public class Controls {
                 .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L3)
                         .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L3.position) <= 0.1)
                         .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L3)));
+
+        joystick.dialHardPress().whileTrue(manipulator.reverseRollersCommand());
     }
 
     /**
-     * // * Configure operator controls on Xbox controller for manual overrides in
-     * case
-     * automatic features stop working.
+     * Configure operator controls on Xbox controller for manual overrides in
+     * caseautomatic features stop working.
      * 
      * @param port       port that controller is connected to
      * @param drivetrain drivetrain subsystem object
@@ -107,11 +105,6 @@ public class Controls {
     public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
         CommandXboxController controller = new CommandXboxController(port);
-
-        controller.y().onTrue(pivot.resetPositionCommand().ignoringDisable(true));
-        controller.x().onTrue(drivetrain.resetGyroCommand());
-        controller.a().onTrue(pivot.moveToArbitraryPositionCommand(() -> -0.0385));
-        controller.b().onTrue(elevator.moveToArbitraryPositionCommand(() -> 0.5));
     }
 
     /**

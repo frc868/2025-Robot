@@ -34,6 +34,8 @@ public class RobotContainer {
     private final Climber climber = new Climber();
     private final LEDs leds = new LEDs();
 
+    private final HoundBrian houndBrian = new HoundBrian(drivetrain, elevator, pivot);
+
     @SendableLog(groups = "wpilib")
     private final CommandScheduler commandScheduler = CommandScheduler.getInstance();
 

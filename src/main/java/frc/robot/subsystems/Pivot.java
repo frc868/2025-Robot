@@ -2,8 +2,10 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.ControlRequest;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -62,7 +64,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         /** Positions pivot can be in. */
         public static enum Position {
             HARD_STOP(0.40625),
-            ZERO(0),
+            PAST_ELEVATOR(0.04922),
             L1(0),
             L2(-0.06),
             L3(-0.06),
@@ -124,8 +126,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Pivot motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /** Pivot motor Motion Magic voltage request object. */
+
+    /**
+     * Request object for motor voltage according to Motion Magic motion profile.
+     */
     private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
+    /** Request object for setting elevator motors' voltage directly. */
+    private final VoltageOut voltageRequest = new VoltageOut(0);
+    /** Request object for stopping the motor. */
     private final NeutralOut stop = new NeutralOut();
 
     /** Mutable measure for voltages applied during sysId testing */
@@ -140,6 +148,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     private SysIdRoutine sysIdRoutine;
 
+    /**
+     * Global position tracker object for tracking mechanism positions for
+     * calculating safeties.
+     */
     private PositionTracker positionTracker;
 
     /** Initialize pivot motor configurations. */
@@ -195,86 +207,41 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return motor.getVelocity().getValueAsDouble();
     }
 
-    /**
-     * Gets the current position of the pivot mechanism.
-     * 
-     * @return the position of the mechanism, in radians.
-     */
+    public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
+        if (positionTracker.getPosition("Elevator") > 0) {
+            return stop;
+        }
+
+        return controlRequest;
+    }
+
     @Override
     public double getPosition() {
         return motor.getPosition().getValueAsDouble();
     }
 
-    /**
-     * Resets the position of the pivot mechanism to a specific value.
-     */
     @Override
     public void resetPosition() {
-        motor.setPosition(-0.021484375 + 0.427978515625);
+        motor.setPosition(Position.HARD_STOP.position);
     }
 
-    /**
-     * Explicitly set the voltage of the pivot mechanism's motor.
-     * 
-     * @param voltage the voltage [-12, 12]
-     */
     @Override
     public void setVoltage(final double voltage) {
-        motor.setVoltage(voltage);
+        motor.setControl(outputRequestWithSafeties(voltageRequest.withOutput(voltage)));
     }
 
-    public boolean shouldEnforceSafeties(double currentPosition, double goalPosition) {
-        boolean positiveTravel = goalPosition - currentPosition > 0;
-
-        if (positiveTravel) {
-            return currentPosition >= Position.SOFT_STOP.position;
-        } else {
-            return currentPosition <= Position.HARD_STOP.position;
-        }
-    }
-
-    /**
-     * Command to continuously have the pivot mechanism move to the currently set
-     * goal.
-     * 
-     * @return the command
-     */
     @Override
     public Command moveToCurrentGoalCommand() {
-        // return run(() -> {
-        // if (shouldEnforceSafeties(getPosition(), motionMagicVoltageRequest.Position))
-        // {
-        // motor.setControl(stop);
-        // } else {
-        // motor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
-        // .withEnableFOC(true));
-        // }
-        // }).withName("pivot.moveToCurrentGoalCommand");
-
-        return run(() -> motor.setControl(
-                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true)));
+        return run(() -> motor.setControl(outputRequestWithSafeties(
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))));
     }
 
-    /**
-     * Command that sets the current goal to the setpoint,
-     * and cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param goalPositionSupplier a supplier of an instance of the position enum
-     * @return the command
-     */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("pivot.moveToPositionCommand");
     }
 
-    /**
-     * Command that sets the current goal position to the setpoint,
-     * and cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param goalPositionSupplier a supplier of a position to move to, in radians
-     * @return the command
-     */
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
@@ -284,27 +251,12 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
                 moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
     }
 
-    /**
-     * Command that sets the current goal position to the setpoint plus
-     * the delta (the additional distance to move, relative to the current
-     * position), and
-     * cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param delta a supplier of a delta to move, in radians
-     * @return the command
-     */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
                 .withName("pivot.movePositionDeltaCommand");
     }
 
-    /**
-     * Command that sets the goal to the current position, and moves to
-     * that goal until cancelled.
-     * 
-     * @return the command
-     */
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(
@@ -312,36 +264,17 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
                 .withName("pivot.holdCurrentPositionCommand");
     }
 
-    /**
-     * Creates an instantaneous command that resets the position of the pivot
-     * mechanism.
-     * 
-     * @return the command
-     */
     @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).withName("pivot.resetPosition");
     }
 
-    /**
-     * Creates a command that manually sets the speed of the pivot mechanism.
-     * 
-     * @param speed the speed [-1,1]
-     * @return the command
-     */
     @Override
     public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
                 .withName("pivot.setOverriddenSpeedCommand");
     }
 
-    /**
-     * Command to stop the motor, sets it to coast mode, and then set it back to
-     * brake mode on end. Allows for
-     * moving the pivot mechanism manually.
-     * 
-     * @return the command
-     */
     @Override
     public Command coastMotorsCommand() {
         return runOnce(motor::stopMotor).andThen(() -> {

@@ -4,8 +4,8 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.ControlRequest;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -53,17 +53,17 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          * elevator motors to be rotation which pulls elevator up away from zero point.
          * Right motor direction is opposite of left motor direction.
          */
-        public static final InvertedValue RIGHT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        /** Ratio of motor rotations to elevator spool drum rotations. */
+        public static final InvertedValue RIGHT_MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive; // TODO
+        /** Ratio of motor rotations to spool drum rotations. */
         public static final double GEAR_RATIO = 3 / 1;
         /** Radius of elevator spool drum. */
         public static final double DRUM_RADIUS = Units.inchesToMeters(1.05);
         /** Circumference of elevator spool drum. */
         public static final double DRUM_CIRCUMFERENCE = 2 * Math.PI * DRUM_RADIUS;
-        /** Ratio of motor rotations to elevator height in meters. */
+        /** Ratio of motor rotations to spool drum rotations. */
         public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
         /** Current limit of elevator motors. */
-        public static final double CURRENT_LIMIT = 80; // TODO
+        public static final double CURRENT_LIMIT = 80;
 
         /** CAN information of elevator motors. */
         public static final class CAN {
@@ -79,16 +79,15 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             }
         }
 
-        /** Positions elevator can be in. */
+        /** Positions elevator can be in, in spool drum rotations */
         public static enum Position {
             HARD_STOP(0),
-            ZERO(0.0), // TODO get actual position
-            GROUND(0.0), // TODO get actual position
+            PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
             L2(2.5742), // TODO get actual position
             L3(5), // TODO get actual position
             L4(8.6), // TODO get actual positions
-            PROCESSOR(0.0), // TODO get actual position
+            NET(0.0),
             SOFT_STOP(1.455);
 
             public final double position;
@@ -154,9 +153,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     /**
      * Request object for motor voltage according to Motion Magic motion profile.
      */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
-    /** Request object for setting elevator motors voltage directly. */
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
+    /** Request object for setting elevator motors' voltage directly. */
     private final VoltageOut directVoltageRequest = new VoltageOut(0);
+    /** Request object for stopping the motor. */
     private final NeutralOut stop = new NeutralOut();
 
     /** Mutable measure for voltages applied during sysId testing */
@@ -227,13 +227,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         return leftMotor.getPosition().getValueAsDouble();
     }
 
-    /**
-     * Finds the voltage of the {@link #leftMotor motor}
-     * 
-     * @return Voltage of the motor, as a double
-     */
-    public double getVoltage() {
-        return leftMotor.getMotorVoltage().getValueAsDouble();
+    @Override
+    public void resetPosition() {
+        leftMotor.setPosition(Position.HARD_STOP.position);
+        rightMotor.setPosition(Position.HARD_STOP.position);
     }
 
     /**
@@ -248,75 +245,42 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     /**
-     * Resets the position of the motors to a specified {@link Constants#HARD_STOP
-     * position} (Should be a hard stop)
+     * Finds the voltage of the {@link #leftMotor motor}
+     * 
+     * @return Voltage of the motor, as a double
      */
-    @Override
-    public void resetPosition() {
-        leftMotor.setPosition(Position.ZERO.position);
-        rightMotor.setPosition(Position.ZERO.position);
+    public double getVoltage() {
+        return leftMotor.getMotorVoltage().getValueAsDouble();
     }
 
-    /**
-     * Sets the voltage of the motors directly, {@link MathUtil#clamp clamped} to
-     * safe values
-     */
     @Override
     public void setVoltage(double voltage) {
-        leftMotor.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        leftMotor.setControl(
+                outputRequestWithSafeties(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12))));
     }
 
-    public boolean shouldEnforceSafeties(double currentPosition, double goalPosition, double pivotPosition) {
-        boolean positiveTravel = goalPosition - currentPosition > 0;
+    public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
+        if (positionTracker.getPosition("Pivot") >= 0.04922) {
+            return stop;
+        }
 
-        return pivotPosition >= 0.04922;
+        return controlRequest;
     }
 
-    /**
-     * Moves the motors to the currently set goal
-     * 
-     * @return Command to move the motors to the already set goal
-     */
     @Override
     public Command moveToCurrentGoalCommand() {
-        // return run(() -> {
-        // if (shouldEnforceSafeties(getPosition(), motionMagicVoltageRequest.Position))
-        // {
-        // leftMotor.setControl(stop);
-        // } else {
-        // leftMotor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
-        // .withEnableFOC(true));
-        // }
-        // }).withName("elevator.moveToCurrentGoalCommand");
-
-        return run(() -> {
-            if (shouldEnforceSafeties(getPosition(), motionMagicVoltageRequest.Position,
-                    positionTracker.getPosition("Pivot"))) {
-                leftMotor.setControl(stop);
-            } else {
-                leftMotor.setControl(
-                        motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
-                                .withEnableFOC(true));
-            }
-        });
+        return run(() -> leftMotor.setControl(outputRequestWithSafeties(
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
+                        .withEnableFOC(true))))
+                .withName("elevator.moveToCurrentGoalCommand");
     }
 
-    /**
-     * Moves the motors to one of the main {@link Position positions}
-     * 
-     * @return Command that will move the motors to the setpoint enum
-     */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
         return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
                 .withName("elevator.moveToPositionCommand");
     }
 
-    /**
-     * Moves the motors to any position supplied
-     * 
-     * @return Command that will move the motors to the position supplied
-     */
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(runOnce(() -> {
@@ -326,12 +290,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         }), moveToCurrentGoalCommand()).withName("elevator.moveToArbitraryPositionCommand");
     }
 
-    /**
-     * Moves the elevator's motors to a position relative to the current position.
-     * 
-     * @param delta A supplier of how much relative change is wanted, in meters.
-     *              (Positive moves up)
-     */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(
@@ -347,12 +305,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                 .withName("elevator.holdCurrentPositionCommand");
     }
 
-    /**
-     * Creates an instantaneous command that resets the position of the elevator
-     * mechanism.
-     * 
-     * @return command to reset position
-     */
     @Override
     public Command resetPositionCommand() {
         return runOnce(() -> resetPosition())
@@ -360,26 +312,14 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
     }
 
-    /**
-     * Creates a command that will manually set the speed of the elevator's motors
-     * 
-     * @param speed Supplier for the speed (-1 to 1) to set the motor to
-     * @return Command that sets the speed to the value returned by the supplier
-     */
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return run(() -> {
             setVoltage(speed.get() * 12.0);
-        })
-                .withName("elevator.setOverridenSpeedCommand");
+        }).withName("elevator.setOverridenSpeedCommand");
 
     }
 
-    /**
-     * Creates command to stop the elevator's motors and allow them to coast.
-     * 
-     * @return the command that allows motors to coast
-     */
     @Override
     public Command coastMotorsCommand() {
         return runOnce(() -> {
