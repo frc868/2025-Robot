@@ -62,11 +62,13 @@ public class Controls {
         joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
         joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
 
-        joystick.triggerSoftPress().onTrue(RobotCommands.moveToScoreCommand(RobotStates.targetLevel, elevator, pivot));
+        joystick.triggerSoftPress()
+                .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel, elevator, pivot));
         // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
         // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
         joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
-        joystick.blackThumbButton().onTrue(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
+        // joystick.blackThumbButton().onTrue(RobotCommands.moveToScoreCommand(()->RobotStates.targetLevel,
+        // elevator, pivot));
     }
 
     /**
