@@ -253,8 +253,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return Commands.sequence(
                 runOnce(() -> motor
                         .setControl(outputRequestWithSafeties(motionMagicVoltageRequest
-                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))),
-                moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
+                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))))
+                .withName("pivot.moveToArbitraryPositionCommand");
     }
 
     @Override

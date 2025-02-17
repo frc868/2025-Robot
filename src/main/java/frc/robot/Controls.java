@@ -2,6 +2,7 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Constants.ReefLevel;
@@ -58,7 +59,7 @@ public class Controls {
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
+        joystick.bottomHatUp().onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel, elevator, pivot));
         joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
         joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
 
