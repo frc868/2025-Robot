@@ -63,7 +63,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         /** Positions pivot can be in. */
         public static enum Position {
-            HARD_STOP(0.40625),
+            HARD_STOP(0.405029296875),
             PAST_ELEVATOR(0.04922),
             L1(0),
             L2(-0.06),
@@ -154,6 +154,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     private PositionTracker positionTracker;
 
+    private boolean initalized = false;
+
     /** Initialize pivot motor configurations. */
     public Pivot(PositionTracker positionTracker) {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
@@ -196,7 +198,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        // setDefaultCommand(holdCurrentPositionCommand());
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     public double getVoltage() {
@@ -208,8 +210,12 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     }
 
     public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
-        if (positionTracker.getPosition("Elevator") > 0) {
+        if (!initalized) {
             return stop;
+        }
+
+        if (positionTracker.getPosition("Elevator") > 0) {
+            return motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true);
         }
 
         return controlRequest;
@@ -246,8 +252,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
                 runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest
-                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true))),
+                        .setControl(outputRequestWithSafeties(motionMagicVoltageRequest
+                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))),
                 moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
     }
 
@@ -260,13 +266,17 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(
-                () -> motor.setControl(motionMagicVoltageRequest.withPosition(getPosition()).withEnableFOC(true)))
+                () -> motor.setControl(outputRequestWithSafeties(
+                        motionMagicVoltageRequest.withPosition(getPosition()).withEnableFOC(true))))
                 .withName("pivot.holdCurrentPositionCommand");
     }
 
     @Override
     public Command resetPositionCommand() {
-        return runOnce(this::resetPosition).withName("pivot.resetPosition");
+        return runOnce(() -> {
+            resetPosition();
+            initalized = true;
+        }).withName("pivot.resetPosition");
     }
 
     @Override

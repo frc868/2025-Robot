@@ -4,6 +4,7 @@ import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+import frc.robot.Constants.ReefLevel;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.Elevator;
@@ -57,22 +58,15 @@ public class Controls {
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        joystick.bottomHatUp()
-                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L4)
-                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L4.position) <= 0.1)
-                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4)));
+        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
+        joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
+        joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
 
-        joystick.bottomHatDown()
-                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L2)
-                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L2.position) <= 0.1)
-                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L2)));
-
-        joystick.bottomHatRight()
-                .onTrue(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.L3)
-                        .until(() -> Math.abs(pivot.getPosition() - Pivot.Constants.Position.L3.position) <= 0.1)
-                        .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L3)));
-
-        joystick.dialHardPress().whileTrue(manipulator.reverseRollersCommand());
+        joystick.triggerSoftPress().onTrue(RobotCommands.moveToScoreCommand(RobotStates.targetLevel, elevator, pivot));
+        // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
+        // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
+        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
+        joystick.blackThumbButton().onTrue(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
     }
 
     /**
@@ -105,6 +99,10 @@ public class Controls {
     public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
         CommandXboxController controller = new CommandXboxController(port);
+
+        controller.a().onTrue(drivetrain.resetGyroCommand());
+        controller.b().onTrue(elevator.resetPositionCommand());
+        controller.x().onTrue(pivot.resetPositionCommand());
     }
 
     /**

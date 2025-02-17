@@ -183,6 +183,8 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
     private final PositionTracker positionTracker;
 
+    private boolean initalized = false;
+
     public Elevator(PositionTracker positionTracker) {
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
@@ -213,7 +215,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        // setDefaultCommand(holdCurrentPositionCommand());
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -260,7 +262,11 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
-        if (positionTracker.getPosition("Pivot") >= 0.04922) {
+        if (!initalized) {
+            return stop;
+        }
+
+        if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
             return stop;
         }
 
@@ -284,9 +290,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(runOnce(() -> {
-            leftMotor
-                    .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get())
-                            .withEnableFOC(true));
+            leftMotor.setControl(
+                    outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get())
+                            .withEnableFOC(true)));
         }), moveToCurrentGoalCommand()).withName("elevator.moveToArbitraryPositionCommand");
     }
 
@@ -300,15 +306,16 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
-            leftMotor.setControl(motionMagicVoltageRequest.withPosition(getPosition()));
-        })
-                .withName("elevator.holdCurrentPositionCommand");
+            leftMotor.setControl(outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(getPosition())));
+        }).withName("elevator.holdCurrentPositionCommand");
     }
 
     @Override
     public Command resetPositionCommand() {
-        return runOnce(() -> resetPosition())
-                .withName("elevator.resetPositionCommand");
+        return runOnce(() -> {
+            resetPosition();
+            initalized = true;
+        }).withName("elevator.resetPositionCommand");
 
     }
 
