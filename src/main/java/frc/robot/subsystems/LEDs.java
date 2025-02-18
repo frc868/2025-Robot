@@ -55,13 +55,13 @@ public class LEDs extends SubsystemBase {
         }).ignoringDisable(true).withName("leds.updateBuffer");
     }
 
-    public void updateRainbow() {
+    // Rainbow design
+    private void updateRainbow() {
         time += 0.02;
         int length = buffer.getLength();
-
         for (int i = 0; i < length; i++) {
-            double hue = ((time * 100 + (i * 360 / length)) % 360) / 360;
-            buffer.setLED(i, Color.fromHSV(hue, 1.0, 1.0));
+            int hueDegrees = (int) (((time * 100) + (i * (360.0 / length))) % 360);
+            buffer.setLED(i, Color.fromHSV(hueDegrees, 255, 255));
         }
     }
 
