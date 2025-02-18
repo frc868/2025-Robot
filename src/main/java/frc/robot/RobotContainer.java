@@ -17,7 +17,7 @@ public class RobotContainer {
 
     // Add all subsystems later
     @Log(groups = "subsystems")
-    private final HoundBrian HoundBrian = new HoundBrian(leds);
+    private final HoundBrian HoundBrian = new HoundBrian(drivetrain, intake, leds);
 
     public RobotContainer() {
         configureBindings();
