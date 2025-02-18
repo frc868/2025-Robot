@@ -23,6 +23,8 @@ public class LEDs extends SubsystemBase {
 
     private final Notifier updateNotifier;
 
+    private double time = 0.0;
+
     public LEDs() {
         // Change length of leds
         leds.setLength(0);
@@ -51,6 +53,16 @@ public class LEDs extends SubsystemBase {
             clear();
             leds.setData(buffer);
         }).ignoringDisable(true).withName("leds.updateBuffer");
+    }
+
+    public void updateRainbow() {
+        time += 0.02;
+        int length = buffer.getLength();
+
+        for (int i = 0; i < length; i++) {
+            double hue = ((time * 100 + (i * 360 / length)) % 360) / 360;
+            buffer.setLED(i, Color.fromHSV(hue, 1.0, 1.0));
+        }
     }
 
     public void clear() {
