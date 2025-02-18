@@ -275,9 +275,22 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
     @Override
     public Command moveToCurrentGoalCommand() {
-        return run(() -> leftMotor.setControl(outputRequestWithSafeties(
-                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position)
-                        .withEnableFOC(true))))
+        return run(() -> {
+            double currentPosition = getPosition();
+            double targetPosition = motionMagicVoltageRequest.Position;
+            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+
+            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
+                    + ", At Target: " + atTarget);
+
+            if (!atTarget) {
+                leftMotor.setControl(outputRequestWithSafeties(
+                        motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
+            }
+        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
+                .andThen(runOnce(() -> {
+                    System.out.println("Elevator Reached goal position.");
+                }))
                 .withName("elevator.moveToCurrentGoalCommand");
     }
 
@@ -289,11 +302,17 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        return Commands.sequence(runOnce(() -> {
-            leftMotor.setControl(
-                    outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get())
-                            .withEnableFOC(true)));
-        }), moveToCurrentGoalCommand()).withName("elevator.moveToArbitraryPositionCommand");
+        return Commands.sequence(
+                runOnce(() -> {
+                    double targetPosition = goalPositionSupplier.get();
+                    System.out.println("Elevator Moving to position: " + targetPosition);
+                    leftMotor.setControl(
+                            outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(targetPosition)
+                                    .withEnableFOC(true)));
+                }),
+                moveToCurrentGoalCommand()
+                        .andThen(runOnce(() -> System.out.println("Elevator Reached goal position."))))
+                .withName("elevator.moveToArbitraryPositionCommand");
     }
 
     @Override

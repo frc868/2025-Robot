@@ -253,8 +253,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return Commands.sequence(
                 runOnce(() -> motor
                         .setControl(outputRequestWithSafeties(motionMagicVoltageRequest
-                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))))
-                .withName("pivot.moveToArbitraryPositionCommand");
+                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))),
+                moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
     }
 
     @Override
@@ -265,10 +265,16 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
     @Override
     public Command holdCurrentPositionCommand() {
-        return runOnce(
-                () -> motor.setControl(outputRequestWithSafeties(
-                        motionMagicVoltageRequest.withPosition(getPosition()).withEnableFOC(true))))
-                .withName("pivot.holdCurrentPositionCommand");
+        return run(() -> {
+            double currentPosition = getPosition();
+
+            if (currentPosition <= Position.HARD_STOP.position) {
+                motor.setControl(new NeutralOut());
+            } else {
+                motor.setControl(outputRequestWithSafeties(
+                        motionMagicVoltageRequest.withPosition(currentPosition).withEnableFOC(true)));
+            }
+        }).withName("pivot.holdCurrentPositionCommand");
     }
 
     @Override

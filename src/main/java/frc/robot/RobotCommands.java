@@ -21,7 +21,15 @@ public class RobotCommands {
 
     public static Command moveToScoreCommand(Supplier<ReefLevel> reefLevel, Elevator elevator, Pivot pivot) {
         return pivot.moveToPositionCommand(() -> reefLevel.get().pivotPosition)
-                .until(() -> Math.abs(pivot.getPosition() - reefLevel.get().pivotPosition.position) <= 0.1)
+                .until(() -> {
+                    double currentPosition = pivot.getPosition();
+                    double targetPosition = reefLevel.get().pivotPosition.position;
+                    boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+                    System.out.println("Pivot position: " + currentPosition + ", Target: " + targetPosition
+                            + ", At Target: " + isAtTarget);
+                    return isAtTarget;
+                })
+                // .andThen(pivot.holdCurrentPositionCommand())
                 .andThen(elevator.moveToPositionCommand(() -> reefLevel.get().elevatorPosition));
     }
 
