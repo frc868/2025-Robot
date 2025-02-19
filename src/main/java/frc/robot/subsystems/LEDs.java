@@ -45,6 +45,7 @@ public class LEDs extends SubsystemBase {
                     blueEffect.accept(buffer);
                 }),
         INITIALIZATION_BLACK_BACKGROUND(solid(Color.kBlack, LEDSection.ALL)),
+        // Use this for houndbrian zero
         INITIALIZED_CONFIRM(breathe(Color.kGreen, 2, 0, 255, LEDSection.ALL));
 
         private List<Consumer<AddressableLEDBuffer>> bufferConsumers;
