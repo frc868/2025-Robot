@@ -7,16 +7,24 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.subsystems.Manipulator.Constants.*;
 
 /** Subsystem which intakes, holds, and scores scoring elements. */
+@LoggedObject
 public class Manipulator extends SubsystemBase implements BaseIntake {
+    @Log(groups = "manipulator")
+    public double temp = 0;
+
     /** Constant values of manipulator subsystem. */
     public static final class Constants {
         /**
@@ -66,7 +74,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Debouncer for filtering out current spike outliers. */
-    private final Debouncer currentSpikeDebouncer = new Debouncer(0.2);
+    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 10, 0.05);
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
@@ -88,7 +96,13 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return Whether or not there is a game piece in the intake
      */
     public boolean hasScoringElement() { // TODO
-        throw new UnsupportedOperationException();
+        motor.getVelocity().refresh();
+
+        // double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
+        // this.temp = temp;
+        // System.out.println("Temp: " + temp);
+        // DriverStation.reportWarning("Temps", false);
+        return motor.getVelocity().getValueAsDouble() < 60;
     }
 
     @Override
