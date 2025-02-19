@@ -14,5 +14,10 @@ public class RobotContainer {
     private final LEDs leds = new LEDs();
 
     public RobotContainer() {
+        startInitialLEDPattern();
+    }
+
+    public void startInitialLEDPattern() {
+        leds.requestStateCommand(LEDs.LEDState.GOLD_BLUE_TRAIL).schedule();
     }
 }
