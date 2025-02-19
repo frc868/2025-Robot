@@ -215,7 +215,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        //setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**

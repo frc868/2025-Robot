@@ -198,7 +198,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     public double getVoltage() {
@@ -214,9 +214,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             return stop;
         }
 
-        if (positionTracker.getPosition("Elevator") > 0) {
-            return motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true);
-        }
+        // if (positionTracker.getPosition("Elevator") > 0) {
+        // return
+        // motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true);
+        // }
 
         return controlRequest;
     }
@@ -265,10 +266,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
     @Override
     public Command holdCurrentPositionCommand() {
-        return run(() -> {
+        return runOnce(() -> {
             double currentPosition = getPosition();
 
-            if (currentPosition <= Position.HARD_STOP.position) {
+            if (currentPosition >= Position.HARD_STOP.position) {
                 motor.setControl(new NeutralOut());
             } else {
                 motor.setControl(outputRequestWithSafeties(

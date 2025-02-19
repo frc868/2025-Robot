@@ -29,8 +29,18 @@ public class RobotCommands {
                             + ", At Target: " + isAtTarget);
                     return isAtTarget;
                 })
-                // .andThen(pivot.holdCurrentPositionCommand())
-                .andThen(elevator.moveToPositionCommand(() -> reefLevel.get().elevatorPosition));
+                .andThen(pivot.holdCurrentPositionCommand())
+                .andThen(elevator.moveToPositionCommand(() -> reefLevel.get().elevatorPosition))
+                .until(() -> {
+                    double elevatorCurrentPosition = elevator.getPosition();
+                    double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
+                    boolean isElevatorAtTarget = Math.abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.05;
+                    System.out.println(
+                            "Elevator position: " + elevatorCurrentPosition + ", Target: " + elevatorTargetPosition
+                                    + ", At Target: " + isElevatorAtTarget);
+                    return isElevatorAtTarget;
+                })
+                .andThen(elevator.holdCurrentPositionCommand());
     }
 
     public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot) {
