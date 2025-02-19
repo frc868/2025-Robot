@@ -133,9 +133,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 2; // TODO
+            public static final double CRUISE_VELOCITY = 2; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 2; // TODO
+            public static final double ACCELERATION = 2; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
@@ -215,7 +215,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        //setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -266,7 +266,15 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stop;
         }
 
+        if (getPosition() > Position.L3.position && getPosition() <= Position.L4.position) {
+            return controlRequest;
+        }
+
         if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
+            return stop;
+        }
+
+        if (getPosition() > Position.L4.position) {
             return stop;
         }
 
