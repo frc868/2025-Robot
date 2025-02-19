@@ -21,7 +21,7 @@ import static com.techhounds.houndutil.houndlib.leds.LEDPatterns.*;
 
 @LoggedObject
 public class LEDs extends SubsystemBase {
-    private AddressableLED leds = new AddressableLED(9);
+    private AddressableLED leds = new AddressableLED(PORT);
     private AddressableLEDBuffer buffer = new AddressableLEDBuffer(LENGTH);
     private final Notifier loadingNotifier;
     private ArrayList<LEDState> currentStates = new ArrayList<>();
@@ -49,7 +49,7 @@ public class LEDs extends SubsystemBase {
         loadingNotifier = new Notifier(
                 () -> {
                     synchronized (this) {
-                        GOLD_BLUE_TRAIL.bufferConsumers.forEach(c -> c.accept(buffer));
+                        LEDState.GOLD_BLUE_TRAIL.bufferConsumers.forEach(c -> c.accept(buffer));
                         leds.setData(buffer);
                     }
                 });
@@ -59,14 +59,22 @@ public class LEDs extends SubsystemBase {
     }
 
     public Command requestStateCommand(LEDState state) {
-        return Commands.run(() -> currentStates.add(state)).ignoringDisable(true);
+        return Commands.run(() -> {
+            if (!currentStates.contains(state)) {
+                currentStates.add(state);
+            }
+        }).ignoringDisable(true);
     }
 
     public Command updateBufferCommand() {
         return run(() -> {
             loadingNotifier.stop();
             clear();
-            currentStates.add(GOLD_BLUE_TRAIL); // Set GOLD_BLUE_TRAIL as the default unenabled state
+
+            if (!currentStates.contains(LEDState.GOLD_BLUE_TRAIL)) {
+                currentStates.add(LEDState.GOLD_BLUE_TRAIL);
+            }
+
             currentStates.sort((s1, s2) -> s2.ordinal() - s1.ordinal());
             currentStates.forEach(s -> s.bufferConsumers.forEach(c -> c.accept(buffer)));
             leds.setData(buffer);
