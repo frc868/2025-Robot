@@ -1,5 +1,7 @@
 package frc.robot;
 
+import java.util.List;
+
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.RobotConfig;
 import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera.PhotonCameraConstants;
@@ -19,6 +21,7 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
+import frc.robot.subsystems.LEDs.LEDState;
 
 import com.techhounds.houndutil.houndlib.swerve.CoaxialSwerveModule.SwerveConstants;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
@@ -113,5 +116,42 @@ public class Constants {
                 public static final int BUTTON_5 = 7;
                 public static final int BUTTON_6 = 8;
                 public static final int BUTTON_7 = 9;
+        }
+
+        public static final class LEDs {
+                public static enum LEDSection implements BaseLEDSection {
+                        ALL(0, 326, true);
+
+                        private final int startIdx;
+                        private final int endIdx;
+                        private final boolean inverted;
+
+                        private LEDSection(int startIdx, int endIdx, boolean inverted) {
+                                this.startIdx = startIdx;
+                                this.endIdx = endIdx;
+                                this.inverted = inverted;
+                        }
+
+                        public int start() {
+                                return startIdx;
+                        }
+
+                        public int end() {
+                                return endIdx;
+                        }
+
+                        public boolean inverted() {
+                                return inverted;
+                        }
+
+                        public int length() {
+                                return endIdx - startIdx + 1;
+                        }
+                }
+
+                public static final int PORT = 0; // Change depending on PWM
+                public static final int LENGTH = 333; // Adjust as needed
+
+                public static final List<LEDState> DEFAULT_STATES = List.of();
         }
 }

@@ -6,6 +6,7 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlog.annotations.Log;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -17,36 +18,29 @@ public class RobotContainer {
 
     // Add all subsystems later
     @Log(groups = "subsystems")
-    private final HoundBrian HoundBrian = new HoundBrian(drivetrain, intake, leds);
+    private final HoundBrian houndBrian = new HoundBrian(drivetrain, intake, leds);
 
     public RobotContainer() {
-        configureBindings();
-        configureHoundBrianResponses();
+        configureButtonBindings();
     }
 
-    private void configureBindings() {
-    }
-
-    public Command getAutonomousCommand() {
-        return Commands.print("No autonomous command configured");
+    private void configureButtonBindings() {
+        // HoundBrian handles the individual bindings internally, but here we check all
+        // together.
+        new Trigger(() -> houndBrian.drivetrainButton.get() &&
+                houndBrian.intakeButton.get() &&
+                houndBrian.shooterTiltButton.get() &&
+                houndBrian.climberButton.get() &&
+                DriverStation.getInstance().isDisabled()).onActive(() -> {
+                    leds.requestStateCommand(LEDs.LEDState.SOLID_GREEN).withTimeout(3); // Green for 3 seconds
+                    resetAllSubsystems();
+                }).onInactive(() -> {
+                    leds.requestStateCommand(LEDs.LEDState.RAINBOW_WAVE); // Example of default state
+                });
     }
 
     public LEDs getLEDs() {
         return leds;
-    }
-
-    private void configureHoundBrianResponses() {
-        new Trigger(houndBrian::isZeroingActivated)
-                .onActive(() -> {
-                    leds.requestStateCommand(LEDs.LEDState.SOLID_GREEN).withTimeout(3); // Green for 3 seconds
-                    resetAllSubsystems();
-                });
-
-        new Trigger(houndBrian::isZeroingActivated)
-                .onActive(() -> leds.requestStateCommand(LEDs.LEDState.INITIALIZED_CONFIRM).schedule());
-
-        new Trigger(houndBrian::isFaultDetected)
-                .onActive(() -> leds.requestStateCommand(LEDs.LEDState.FLASHING_RED).schedule());
     }
 
     private void resetAllSubsystems() {

@@ -10,46 +10,30 @@ import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.LEDs.LEDSection;
+
+import static frc.robot.Constants.LEDs.*;
 import static com.techhounds.houndutil.houndlib.leds.LEDPatterns.*;
 
-/**
- * The LED subsystem, which controls the state of the LEDs by superimposing
- * requested LED states and continuously updates the LED's buffer. Other classes
- * can request specific LED states to be active, and they will be applied in
- * priority order.
- * 
- * This version adds a green LED state when HoundBrian zeros all subsystems.
- */
 @LoggedObject
 public class LEDs extends SubsystemBase {
-    /** The LEDs. */
     private AddressableLED leds = new AddressableLED(9);
     private AddressableLEDBuffer buffer = new AddressableLEDBuffer(LENGTH);
-
-    private final Notifier updateNotifier;
-
+    private final Notifier loadingNotifier;
     private ArrayList<LEDState> currentStates = new ArrayList<>();
 
-    private boolean overrideGreen = false;
-
-    private double overrideEndTime = 0.0;
-
-    /**
-     * An enum of all possible LED states, including the green override when
-     * HoundBrian zeros all subsystems.
-     */
     public enum LEDState {
         OFF(solid(Color.kBlack, LEDSection.ALL)),
-        SOLID_GREEN(solid(Color.kGreen, LEDSection.ALL)), // HoundBrian Green Effect
-        RAINBOW_WAVE(
-                waveRainbow(1, 30, 20, 100, 255, LEDSection.ALL));
+        GOLD_BLUE_TRAIL(
+                alternate(Color.kGold, Color.kBlue, 1, 255, LEDSection.ALL)),
+        INITIALIZATION_BLACK_BACKGROUND(solid(Color.kBlack, LEDSection.ALL)),
+        INITIALIZED_CONFIRM(breathe(Color.kGreen, 2, 0, 255, LEDSection.ALL));
 
-        private final List<Consumer<AddressableLEDBuffer>> bufferConsumers;
+        private List<Consumer<AddressableLEDBuffer>> bufferConsumers;
 
         @SafeVarargs
         private LEDState(Consumer<AddressableLEDBuffer>... bufferConsumer) {
@@ -57,22 +41,19 @@ public class LEDs extends SubsystemBase {
         }
     }
 
-    /**
-     * Initializes the LEDs.
-     */
     public LEDs() {
         leds.setLength(LENGTH);
         leds.setData(buffer);
         leds.start();
 
-        // Notifier that continuously updates the LED buffer
-        updateNotifier = new Notifier(() -> {
-            synchronized (this) {
-                updateLEDPattern();
-                leds.setData(buffer);
-            }
-        });
-        updateNotifier.startPeriodic(0.02);
+        loadingNotifier = new Notifier(
+                () -> {
+                    synchronized (this) {
+                        GOLD_BLUE_TRAIL.bufferConsumers.forEach(c -> c.accept(buffer));
+                        leds.setData(buffer);
+                    }
+                });
+        loadingNotifier.startPeriodic(0.02);
 
         setDefaultCommand(updateBufferCommand());
     }
@@ -81,41 +62,20 @@ public class LEDs extends SubsystemBase {
         return Commands.run(() -> currentStates.add(state)).ignoringDisable(true);
     }
 
-    /**
-     * Updates the LED buffer with the currently active LED states.
-     */
-    private void updateLEDPattern() {
-        if (overrideGreen) {
-            if (Timer.getFPGATimestamp() < overrideEndTime) {
-                LEDState.SOLID_GREEN.bufferConsumers.forEach(c -> c.accept(buffer));
-                return;
-            } else {
-                overrideGreen = false;
-            }
-        }
-
-        clear();
-        currentStates.addAll(DEFAULT_STATES);
-        currentStates.sort((s1, s2) -> s2.ordinal() - s1.ordinal());
-        currentStates.forEach(s -> s.bufferConsumers.forEach(c -> c.accept(buffer)));
-        currentStates.clear();
-    }
-
-    public void setGreenOverride(double seconds) {
-        overrideGreen = true;
-        overrideEndTime = Timer.getFPGATimestamp() + seconds;
-    }
-
     public Command updateBufferCommand() {
         return run(() -> {
-            updateLEDPattern();
+            loadingNotifier.stop();
+            clear();
+            currentStates.add(GOLD_BLUE_TRAIL); // Set GOLD_BLUE_TRAIL as the default unenabled state
+            currentStates.sort((s1, s2) -> s2.ordinal() - s1.ordinal());
+            currentStates.forEach(s -> s.bufferConsumers.forEach(c -> c.accept(buffer)));
             leds.setData(buffer);
+            currentStates.clear();
         })
                 .ignoringDisable(true)
                 .withName("leds.updateBuffer");
     }
 
-    /** Clears the buffer. */
     public void clear() {
         for (int i = 0; i < buffer.getLength(); i++) {
             buffer.setLED(i, Color.kBlack);

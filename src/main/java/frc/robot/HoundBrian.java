@@ -20,7 +20,7 @@ import frc.robot.subsystems.LEDs;
 @LoggedObject
 public class HoundBrian {
     @Log
-    private final DigitalInput drivetrainButton = new DigitalInput(BUTTON_1);
+    final DigitalInput drivetrainButton = new DigitalInput(BUTTON_1);
     @Log
     private final DigitalInput intakeButton = new DigitalInput(BUTTON_2);
     @Log
