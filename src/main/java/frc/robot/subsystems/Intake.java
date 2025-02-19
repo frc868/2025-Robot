@@ -129,7 +129,7 @@ public class Intake extends SubsystemBase implements BaseIntake, BaseSingleJoint
             /** Intake rollers motor current limit. */
             public static final double CURRENT_LIMIT = 0; // TODO
             /** Voltage to run intake rollers motor at. */
-            public static final double VOLTAGE = 0; // TODO
+            public static final double VOLTAGE = 9; // TODO
         }
     }
 

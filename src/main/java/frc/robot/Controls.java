@@ -63,9 +63,10 @@ public class Controls {
         joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
         joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
 
-        joystick.triggerSoftPress()
-                .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel, elevator, pivot))
-                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
+        // joystick.triggerSoftPress()
+        // .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
+        // elevator, pivot))
+        // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
         // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
         // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
         joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
@@ -90,6 +91,9 @@ public class Controls {
 
         controller.rightBumper().whileTrue(manipulator.runRollersCommand());
         controller.leftBumper().whileTrue(manipulator.reverseRollersCommand());
+
+        controller.rightTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> 0.5));
+        controller.leftTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> -0.5));
     }
 
     /**
@@ -103,9 +107,8 @@ public class Controls {
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
         CommandXboxController controller = new CommandXboxController(port);
 
-        controller.a().onTrue(drivetrain.resetGyroCommand());
-        controller.b().onTrue(elevator.resetPositionCommand());
-        controller.x().onTrue(pivot.resetPositionCommand());
+        controller.x().whileTrue(intake.runRollersCommand());
+        controller.y().whileTrue(intake.reverseRollersCommand());
     }
 
     /**

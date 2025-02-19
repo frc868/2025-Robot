@@ -74,7 +74,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Debouncer for filtering out current spike outliers. */
-    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 10, 0.05);
+    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 2, 0.25);
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
@@ -98,11 +98,11 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public boolean hasScoringElement() { // TODO
         motor.getVelocity().refresh();
 
-        // double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
-        // this.temp = temp;
-        // System.out.println("Temp: " + temp);
-        // DriverStation.reportWarning("Temps", false);
-        return motor.getVelocity().getValueAsDouble() < 60;
+        double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
+        this.temp = temp;
+        System.out.println("Temp: " + temp);
+        DriverStation.reportWarning("Temps: " + temp, false);
+        return false;
     }
 
     @Override

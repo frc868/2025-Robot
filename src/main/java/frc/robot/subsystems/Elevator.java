@@ -84,9 +84,11 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             HARD_STOP(0),
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
+            LOW_ALGAE(0),
             L2(2.5742), // TODO get actual position
+            HIGH_ALGAE(0),
             L3(5), // TODO get actual position
-            L4(8.8), // TODO get actual positions
+            L4_NET(8.8),
             NET(0.0),
             SOFT_STOP(1.455);
 
@@ -266,7 +268,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stop;
         }
 
-        if (getPosition() > Position.L3.position && getPosition() <= Position.L4.position) {
+        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
             return controlRequest;
         }
 
@@ -274,7 +276,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stop;
         }
 
-        if (getPosition() > Position.L4.position) {
+        if (getPosition() > Position.L4_NET.position) {
             return stop;
         }
 

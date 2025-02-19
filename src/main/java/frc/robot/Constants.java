@@ -65,7 +65,7 @@ public class Constants {
                 L1(Elevator.Constants.Position.L1, Pivot.Constants.Position.L1),
                 L2(Elevator.Constants.Position.L2, Pivot.Constants.Position.L2),
                 L3(Elevator.Constants.Position.L3, Pivot.Constants.Position.L3),
-                L4(Elevator.Constants.Position.L4, Pivot.Constants.Position.L4);
+                L4(Elevator.Constants.Position.L4_NET, Pivot.Constants.Position.L4);
 
                 public final Elevator.Constants.Position elevatorPosition;
                 public final Pivot.Constants.Position pivotPosition;
