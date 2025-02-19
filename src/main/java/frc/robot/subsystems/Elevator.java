@@ -86,7 +86,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             L1(0.0), // TODO get actual position
             L2(2.5742), // TODO get actual position
             L3(5), // TODO get actual position
-            L4(8.6), // TODO get actual positions
+            L4(8.8), // TODO get actual positions
             NET(0.0),
             SOFT_STOP(1.455);
 
@@ -215,7 +215,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        //setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
