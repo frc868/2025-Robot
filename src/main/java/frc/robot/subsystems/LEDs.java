@@ -29,6 +29,7 @@ public class LEDs extends SubsystemBase {
     public enum LEDState {
         OFF(solid(Color.kBlack, LEDSection.ALL)),
         GOLD_BLUE_TRAIL(
+                // Need to implement this method in houndlib
                 alternate(Color.kGold, Color.kBlue, 1, 255, LEDSection.ALL)),
         INITIALIZATION_BLACK_BACKGROUND(solid(Color.kBlack, LEDSection.ALL)),
         INITIALIZED_CONFIRM(breathe(Color.kGreen, 2, 0, 255, LEDSection.ALL));
