@@ -55,7 +55,7 @@ public class LEDs extends SubsystemBase {
         loadingNotifier = new Notifier(
                 () -> {
                     synchronized (this) {
-                        LEDState.GOLD_BLUE_CHASE.bufferConsumers.forEach(c -> c.accept(buffer));
+                        breathe(Color.kBlue, 3, 0, 150, LEDSection.ALL).accept(buffer);
                         leds.setData(buffer);
                     }
                 });
