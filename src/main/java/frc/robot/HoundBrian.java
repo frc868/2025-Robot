@@ -54,14 +54,11 @@ public class HoundBrian {
      * @param climber     the climber
      * @param leds        the LEDs
      */
-    public HoundBrian(Drivetrain drivetrain, Intake intake, LEDs leds) {
+    public HoundBrian(Drivetrain drivetrain, LEDs leds) {
 
         new Trigger(drivetrainButton::get).negate()
                 .and(DriverStation::isDisabled)
                 .onTrue(drivetrain.resetGyroCommand().ignoringDisable(true));
-        new Trigger(intakeButton::get).negate()
-                .and(DriverStation::isDisabled)
-                .onTrue(intake.resetPositionCommand().ignoringDisable(true));
 
         // Simply to test if LED patterns actual work
         new Trigger(actionButton::get).whileTrue(leds.requestStateCommand(LEDState.SOLID_GREEN).ignoringDisable(true));

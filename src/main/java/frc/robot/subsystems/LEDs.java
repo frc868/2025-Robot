@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.techhounds.houndutil.houndlib.leds.LEDPatterns;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.wpilibj.AddressableLED;
@@ -73,11 +72,7 @@ public class LEDs extends SubsystemBase {
         return run(() -> {
             loadingNotifier.stop();
             clear();
-
-            if (!currentStates.contains(LEDState.GOLD_BLUE_CHASE)) {
-                currentStates.add(LEDState.GOLD_BLUE_CHASE);
-            }
-
+            currentStates.addAll(DEFAULT_STATES);
             currentStates.sort((s1, s2) -> s2.ordinal() - s1.ordinal());
             currentStates.forEach(s -> s.bufferConsumers.forEach(c -> c.accept(buffer)));
             leds.setData(buffer);

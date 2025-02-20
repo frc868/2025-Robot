@@ -60,4 +60,5 @@
     "edu.wpi.first.math.**.struct.*",
   ],
   "editor.formatOnSave": true,
+  "java.debug.settings.onBuildFailureProceed": true,
 }

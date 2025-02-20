@@ -12,7 +12,7 @@ import frc.robot.subsystems.LEDs.LEDState;
  */
 public class Controls {
 
-    public static void configureControls(int port, Drivetrain drivetrain, Intake intake, LEDs leds) {
+    public static void configureControls(int port, Drivetrain drivetrain, LEDs leds) {
         CommandPS4Controller controller = new CommandPS4Controller(port);
 
         controller.cross().toggleOnTrue(leds.requestStateCommand(LEDState.GOLD_BLUE_CHASE));

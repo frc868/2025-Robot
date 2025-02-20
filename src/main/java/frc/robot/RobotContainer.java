@@ -18,18 +18,15 @@ public class RobotContainer {
     @Log
     Drivetrain drivetrain = new Drivetrain();
 
-    @Log
-    Intake intake = new Intake();
-
     // Keep adding more
     @Log
-    HoundBrian houndBrian = new HoundBrian(drivetrain, intake, leds);
+    HoundBrian houndBrian = new HoundBrian(drivetrain, leds);
 
     public RobotContainer() {
         configureBindings();
     }
 
     public void configureBindings() {
-        Controls.configureBindings
+        // Controls.configureControls(0, drivetrain, leds);
     }
 }
