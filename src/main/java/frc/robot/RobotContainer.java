@@ -6,18 +6,30 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlog.annotations.Log;
 
+import frc.robot.subsystems.Drivetrain;
+import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.LEDs;
 
 public class RobotContainer {
 
-    @Log(groups = "subsystems")
+    @Log
     private final LEDs leds = new LEDs();
 
+    @Log
+    Drivetrain drivetrain = new Drivetrain();
+
+    @Log
+    Intake intake = new Intake();
+
+    // Keep adding more
+    @Log
+    HoundBrian houndBrian = new HoundBrian(drivetrain, intake, leds);
+
     public RobotContainer() {
-        startInitialLEDPattern();
+        configureBindings();
     }
 
-    public void startInitialLEDPattern() {
-        leds.requestStateCommand(LEDs.LEDState.GOLD_BLUE_TRAIL).schedule();
+    public void configureBindings() {
+        Controls.configureBindings
     }
 }

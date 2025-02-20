@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.LEDs;
+import frc.robot.subsystems.LEDs.LEDState;
 
 /**
  * Representation for the button board that controls mechanism initialization.
@@ -61,6 +62,10 @@ public class HoundBrian {
         new Trigger(intakeButton::get).negate()
                 .and(DriverStation::isDisabled)
                 .onTrue(intake.resetPositionCommand().ignoringDisable(true));
+
+        // Simply to test if LED patterns actual work
+        new Trigger(actionButton::get).whileTrue(leds.requestStateCommand(LEDState.SOLID_GREEN).ignoringDisable(true));
+        new Trigger(actionButton2::get).whileTrue(leds.requestStateCommand(LEDState.SOLID_GREEN).ignoringDisable(true));
 
         if (RobotBase.isSimulation()) {
             drivetrainButtonSim.setValue(true);

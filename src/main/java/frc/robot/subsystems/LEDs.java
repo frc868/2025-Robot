@@ -28,25 +28,17 @@ public class LEDs extends SubsystemBase {
     private ArrayList<LEDState> currentStates = new ArrayList<>();
 
     public enum LEDState {
-        OFF(solid(Color.kBlack, LEDSection.ALL)),
-        GOLD_BLUE_TRAIL(
-                buffer -> {
-                    Consumer<AddressableLEDBuffer> goldEffect = LEDPatterns.chase(new Color(1.0, 0.843, 0), 10, 0.1,
-                            true, LEDSection.ALL);
-                    Consumer<AddressableLEDBuffer> blueEffect = LEDPatterns.chase(Color.kBlue, 10, 0.1, true,
-                            LEDSection.ALL);
 
-                    goldEffect.accept(buffer);
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    blueEffect.accept(buffer);
-                }),
-        INITIALIZATION_BLACK_BACKGROUND(solid(Color.kBlack, LEDSection.ALL)),
-        // Use this for houndbrian zero
-        INITIALIZED_CONFIRM(breathe(Color.kGreen, 2, 0, 255, LEDSection.ALL));
+        // If you dont like chase use wave
+        GOLD_BLUE_CHASE(
+                chase(new Color("0018F9"), new Color("#FF6E05"),
+                        25, 10, 50, true, LEDSection.ALL)),
+
+        BLUE_WAVE(
+                wave(new Color("0018F9"), 25, 10, 50, 150, LEDSection.ALL)),
+
+        SOLID_GREEN(
+                solid(new Color("3BB143"), LEDSection.ALL));
 
         private List<Consumer<AddressableLEDBuffer>> bufferConsumers;
 
@@ -64,7 +56,7 @@ public class LEDs extends SubsystemBase {
         loadingNotifier = new Notifier(
                 () -> {
                     synchronized (this) {
-                        LEDState.GOLD_BLUE_TRAIL.bufferConsumers.forEach(c -> c.accept(buffer));
+                        LEDState.GOLD_BLUE_CHASE.bufferConsumers.forEach(c -> c.accept(buffer));
                         leds.setData(buffer);
                     }
                 });
@@ -74,11 +66,7 @@ public class LEDs extends SubsystemBase {
     }
 
     public Command requestStateCommand(LEDState state) {
-        return Commands.run(() -> {
-            if (!currentStates.contains(state)) {
-                currentStates.add(state);
-            }
-        }).ignoringDisable(true);
+        return Commands.run(() -> currentStates.add(state)).ignoringDisable(true);
     }
 
     public Command updateBufferCommand() {
@@ -86,8 +74,8 @@ public class LEDs extends SubsystemBase {
             loadingNotifier.stop();
             clear();
 
-            if (!currentStates.contains(LEDState.GOLD_BLUE_TRAIL)) {
-                currentStates.add(LEDState.GOLD_BLUE_TRAIL);
+            if (!currentStates.contains(LEDState.GOLD_BLUE_CHASE)) {
+                currentStates.add(LEDState.GOLD_BLUE_CHASE);
             }
 
             currentStates.sort((s1, s2) -> s2.ordinal() - s1.ordinal());
