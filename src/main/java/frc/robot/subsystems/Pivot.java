@@ -16,6 +16,11 @@ import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.subsystems.Pivot.Constants.CAN;
+import frc.robot.subsystems.Pivot.Constants.Feedback;
+import frc.robot.subsystems.Pivot.Constants.Feedforward;
+import frc.robot.subsystems.Pivot.Constants.MotionMagic;
+import frc.robot.subsystems.Pivot.Constants.Position;
 
 import java.util.function.Supplier;
 
@@ -36,6 +41,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     public static final double SENSOR_TO_MECHANISM = 12 / 1;
     /** Current limit of manipulator motor. */
     public static final double CURRENT_LIMIT = 60; // TODO find good # amps\\
+    public static final double POSITION_TOLERANCE = 0.01;
 
     /** Constant values of manipulator pivot. */
     public static final class Constants {
@@ -186,7 +192,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        // setDefaultCommand(holdCurrentPositionCommand());
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -213,6 +219,10 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return controlRequest;
     }
 
+    public boolean atGoal() {
+        return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
+    }
+
     @Override
     public double getPosition() {
         return motor.getPosition().getValueAsDouble();
@@ -231,7 +241,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> motor.setControl(outputRequestWithSafeties(
-                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))));
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))))
+                .until(this::atGoal).withName("pivot.moveToCurrentGoalCommand");
     }
 
     @Override
@@ -293,22 +304,24 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     }
 
     /**
-     * Creates a command for the sysId quasistatic test, which gradually speeds up
-     * the mechanism to eliminate variation from acceleration
+     * Creates a command to run a SysId quasistatic test in the specified direction,
+     * which gradually ramps up voltage fed to mechanism in such a way as to
+     * eliminate the effect of voltage on the mechanism's acceleration.
      * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the quasistatic test
+     * @param direction direction to run test in
+     * @return the command
      */
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
 
     /**
-     * Creates a command for the sysId dynamic test, which will step up the speed to
-     * see how the mechanism behaves during acceleration
+     * Creates a command to run a SysId dynamic test in the specified direction,
+     * which steps up voltage fed to mechanism by a constant value to determine
+     * mechanism behavior while accelerating.
      * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the dynamic test
+     * @param direction direction to run test in
+     * @return the command
      */
     public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.dynamic(direction);
