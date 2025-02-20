@@ -55,10 +55,11 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             HARD_STOP(0.405029296875),
             NET(0),
             PAST_ELEVATOR(0.04922),
-            L1(0),
+            L1(0.03),
             L2(-0.06),
             L3(-0.06),
             L4(-0.06),
+            ALGAE(0.01),
             SOFT_STOP(0.092);
 
             public final double position;
@@ -260,7 +261,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             double currentPosition = getPosition();
 
             if (currentPosition >= Position.HARD_STOP.position) {
-                motor.setControl(new NeutralOut());
+                motor.setControl(stopRequest);
             } else {
                 motor.setControl(outputRequestWithSafeties(
                         motionMagicVoltageRequest.withPosition(currentPosition).withEnableFOC(true)));

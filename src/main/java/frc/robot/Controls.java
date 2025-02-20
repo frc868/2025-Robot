@@ -62,14 +62,14 @@ public class Controls {
         joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
         joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
         joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
+        joystick.bottomHatLeft().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L1));
 
-        // joystick.triggerSoftPress()
-        // .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
-        // elevator, pivot))
-        // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
-        // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
-        // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot));
-        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
+        joystick.triggerSoftPress()
+                .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
+                        elevator, pivot));
+        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
+                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
+        // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
         joystick.blackThumbButton().onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
     }
 

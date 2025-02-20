@@ -74,10 +74,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             HARD_STOP(0),
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            LOW_ALGAE(0),
-            L2(2.5742), // TODO get actual position
-            HIGH_ALGAE(0),
-            L3(5), // TODO get actual position
+            L2(2.95), // TODO get actual position
+            LOW_ALGAE(3.95),
+            L3(5.25), // TODO get actual position
+            HIGH_ALGAE(6.95),
             L4_NET(8.8);
 
             public final double position;
