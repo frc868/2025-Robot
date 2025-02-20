@@ -150,7 +150,7 @@ public class Constants {
                 }
 
                 public static final int PORT = 0; // Change depending on PWM
-                public static final int LENGTH = 333; // Adjust as needed
+                public static final int LENGTH = 310; // Adjust as needed
 
                 public static final List<LEDState> DEFAULT_STATES = List.of();
         }
