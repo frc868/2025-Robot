@@ -17,23 +17,13 @@ import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.MutDistance;
-import edu.wpi.first.units.measure.MutLinearVelocity;
-import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.subsystems.Elevator.Constants.CAN;
-import frc.robot.subsystems.Elevator.Constants.Feedback;
-import frc.robot.subsystems.Elevator.Constants.Feedforward;
-import frc.robot.subsystems.Elevator.Constants.MotionProfile;
-import frc.robot.subsystems.Elevator.Constants.Position;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static edu.wpi.first.units.Units.Volts;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Second;
 
 import static frc.robot.subsystems.Elevator.Constants.*;
@@ -62,7 +52,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         public static final double DRUM_CIRCUMFERENCE = 2 * Math.PI * DRUM_RADIUS;
         /** Ratio of motor rotations to spool drum rotations. */
         public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
-        /** Current limit of elevator motors. */
+        /** Current limit of elevator motors, in amps. */
         public static final double CURRENT_LIMIT = 80;
 
         /** CAN information of elevator motors. */
@@ -88,9 +78,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             L2(2.5742), // TODO get actual position
             HIGH_ALGAE(0),
             L3(5), // TODO get actual position
-            L4_NET(8.8),
-            NET(0.0),
-            SOFT_STOP(1.455);
+            L4_NET(8.8);
 
             public final double position;
 
@@ -157,36 +145,41 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      */
     private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
     /** Request object for setting elevator motors' voltage directly. */
-    private final VoltageOut directVoltageRequest = new VoltageOut(0);
-    /** Request object for stopping the motor. */
-    private final NeutralOut stop = new NeutralOut();
+    private final VoltageOut voltageRequest = new VoltageOut(0);
+    /** Request object for stopping the motors. */
+    private final NeutralOut stopRequest = new NeutralOut();
 
-    /** Mutable measure for voltages applied during sysId testing */
-    private final MutVoltage sysIdVoltage = Volts.mutable(0);
-    /** Mutable measure for distances traveled during sysId testing (Meters) */
-    private final MutDistance sysIdDistance = Meters.mutable(0);
-    /** Mutable measure for velocity during SysId testing (Meters/Second) */
-    private final MutLinearVelocity sysIdVelocity = MetersPerSecond.mutable(0);
     /**
-     * The sysIdRoutine object with default configuration and logging of voltage,
-     * velocity, and distance
+     * Global position tracker object for tracking mechanism positions for
+     * calculating safeties.
+     */
+    private final PositionTracker positionTracker;
+
+    /**
+     * Whether elevator position has been reset while the elevator is resting
+     * against its hard stop using. If uninitialized, the mechanism should not be
+     * able to move at all. Initialized to {@code false} until position is reset by
+     * {@link frc.robot.HoundBrian HoundBrian}.
+     */
+    private boolean initalized = false;
+
+    /**
+     * SysId routine to run to empirically determine feedforward and feedback
+     * constant values, using CTRE's Phoenix 6 {@link SignalLogger Signal Logger}.
      */
     private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
             new SysIdRoutine.Config(Volts.of(0.5).per(Second), Volts.of(3), null,
                     state -> SignalLogger.writeString("state", state.toString())),
             new SysIdRoutine.Mechanism(voltage -> {
                 setVoltage(voltage.magnitude());
-            }, log -> {
-                log.motor("Elevator")
-                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                        .linearPosition(sysIdDistance.mut_replace(getPosition(), Meters))
-                        .linearVelocity(sysIdVelocity.mut_replace(getVelocity(), MetersPerSecond));
-            }, this));
+            }, null, this));
 
-    private final PositionTracker positionTracker;
-
-    private boolean initalized = false;
-
+    /**
+     * Initialize elevator configurations and add pivot position to global position
+     * tracker.
+     * 
+     * @param positionTracker global position tracker object
+     */
     public Elevator(PositionTracker positionTracker) {
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
@@ -221,11 +214,36 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     /**
-     * Finds the position of the {@link #leftMotor motor}
+     * Determines if a desired control request for the motor(s) is safe for the
+     * mechanism or not, and stops the motor(s) if unsafe. Unsafe control requests
+     * include any requests when the mechanism is uninitialized, if the request will
+     * cause the mechanism to exceed its physical limits, or if the request will
+     * interfere with and break another mechanism.
      * 
-     * @return The position of the elevator (in whatever unit is used for the
-     *         {@link Constants#SENSOR_TO_MECHANISM conversion factor})
+     * @param controlRequest desired control request
+     * @return desired control request if safe, else the control request to stop the
+     *         motor.
      */
+    public ControlRequest controlRequestWithSafeties(ControlRequest controlRequest) {
+        if (!initalized) {
+            return stopRequest;
+        }
+
+        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
+            return controlRequest;
+        }
+
+        if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
+            return stopRequest;
+        }
+
+        if (getPosition() > Position.L4_NET.position) {
+            return stopRequest;
+        }
+
+        return controlRequest;
+    }
+
     @Override
     public double getPosition() {
         return leftMotor.getPosition().getValueAsDouble();
@@ -237,50 +255,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         rightMotor.setPosition(Position.HARD_STOP.position);
     }
 
-    /**
-     * Finds the velocity of the mechanism controlled by the {@link #leftMotor
-     * motor}
-     * 
-     * @return Velocity of the mechanism, in
-     *         {@link edu.wpi.first.units.Units#MetersPerSecond Meters per Second}
-     */
-    public double getVelocity() {
-        return leftMotor.getVelocity().getValueAsDouble();
-    }
-
-    /**
-     * Finds the voltage of the {@link #leftMotor motor}
-     * 
-     * @return Voltage of the motor, as a double
-     */
-    public double getVoltage() {
-        return leftMotor.getMotorVoltage().getValueAsDouble();
-    }
-
     @Override
     public void setVoltage(double voltage) {
         leftMotor.setControl(
-                outputRequestWithSafeties(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12))));
-    }
-
-    public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
-        if (!initalized) {
-            return stop;
-        }
-
-        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
-            return controlRequest;
-        }
-
-        if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
-            return stop;
-        }
-
-        if (getPosition() > Position.L4_NET.position) {
-            return stop;
-        }
-
-        return controlRequest;
+                controlRequestWithSafeties(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12))));
     }
 
     @Override
@@ -294,7 +272,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                     + ", At Target: " + atTarget);
 
             if (!atTarget) {
-                leftMotor.setControl(outputRequestWithSafeties(
+                leftMotor.setControl(controlRequestWithSafeties(
                         motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
             }
         }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
@@ -317,7 +295,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                     double targetPosition = goalPositionSupplier.get();
                     System.out.println("Elevator Moving to position: " + targetPosition);
                     leftMotor.setControl(
-                            outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(targetPosition)
+                            controlRequestWithSafeties(motionMagicVoltageRequest.withPosition(targetPosition)
                                     .withEnableFOC(true)));
                 }),
                 moveToCurrentGoalCommand()
@@ -335,7 +313,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     @Override
     public Command holdCurrentPositionCommand() {
         return runOnce(() -> {
-            leftMotor.setControl(outputRequestWithSafeties(motionMagicVoltageRequest.withPosition(getPosition())));
+            leftMotor.setControl(controlRequestWithSafeties(motionMagicVoltageRequest.withPosition(getPosition())));
         }).withName("elevator.holdCurrentPositionCommand");
     }
 
@@ -371,22 +349,24 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     /**
-     * Creates a command for the sysId quasistatic test, which gradually speeds up
-     * the mechanism to eliminate variation from acceleration
+     * Creates a command to run a SysId quasistatic test in the specified direction,
+     * which gradually ramps up voltage fed to mechanism in such a way as to
+     * eliminate the effect of voltage on the mechanism's acceleration.
      * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the quasistatic test
+     * @param direction direction to run test in
+     * @return the command
      */
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
 
     /**
-     * Creates a command for the sysId dynamic test, which will step up the speed to
-     * see how the mechanism behaves during acceleration
+     * Creates a command to run a SysId dynamic test in the specified direction,
+     * which steps up voltage fed to mechanism by a constant value to determine
+     * mechanism behavior while accelerating.
      * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the dynamic test
+     * @param direction direction to run test in
+     * @return the command
      */
     public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.dynamic(direction);

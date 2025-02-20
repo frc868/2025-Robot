@@ -11,57 +11,46 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
-import edu.wpi.first.units.measure.MutAngle;
-import edu.wpi.first.units.measure.MutAngularVelocity;
-import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.subsystems.Pivot.Constants.CAN;
-import frc.robot.subsystems.Pivot.Constants.Feedback;
-import frc.robot.subsystems.Pivot.Constants.Feedforward;
-import frc.robot.subsystems.Pivot.Constants.MotionMagic;
-import frc.robot.subsystems.Pivot.Constants.Position;
 
 import java.util.function.Supplier;
 
-import static edu.wpi.first.units.Units.Radian;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.Rotation;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
+import static frc.robot.subsystems.Pivot.Constants.*;
 
 /** Subsystem which rotates manipulator. */
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Position> {
-    // public static TunableDouble p = new TunableDouble("subsystems/pivot/kP", 0);
     /**
      * Direction of motor rotation defined as positive rotation. Defined for
-     * manipulator pivot to be rotation away from zero point.
+     * manipulator pivot to be rotation which raises manipulator when moving away
+     * from the pivot where the force of gravity is the strongest on the manipulator
+     * and manipuator pivot.
      */
-    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
     /** Ratio of motor rotations to pivot rotations. */
-    public static final double GEAR_RATIO = 12 / 1;
-    /** Ratio of motor rotations to pivot rotations, in radians. */
-    public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
+    public static final double SENSOR_TO_MECHANISM = 12 / 1;
     /** Current limit of manipulator motor. */
     public static final double CURRENT_LIMIT = 60; // TODO find good # amps\\
 
-    public static double p = 0;
-
-    /** Constant values of manipualtor.. */
+    /** Constant values of manipulator pivot. */
     public static final class Constants {
-        /** CAN information of manipulator motor. */
+        /** CAN information of manipulator pivot. */
         public static final class CAN {
-            /** CAN bus pivot motor is on. */
+            /** CAN bus manipulator pivot motor is on. */
             public static final String BUS = "rio";
-            /** CAN ID of pivot motor. */
+            /** CAN ID of manipulator pivot motor. */
             public static final int ID = 13;
         }
 
-        /** Positions pivot can be in. */
+        /**
+         * Positions manipulator pivot can be in, in manipulator pivot rotations. 0 is
+         * defined to be where the force of gravity is the
+         */
         public static enum Position {
             HARD_STOP(0.405029296875),
             NET(0),
@@ -125,7 +114,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
     /** Pivot motor */
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
-    /** Pivot motor configuration object. */
+    /** Configuration object for pivot motor. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
 
     /**
@@ -135,19 +124,20 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     /** Request object for setting elevator motors' voltage directly. */
     private final VoltageOut voltageRequest = new VoltageOut(0);
     /** Request object for stopping the motor. */
-    private final NeutralOut stop = new NeutralOut();
+    private final NeutralOut stopRequest = new NeutralOut();
 
-    /** Mutable measure for voltages applied during sysId testing */
-    private final MutVoltage sysIdVoltage = Volts.mutable(0);
-    /** Mutable measure for distances traveled during sysId testing (Meters) */
-    private final MutAngle sysIdAngle = Radian.mutable(0);
-    /** Mutable measure for velocity during SysId testing (Meters/Second) */
-    private final MutAngularVelocity sysIdVelocity = RadiansPerSecond.mutable(0);
     /**
-     * The sysIdRoutine object with default configuration and logging of voltage,
-     * velocity, and distance
+     * SysId routine to run to empirically determine feedforward and feedback
+     * constant values, using CTRE's Phoenix 6 {@link SignalLogger Signal Logger}.
      */
-    private SysIdRoutine sysIdRoutine;
+    private SysIdRoutine sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(Volts.of(0.125).per(Second), Volts.of(0.5), null,
+                    state -> {
+                        SignalLogger.writeString("state", state.toString());
+                    }),
+            new SysIdRoutine.Mechanism(voltage -> {
+                setVoltage(voltage.magnitude());
+            }, null, this));
 
     /**
      * Global position tracker object for tracking mechanism positions for
@@ -155,9 +145,20 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      */
     private PositionTracker positionTracker;
 
+    /**
+     * Whether manipulator pivot position has been reset while the manipulator pivot
+     * is resting against its hard stop using. If uninitialized, the mechanism
+     * should not be able to move at all. Initialized to {@code false} until
+     * position is reset by {@link frc.robot.HoundBrian HoundBrian}.
+     */
     private boolean initalized = false;
 
-    /** Initialize pivot motor configurations. */
+    /**
+     * Initialize manipulator pivot configurations and add pivot position to global
+     * position tracker.
+     * 
+     * @param positionTracker global position tracker object
+     */
     public Pivot(PositionTracker positionTracker) {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
@@ -181,38 +182,26 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         motor.setNeutralMode(NeutralModeValue.Brake);
 
-        sysIdRoutine = new SysIdRoutine(
-                new SysIdRoutine.Config(Volts.of(0.125).per(Second), Volts.of(0.5), null,
-                        state -> {
-                            SignalLogger.writeString("state", state.toString());
-                            sysIdRoutine.recordState(state);
-                        }),
-                new SysIdRoutine.Mechanism(voltage -> {
-                    setVoltage(voltage.magnitude());
-                }, log -> {
-                    log.motor("Pivot")
-                            .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                            .angularPosition(sysIdAngle.mut_replace(getPosition(), Rotation))
-                            .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RotationsPerSecond));
-                }, this));
-
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
         // setDefaultCommand(holdCurrentPositionCommand());
     }
 
-    public double getVoltage() {
-        return motor.getMotorVoltage().getValueAsDouble();
-    }
-
-    public double getVelocity() {
-        return motor.getVelocity().getValueAsDouble();
-    }
-
+    /**
+     * Determines if a desired control request for the motor(s) is safe for the
+     * mechanism or not, and stops the motor(s) if unsafe. Unsafe control requests
+     * include any requests when the mechanism is uninitialized, if the request will
+     * cause the mechanism to exceed its physical limits, or if the request will
+     * interfere with and break another mechanism.
+     * 
+     * @param controlRequest desired control request
+     * @return desired control request if safe, else the control request to stop the
+     *         motor.
+     */
     public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
         if (!initalized) {
-            return stop;
+            return stopRequest;
         }
 
         // if (positionTracker.getPosition("Elevator") > 0) {
