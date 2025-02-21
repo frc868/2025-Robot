@@ -76,6 +76,7 @@ public class RobotContainer {
         // }).onTrue(GlobalStates.INITIALIZED.enableCommand());
     }
 
+
     private void configureBindings() {
         Controls.configureDriverControls(0, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
         Controls.configureOperatorControls(1, drivetrain, elevator, pivot, manipulator, intake, climber, leds);

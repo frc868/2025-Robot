@@ -11,6 +11,8 @@ public class HoundBrian {
     private final DigitalInput drivetrainButton = new DigitalInput(0);
     private final DigitalInput elevatorButton = new DigitalInput(1);
     private final DigitalInput pivotButton = new DigitalInput(2);
+    private final DigitalInput actionButton = new DigitalInput(3);
+    private final DigitalInput actionButton2 = new DigitalInput(4;
 
     public HoundBrian(Drivetrain drivetrain, Elevator elevator, Pivot pivot) {
         new Trigger(drivetrainButton::get).negate().and(DriverStation::isDisabled)
@@ -21,5 +23,9 @@ public class HoundBrian {
 
         new Trigger(pivotButton::get).negate().and(DriverStation::isDisabled)
                 .onTrue(pivot.resetPositionCommand().ignoringDisable(true));
+      
+        // Simply to test if LED patterns actual work
+        new Trigger(actionButton::get).whileTrue(leds.requestStateCommand(LEDState.SOLID_GREEN).ignoringDisable(true));
+        new Trigger(actionButton2::get).whileTrue(leds.requestStateCommand(LEDState.SOLID_GREEN).ignoringDisable(true));
     }
 }
