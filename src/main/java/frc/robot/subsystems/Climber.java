@@ -1,83 +1,108 @@
 package frc.robot.subsystems;
 
-import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.subsystems.Climber.Constants.CAN;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+
+import static frc.robot.subsystems.Climber.Constants.*;
+
 import java.util.function.Supplier;
 
-/** Climber subsystem which hangs robot from deep cage. */
-public class Climber extends SubsystemBase implements BaseSingleJointedArm<Climber.Constants.Position> {
+/** Subsystem which hangs robot from deep cage. */
+public class Climber extends SubsystemBase {
     /** Constant values of climber subsystem. */
     public static final class Constants {
-        /** Positions that climber subsystem can be in. */
-        public enum Position {
+        /**
+         * Direction of motor rotation defined as positive rotation. Defined for
+         * climber motors to be rotation away from zero point.
+         */
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+        /** Current limit of climber motors. */
+        public static final double CURRENT_LIMIT = 80; // TODO
+        public static final double CURRENT = 80;
+
+        /** CAN information of climber motors. */
+        public static final class CAN {
+            /** CAN bus climber motors are on. */
+            public static final String BUS = "canivore";
+
+            /** CAN IDs of climber motors. */
+            public static final class IDs {
+                /** CAN ID of climber motor A. */
+                private static final int MOTOR_A = 9;
+                /** CAN ID of climber motor B. */
+                private static final int MOTOR_B = 10;
+            }
         }
     }
 
-    @Override
-    public double getPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPosition'");
+    /** Climber motor A. */
+    private final TalonFX motorA = new TalonFX(CAN.IDs.MOTOR_A, CAN.BUS);
+    /** Climber motor B. */
+    private final TalonFX motorB = new TalonFX(CAN.IDs.MOTOR_B, CAN.BUS);
+    /**
+     * Configuration object for configurations shared across both climber motors.
+     */
+    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
+
+    /** Request object for setting motor current. */
+    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
+
+    /** Initialize climber motors configurations. */
+    public Climber() {
+        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
+
+        motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+
+        motorA.getConfigurator().apply(motorConfigs);
+        motorB.getConfigurator().apply(motorConfigs);
+
+        motorB.setControl(new Follower(motorA.getDeviceID(), false));
+
+        motorA.setNeutralMode(NeutralModeValue.Brake);
+        motorB.setNeutralMode(NeutralModeValue.Brake);
     }
 
-    @Override
-    public void resetPosition() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPosition'");
+    /**
+     * Sets the voltage of both climber motors to a clamped value
+     * 
+     * @param current Current to set the motors to,
+     */
+    public void setCurrent(double current) {
+        motorA.setControl(torqueCurrentRequest
+                .withOutput(MathUtil.clamp(current, -CURRENT_LIMIT, CURRENT_LIMIT)));
     }
 
-    @Override
-    public void setVoltage(double voltage) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVoltage'");
-    }
-
-    @Override
-    public Command moveToCurrentGoalCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToCurrentGoalCommand'");
-    }
-
-    @Override
-    public Command moveToPositionCommand(Supplier<Climber.Constants.Position> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'moveToPositionCommand'");
-    }
-
-    @Override
-    public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException(
-                "Unimplemented method 'moveToArbitraryPositionCommand'");
-    }
-
-    @Override
-    public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'movePositionDeltaCommand'");
-    }
-
-    @Override
-    public Command holdCurrentPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'holdCurrentPositionCommand'");
-    }
-
-    @Override
-    public Command resetPositionCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'resetPositionCommand'");
-    }
-
-    @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setOverridenSpeedCommand'");
+        return runEnd(() -> setCurrent(speed.get() * CURRENT), () -> setCurrent(0))
+                .withName("climbr.setOverridenSpeedCommand");
     }
 
-    @Override
+    /**
+     * Creates a command that will make the climber motors coast instead of brake.
+     * Once done, climber motors will go back to braking.
+     * 
+     * @return Command that causes motors to coast
+     */
     public Command coastMotorsCommand() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'coastMotorsCommand'");
+        return runOnce(() -> {
+            motorA.stopMotor();
+            motorB.stopMotor();
+        }).andThen(() -> {
+            motorA.setNeutralMode(NeutralModeValue.Coast);
+            motorB.setNeutralMode(NeutralModeValue.Coast);
+        }).finallyDo(() -> {
+            motorA.setNeutralMode(NeutralModeValue.Brake);
+            motorB.setNeutralMode(NeutralModeValue.Brake);
+        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("climber.coastMotors");
     }
 }
