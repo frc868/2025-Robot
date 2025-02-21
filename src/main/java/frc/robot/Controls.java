@@ -53,7 +53,7 @@ public class Controls {
      * @param drivetrain drivetrain subsystem object
      */
     public static void configureDriverControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
         CommandVirpilJoystick joystick = new CommandVirpilJoystick(port);
 
         drivetrain.setDefaultCommand(
@@ -91,7 +91,7 @@ public class Controls {
      * @param drivetrain drivetrain subsystem object
      */
     public static void configureOperatorControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
         CommandXboxController controller = new CommandXboxController(port);
 
         controller.y().whileTrue(elevator.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.1));
@@ -114,7 +114,7 @@ public class Controls {
      * @param drivetrain drivetrain subsystem object
      */
     public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
         CommandXboxController controller = new CommandXboxController(port);
 
         controller.x().whileTrue(intake.runRollersCommand());
@@ -128,7 +128,7 @@ public class Controls {
      * @param drivetrain drivetrain subsystem object
      */
     public static void configureSysIdControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
         CommandXboxController controller = new CommandXboxController(port);
 
         controller.x().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kForward));

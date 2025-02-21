@@ -8,6 +8,8 @@ import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -17,6 +19,7 @@ import frc.robot.subsystems.Intake.Constants.Pivot;
 import frc.robot.subsystems.Intake.Constants.Rollers;
 
 /** Subsystem which intakes algae from ground. */
+@LoggedObject
 public class Intake extends SubsystemBase implements BaseIntake {
     /** Constant values of intake subsystem. */
     public static final class Constants {
@@ -66,8 +69,10 @@ public class Intake extends SubsystemBase implements BaseIntake {
     }
 
     /** Intake pivot left motor. */
+    @Log
     private final TalonFX pivotLeftMotor = new TalonFX(CAN.IDs.PIVOT_LEFT, CAN.BUS);
     /** Intake pivot right motor. */
+    @Log
     private final TalonFX pivotRightMotor = new TalonFX(CAN.IDs.PIVOT_RIGHT, CAN.BUS);
     /** Intake pivot motor configuration object. */
     private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
@@ -75,6 +80,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
     private final TorqueCurrentFOC pivotCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Intake rollers motor. */
+    @Log
     private final TalonFX rollersMotor = new TalonFX(CAN.IDs.ROLLERS, CAN.BUS);
     /** Intake rollers motor configuration object. */
     private final TalonFXConfiguration rollersMotorConfigs = new TalonFXConfiguration();

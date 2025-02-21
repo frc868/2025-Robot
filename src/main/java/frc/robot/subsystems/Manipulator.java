@@ -6,10 +6,10 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
-import edu.wpi.first.math.filter.LinearFilter;
-import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -57,6 +57,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     }
 
     /** Manipulator motor. */
+    @Log
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Manipulator motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
@@ -67,7 +68,9 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Debouncer for filtering out current spike outliers. */
-    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 2, 0.25);
+    private final MedianFilter filter = new MedianFilter(10);
+    @Log
+    private double temp;
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
@@ -88,12 +91,11 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * 
      * @return Whether or not there is a game piece in the intake
      */
-    public boolean hasScoringElement() { // TODO
-        motor.getVelocity().refresh();
-
+    @Log
+    public boolean hasScoringElement() {
         double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
-        System.out.println("Temp: " + temp);
-        DriverStation.reportWarning("Temps: " + temp, false);
+        this.temp = temp;
+        // return temp < 60 && temp > 0;
         return false;
     }
 

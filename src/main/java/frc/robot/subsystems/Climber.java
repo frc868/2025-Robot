@@ -6,6 +6,8 @@ import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -18,6 +20,7 @@ import static frc.robot.subsystems.Climber.Constants.*;
 import java.util.function.Supplier;
 
 /** Subsystem which hangs robot from deep cage. */
+@LoggedObject
 public class Climber extends SubsystemBase {
     /** Constant values of climber subsystem. */
     public static final class Constants {
@@ -46,8 +49,10 @@ public class Climber extends SubsystemBase {
     }
 
     /** Climber motor A. */
+    @Log
     private final TalonFX motorA = new TalonFX(CAN.IDs.MOTOR_A, CAN.BUS);
     /** Climber motor B. */
+    @Log
     private final TalonFX motorB = new TalonFX(CAN.IDs.MOTOR_B, CAN.BUS);
     /**
      * Configuration object for configurations shared across both climber motors.

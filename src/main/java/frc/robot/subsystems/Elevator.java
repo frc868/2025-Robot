@@ -14,6 +14,8 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
@@ -29,6 +31,7 @@ import static edu.wpi.first.units.Units.Second;
 import static frc.robot.subsystems.Elevator.Constants.*;
 
 /** Subsystem which lifts manipulator and manipulator pivot. */
+@LoggedObject
 public class Elevator extends SubsystemBase implements BaseLinearMechanism<Position> {
     /** Constant values of elevator. */
     public static final class Constants {
@@ -134,8 +137,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     }
 
     /** Elevator left motor. */
+    @Log
     private final TalonFX leftMotor = new TalonFX(CAN.IDs.LEFT_MOTOR, CAN.BUS);
     /** Elevator right motor. */
+    @Log
     private final TalonFX rightMotor = new TalonFX(CAN.IDs.RIGHT_MOTOR, CAN.BUS);
     /**
      * Configuration object for configurations shared across both elevator motors.
@@ -163,7 +168,8 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      * able to move at all. Initialized to {@code false} until position is reset by
      * {@link frc.robot.HoundBrian HoundBrian}.
      */
-    private boolean initalized = false;
+    @Log
+    private boolean initialized = false;
 
     /**
      * SysId routine to run to empirically determine feedforward and feedback
@@ -227,7 +233,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
      *         motor.
      */
     public ControlRequest controlRequestWithSafeties(ControlRequest controlRequest) {
-        if (!initalized) {
+        if (!initialized) {
             return stopRequest;
         }
 
@@ -246,11 +252,13 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         return controlRequest;
     }
 
+    @Log
     public boolean atGoal() {
         return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
     }
 
     @Override
+    @Log
     public double getPosition() {
         return leftMotor.getPosition().getValueAsDouble();
     }
@@ -313,7 +321,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
     public Command resetPositionCommand() {
         return runOnce(() -> {
             resetPosition();
-            initalized = true;
+            initialized = true;
         }).withName("elevator.resetPositionCommand");
 
     }

@@ -8,14 +8,18 @@ import java.util.function.Supplier;
 
 import com.techhounds.houndutil.houndauto.AutoManager;
 import com.techhounds.houndutil.houndlib.PositionTracker;
+import com.techhounds.houndutil.houndlog.LoggingManager;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.SendableLog;
 
+import edu.wpi.first.epilogue.Logged;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.Constants.Level;
+import frc.robot.Constants.Mode;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.Elevator;
@@ -24,6 +28,7 @@ import frc.robot.subsystems.LEDs;
 import frc.robot.subsystems.Manipulator;
 import frc.robot.subsystems.Pivot;
 
+@Logged
 public class RobotContainer {
     private final PositionTracker positionTracker = new PositionTracker();
 
@@ -45,11 +50,11 @@ public class RobotContainer {
     @Log(groups = "subsystems")
     private final Climber climber = new Climber();
 
-    @Log(groups = "subsystems")
-    private final LEDs leds = new LEDs();
+    // @Log(groups = "subsystems")
+    // private final LEDs leds = new LEDs();
 
     @Log(groups = "subsystems")
-    private final HoundBrian houndBrian = new HoundBrian(drivetrain, elevator, pivot, leds);
+    private final HoundBrian houndBrian = new HoundBrian(drivetrain, elevator, pivot);
 
     @SendableLog(groups = "wpilib")
     private final CommandScheduler commandScheduler = CommandScheduler.getInstance();
@@ -71,16 +76,18 @@ public class RobotContainer {
         configureBindings();
         configureAuto();
 
+        LoggingManager.getInstance().registerObject(this);
+
         // new Trigger(() -> {
         // return drivetrain.getInitialized();
         // }).onTrue(GlobalStates.INITIALIZED.enableCommand());
     }
 
     private void configureBindings() {
-        Controls.configureDriverControls(0, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
-        Controls.configureOperatorControls(1, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
-        Controls.configureOverrideControls(2, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
-        Controls.configureSysIdControls(3, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
+        Controls.configureDriverControls(0, drivetrain, elevator, pivot, manipulator, intake, climber);
+        Controls.configureOperatorControls(1, drivetrain, elevator, pivot, manipulator, intake, climber);
+        Controls.configureOverrideControls(2, drivetrain, elevator, pivot, manipulator, intake, climber);
+        Controls.configureSysIdControls(3, drivetrain, elevator, pivot, manipulator, intake, climber);
     }
 
     private void configureAuto() {

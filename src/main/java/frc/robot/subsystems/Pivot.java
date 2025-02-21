@@ -11,6 +11,9 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -29,22 +32,23 @@ import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.Pivot.Constants.*;
 
 /** Subsystem which rotates manipulator. */
+@LoggedObject
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Position> {
-    /**
-     * Direction of motor rotation defined as positive rotation. Defined for
-     * manipulator pivot to be rotation which raises manipulator when moving away
-     * from the pivot where the force of gravity is the strongest on the manipulator
-     * and manipuator pivot.
-     */
-    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
-    /** Ratio of motor rotations to pivot rotations. */
-    public static final double SENSOR_TO_MECHANISM = 12 / 1;
-    /** Current limit of manipulator motor. */
-    public static final double CURRENT_LIMIT = 60; // TODO find good # amps\\
-    public static final double POSITION_TOLERANCE = 0.01;
-
     /** Constant values of manipulator pivot. */
     public static final class Constants {
+        /**
+         * Direction of motor rotation defined as positive rotation. Defined for
+         * manipulator pivot to be rotation which raises manipulator when moving away
+         * from the pivot where the force of gravity is the strongest on the manipulator
+         * and manipuator pivot.
+         */
+        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
+        /** Ratio of motor rotations to pivot rotations. */
+        public static final double SENSOR_TO_MECHANISM = 12 / 1;
+        /** Current limit of manipulator motor. */
+        public static final double CURRENT_LIMIT = 60;
+        public static final double POSITION_TOLERANCE = 0.01;
+
         /** CAN information of manipulator pivot. */
         public static final class CAN {
             /** CAN bus manipulator pivot motor is on. */
@@ -122,6 +126,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     }
 
     /** Pivot motor */
+    @Log
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Configuration object for pivot motor. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
@@ -160,6 +165,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
      * should not be able to move at all. Initialized to {@code false} until
      * position is reset by {@link frc.robot.HoundBrian HoundBrian}.
      */
+    @Log
     private boolean initalized = false;
 
     /**
@@ -221,6 +227,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return controlRequest;
     }
 
+    @Log
     public boolean atGoal() {
         return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
     }
