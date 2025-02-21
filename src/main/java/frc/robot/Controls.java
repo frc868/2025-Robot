@@ -135,10 +135,5 @@ public class Controls {
         controller.y().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kReverse));
         controller.a().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kForward));
         controller.b().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povRight()).whileTrue(intake.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povRight()).whileTrue(intake.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povRight()).whileTrue(intake.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povRight()).whileTrue(intake.sysIdDynamic(Direction.kReverse));
     }
 }

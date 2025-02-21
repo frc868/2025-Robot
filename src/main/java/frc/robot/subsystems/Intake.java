@@ -1,17 +1,16 @@
 package frc.robot.subsystems;
 
+import java.util.function.Supplier;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Intake.Constants.CAN;
 import frc.robot.subsystems.Intake.Constants.Pivot;
@@ -48,7 +47,8 @@ public class Intake extends SubsystemBase implements BaseIntake {
             /** Ratio of motor rotations to intake pivot rotations. */
             public static final double SENSOR_TO_MECHANISM = Units.rotationsToRadians(GEAR_RATIO);
             /** Intake pivot motor current limit. */
-            public static final double CURRENT_LIMIT = 0; // TODO
+            public static final double CURRENT_LIMIT = 20; // TODO
+            public static final double CURRENT = 20;
         }
 
         /** Constant values of intake rollers. */
@@ -59,9 +59,9 @@ public class Intake extends SubsystemBase implements BaseIntake {
              */
             public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TOD
             /** Intake rollers motor current limit. */
-            public static final double CURRENT_LIMIT = 0; // TODO
+            public static final double CURRENT_LIMIT = 10; // TODO
             /** Voltage to run intake rollers motor at. */
-            public static final double CURRENT = 0; // TODO
+            public static final double CURRENT = 10; // TODO
         }
     }
 
@@ -71,7 +71,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
     private final TalonFX pivotRightMotor = new TalonFX(CAN.IDs.PIVOT_RIGHT, CAN.BUS);
     /** Intake pivot motor configuration object. */
     private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
-
+    /** Request object for setting motor current. */
     private final TorqueCurrentFOC pivotCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Intake rollers motor. */
@@ -107,29 +107,12 @@ public class Intake extends SubsystemBase implements BaseIntake {
      * @param current The current to set the intake to
      */
     public void setCurrent(double current) {
-        pivotLeftMotor.setControl(
-                pivotCurrentRequest.withOutput(MathUtil.clamp(current, -Pivot.CURRENT_LIMIT, Pivot.CURRENT_LIMIT)));
+        pivotLeftMotor.setControl(pivotCurrentRequest.withOutput(Pivot.CURRENT));
     }
 
-    /**
-     * Command that sets the current of the intake's pivot.
-     * Once the command is interrupted, it will set the current to 0
-     * 
-     * @param current Current to set the intake to
-     * @return Command that sets the current
-     */
-    public Command setCurrentCommand(double current) {
-        return runEnd(() -> setCurrent(current), () -> setCurrent(0)).withName("intake.setCurrent");
-    }
-
-    public Command coastMotorsCommand() {
-        return runOnce(() -> {
-            pivotLeftMotor.stopMotor();
-        }).andThen(() -> {
-            pivotLeftMotor.setNeutralMode(NeutralModeValue.Coast);
-        }).finallyDo((s) -> {
-            pivotLeftMotor.setNeutralMode(NeutralModeValue.Brake);
-        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("intake.coastMotors");
+    public Command setOverridenSpeedCommand(Supplier<Double> speed) {
+        return runEnd(() -> setCurrent(speed.get() * Pivot.CURRENT), () -> setCurrent(0))
+                .withName("intake.setOverridenSpeedCommand");
     }
 
     @Override

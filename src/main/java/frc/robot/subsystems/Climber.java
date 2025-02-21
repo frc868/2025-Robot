@@ -10,10 +10,12 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import frc.robot.subsystems.Climber.Constants.CAN;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import static frc.robot.subsystems.Climber.Constants.*;
+
+import java.util.function.Supplier;
 
 /** Subsystem which hangs robot from deep cage. */
 public class Climber extends SubsystemBase {
@@ -25,7 +27,8 @@ public class Climber extends SubsystemBase {
          */
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
         /** Current limit of climber motors. */
-        public static final double CURRENT_LIMIT = 0; // TODO
+        public static final double CURRENT_LIMIT = 80; // TODO
+        public static final double CURRENT = 80;
 
         /** CAN information of climber motors. */
         public static final class CAN {
@@ -50,16 +53,15 @@ public class Climber extends SubsystemBase {
      * Configuration object for configurations shared across both climber motors.
      */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /**
-     * Request object for motor current
-     */
-    private final TorqueCurrentFOC directCurrentRequest = new TorqueCurrentFOC(0);
+
+    /** Request object for setting motor current. */
+    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Initialize climber motors configurations. */
     public Climber() {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = 100;
+        motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
 
         motorA.getConfigurator().apply(motorConfigs);
         motorB.getConfigurator().apply(motorConfigs);
@@ -76,18 +78,13 @@ public class Climber extends SubsystemBase {
      * @param current Current to set the motors to,
      */
     public void setCurrent(double current) {
-        motorA.setControl(directCurrentRequest
+        motorA.setControl(torqueCurrentRequest
                 .withOutput(MathUtil.clamp(current, -CURRENT_LIMIT, CURRENT_LIMIT)));
     }
 
-    /**
-     * Sets the current of the climber to the supplied value
-     * 
-     * @param current
-     * @return
-     */
-    public Command setCurrentCommand(double current) {
-        return runEnd(() -> setCurrent(current), () -> setCurrent(0)).withName("climber.setCurrent");
+    public Command setOverridenSpeedCommand(Supplier<Double> speed) {
+        return runEnd(() -> setCurrent(speed.get() * CURRENT), () -> setCurrent(0))
+                .withName("climbr.setOverridenSpeedCommand");
     }
 
     /**
