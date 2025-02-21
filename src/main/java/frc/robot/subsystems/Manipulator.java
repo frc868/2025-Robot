@@ -1,36 +1,32 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.math.filter.LinearFilter;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static frc.robot.subsystems.Manipulator.Constants.*;
 
-/** Subsystem which intakes and scores scoring elements. */
+/** Subsystem which intakes, holds, and scores scoring elements. */
+@LoggedObject
 public class Manipulator extends SubsystemBase implements BaseIntake {
     /** Constant values of manipulator subsystem. */
     public static final class Constants {
         /**
          * Direction of motor rotation defined as positive rotation. Defined for
-         * manipulator pivot to be rotation away from zero point.
+         * manipulator to be rotation which intakes a scoring element.
          */
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
         /** Manipulator motor current limit. */
-        public static final double CURRENT_LIMIT = 0;
-        /**
-         * Current threshold which manipulator motor exceeds when intaking a scoring
-         * element.
-         */
-        public static final double SCORING_ELEMENT_CURRENT_DETECTION_THRESHOLD = 0;
+        public static final double CURRENT_LIMIT = 100;
 
         /** CAN information of manipulator motor. */
         public static final class CAN {
@@ -41,21 +37,21 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         }
 
         /**
-         * Voltages to set the manipulator motor to, each accomplishing a different task
+         * Currents to set the manipulator motor to for various actions, in amps.
          */
-        public enum Voltages {
-            /** The voltage that will hold a game piece in place inside the intake */
-            HOLD(0.0),
-            /** The voltage that will be used to intake a game piece */
-            INTAKE(0.0),
-            /** The voltage that will be used to push out a game piece */
-            OUTTAKE(0.0);
+        public enum Currents {
+            /** Current to run manipulator motor at to intake a scoring element. */
+            INTAKE(80),
+            /** Current to run manipulator motor at to score a scoring element. */
+            SCORE(-40),
+            /** Current to run manipulator motor at to hold a scoring element. */
+            HOLD(0.0); // TODO
 
-            /** This is used to access the values each name corresponds to, in volts */
-            public final double volts;
+            /** Current to run manipulator motor at, in amps. */
+            public final double current;
 
-            private Voltages(final double volts) {
-                this.volts = volts;
+            private Currents(final double current) {
+                this.current = current;
             }
         };
     }
@@ -64,87 +60,26 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Manipulator motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /** Stator current status signal of manipulator motor. */
-    private final StatusSignal<Current> motorTorqueCurrent = motor.getTorqueCurrent();
-    /** Manipulator motor voltage request object. */
-    private final VoltageOut voltageRequest = new VoltageOut(0);
+    /**
+     * Manipulator motor torque current request object, using field oriented
+     * control.
+     */
+    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
 
     /** Debouncer for filtering out current spike outliers. */
-    private final Debouncer currentSpikeDebouncer = new Debouncer(0.2);
+    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 2, 0.25);
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = Constants.CURRENT_LIMIT;
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
+        motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+
         motor.getConfigurator().apply(motorConfigs);
-    }
 
-    /**
-     * Sets the manipulator motor's voltage to the input provided
-     * 
-     * @param voltage The voltage to set the motor to (clamped to be between -12 and
-     *                12)
-     * @return Command that will set the voltage to the input provided once
-     */
-    public Command setVoltageCommand(double voltage) {
-        return this.runOnce(() -> {
-            motor.setControl(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
-        }).withName("manipulator.setVoltage");
-    }
+        motor.setNeutralMode(NeutralModeValue.Brake);
 
-    /**
-     * Creates command that will run the manipulator rollers forwards
-     * 
-     * @return A command that will run the rollers at
-     *         {@link Constants#INTAKE_VOLTAGE a specified voltage}
-     */
-    @Override
-    public Command runRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.INTAKE.volts).withName("manipulator.runRollers");
-    }
-
-    /**
-     * Creates a command that will run the manipulator rollers backwards
-     * 
-     * @return A command that will run the rollers backwards at
-     *         {@link Constants#INTAKE_VOLTAGE a specified voltage}
-     */
-    @Override
-    public Command reverseRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.OUTTAKE.volts).withName("manipulator.reverseRollers");
-    }
-
-    /**
-     * Creates a command that will stop the manipulator rollers
-     * 
-     * @return Command that will zero the voltage of the manipulator motor
-     */
-    public Command stopRollersCommand() {
-        return setVoltageCommand(0).withName("manipulator.stopRollers");
-    }
-
-    /**
-     * Sets the manipulator motor {@link Constants#HOLD_VOLTAGE voltage} to keep
-     * game pieces in place
-     * 
-     * @return Command that keeps the intaked game pieces in place
-     */
-    public Command holdRollersCommand() {
-        return setVoltageCommand(Constants.Voltages.HOLD.volts).withName("manipulator.holdRollers");
-    }
-
-    /**
-     * Command that will run the rollers until a game piece is detected.
-     * This piece will be detected by checking for current spikes in the motor
-     * caused by increased load
-     * 
-     * @return Command that will {@link #runRollersCommand() intake} until the robot
-     *         {@link #hasGamePiece() has a game piece}
-     */
-    public Command intakeGamePieceCommand() {
-        return (runRollersCommand().repeatedly().until(this::hasGamePiece).andThen(holdRollersCommand()))
-                .withName("manipulator.intakeGamePiece");
+        // setDefaultCommand(intakeScoringElementCommand());
     }
 
     /**
@@ -153,11 +88,44 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * 
      * @return Whether or not there is a game piece in the intake
      */
-    public boolean hasGamePiece() {
-        motorTorqueCurrent.refresh();
-        // If motor current > threshold for some specific time, return true
-        return currentSpikeDebouncer.calculate(
-                motorTorqueCurrent.getValueAsDouble() > Constants.SCORING_ELEMENT_CURRENT_DETECTION_THRESHOLD);
+    public boolean hasScoringElement() { // TODO
+        motor.getVelocity().refresh();
+
+        double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
+        System.out.println("Temp: " + temp);
+        DriverStation.reportWarning("Temps: " + temp, false);
+        return false;
     }
 
+    @Override
+    public Command runRollersCommand() {
+        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
+                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.runRollers");
+    }
+
+    @Override
+    public Command reverseRollersCommand() {
+        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.SCORE.current)),
+                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.reverseRollers");
+    }
+
+    /**
+     * Creates a command to hold a scoring element in the manipulator by applying a
+     * current.
+     * 
+     * @return the command
+     */
+    public Command holdRollersCommand() {
+        return run(() -> torqueCurrentRequest.withOutput(Currents.HOLD.current)).withName("manipulator.holdRollers");
+    }
+
+    /**
+     * Creates a command to intake a scoring element and then hold it.
+     * 
+     * @return the command
+     */
+    public Command intakeScoringElementCommand() {
+        return runRollersCommand().until(this::hasScoringElement).andThen(holdRollersCommand())
+                .withName("manipulator.intakeGamePiece");
+    }
 }

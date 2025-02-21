@@ -5,10 +5,11 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
+import frc.robot.subsystems.Elevator;
+import frc.robot.subsystems.Pivot;
 
 public class Constants {
         public static final class Field {
-
                 public static final int[] sideToTagIDBlue = { 18, 17, 22, 21, 20, 19 };
                 public static final int[] sideToTageIDRed = { 7, 8, 9, 10, 11, 6 };
 
@@ -66,14 +67,21 @@ public class Constants {
                 public static final double REEF_LEVEL_ANGLES[] = { REEF_L1_ANGLE, REEF_L2_ANGLE, REEF_L3_ANGLE,
                                 REEF_L4_ANGLE };
         }
+    }
 
-        public static final class HoundBrian {
-                public static final int BUTTON_1 = 3;
-                public static final int BUTTON_2 = 4;
-                public static final int BUTTON_3 = 5;
-                public static final int BUTTON_4 = 6;
-                public static final int BUTTON_5 = 7;
-                public static final int BUTTON_6 = 8;
-                public static final int BUTTON_7 = 9;
+    public static enum ReefLevel {
+        L1(Elevator.Constants.Position.L1, Pivot.Constants.Position.L1),
+        L2(Elevator.Constants.Position.L2, Pivot.Constants.Position.L2),
+        L3(Elevator.Constants.Position.L3, Pivot.Constants.Position.L3),
+        L4(Elevator.Constants.Position.L4_NET, Pivot.Constants.Position.L4);
+
+        public final Elevator.Constants.Position elevatorPosition;
+        public final Pivot.Constants.Position pivotPosition;
+
+        private ReefLevel(Elevator.Constants.Position elevatorPosition,
+                Pivot.Constants.Position pivotPosition) {
+            this.elevatorPosition = elevatorPosition;
+            this.pivotPosition = pivotPosition;
         }
+    }
 }

@@ -1,13 +1,17 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.MutAngle;
 import edu.wpi.first.units.measure.MutAngularVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
@@ -15,12 +19,18 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.subsystems.Climber.Constants.CAN;
+import frc.robot.subsystems.Climber.Constants.Feedback;
+import frc.robot.subsystems.Climber.Constants.Feedforward;
+import frc.robot.subsystems.Climber.Constants.MotionProfile;
+import frc.robot.subsystems.Climber.Constants.Position;
 
 import java.util.function.Supplier;
 
 import static edu.wpi.first.units.Units.Volts;
-import static edu.wpi.first.units.Units.Degrees;
-import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Radian;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.Second;
 import static frc.robot.subsystems.Climber.Constants.*;
 
 /** Subsystem which hangs robot from deep cage. */
@@ -32,8 +42,8 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
          * climber motors to be rotation away from zero point.
          */
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        /** Ratio of motor rotations to climber rotations. */
-        public static final double SENSOR_TO_MECHANISM = 36 / (0.75 * Math.PI);
+        /** Ratio of motor rotations to string contraction. */
+        public static final double SENSOR_TO_MECHANISM = Units.inchesToMeters(7 / (0.75 * Math.PI) * 9);
         /** Current limit of climber motors. */
         public static final double CURRENT_LIMIT = 0; // TODO
 
@@ -118,27 +128,29 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
     /**
      * Request object for motor voltage according to Motion Magic motion profile.
      */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(
-            Position.ZERO.position);
+    private final MotionMagicTorqueCurrentFOC motionMagicVoltageRequest = new MotionMagicTorqueCurrentFOC(0);
+    private final VoltageOut directVoltageRequest = new VoltageOut(0);
 
     /** Mutable measure for voltages applied during sysId testing */
     private final MutVoltage sysIdVoltage = Volts.mutable(0);
     /** Mutable measure for distances traveled during sysId testing (Meters) */
-    private final MutAngle sysIdAngle = Degrees.mutable(0);
+    private final MutAngle sysIdAngle = Radian.mutable(0);
     /** Mutable measure for velocity during SysId testing (Meters/Second) */
-    private final MutAngularVelocity sysIdVelocity = DegreesPerSecond.mutable(0);
+    private final MutAngularVelocity sysIdVelocity = RadiansPerSecond.mutable(0);
     /**
      * The sysIdRoutine object with default configuration and logging of voltage,
      * velocity, and distance
      */
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(),
-            new SysIdRoutine.Mechanism((voltage) -> {
+    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(Volts.of(0.5).per(Second), Volts.of(3), null,
+                    state -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(voltage -> {
                 setVoltage(voltage.magnitude());
-            }, (log) -> {
+            }, log -> {
                 log.motor("Climber")
                         .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Degrees))
-                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), DegreesPerSecond));
+                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Radian))
+                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RadiansPerSecond));
             }, this));
 
     /** Initialize climber motors configurations. */
@@ -147,7 +159,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
 
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
 
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
+        motorConfigs.CurrentLimits.SupplyCurrentLimit = 100;
 
         motorConfigs.Slot0.kG = Feedforward.kG;
         motorConfigs.Slot0.kS = Feedforward.kS;
@@ -163,6 +175,11 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
 
         motorA.getConfigurator().apply(motorConfigs);
         motorB.getConfigurator().apply(motorConfigs);
+
+        motorB.setControl(new Follower(motorA.getDeviceID(), false));
+
+        motorA.setNeutralMode(NeutralModeValue.Brake);
+        motorB.setNeutralMode(NeutralModeValue.Brake);
     }
 
     /**
@@ -210,8 +227,7 @@ public class Climber extends SubsystemBase implements BaseSingleJointedArm<Posit
      */
     @Override
     public void setVoltage(double voltage) {
-        motorA.setVoltage(MathUtil.clamp(voltage, -12, 12));
-        motorB.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motorA.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
     }
 
     /**

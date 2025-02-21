@@ -69,6 +69,10 @@ import edu.wpi.first.wpilibj2.command.DeferredCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Controls;
+import frc.robot.subsystems.Drivetrain.Constants.BackLeft;
+import frc.robot.subsystems.Drivetrain.Constants.BackRight;
+import frc.robot.subsystems.Drivetrain.Constants.FrontLeft;
+import frc.robot.subsystems.Drivetrain.Constants.FrontRight;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 
 import static edu.wpi.first.units.Units.Degrees;
@@ -94,32 +98,32 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         public static final class FrontLeft {
             public static final int DRIVE_MOTOR_ID = 1;
             public static final int STEER_MOTOR_ID = 2;
-            public static final int STEER_ENCODER_ID = 0; // TODO
-            public static final double STEER_ENCODER_OFFSET = 0.4521484375; // TODO
+            public static final int STEER_ENCODER_ID = 0;
+            public static final double STEER_ENCODER_OFFSET = -0.386474609375; // TODO
         }
 
         public static final class FrontRight {
             public static final int DRIVE_MOTOR_ID = 3;
             public static final int STEER_MOTOR_ID = 4;
-            public static final int STEER_ENCODER_ID = 1; // TODO
-            public static final double STEER_ENCODER_OFFSET = -0.179443359375 - 0.00634765625; // TODO
+            public static final int STEER_ENCODER_ID = 1;
+            public static final double STEER_ENCODER_OFFSET = -0.1181640625; // TODO
         }
 
         public static final class BackLeft {
             public static final int DRIVE_MOTOR_ID = 5;
             public static final int STEER_MOTOR_ID = 6;
-            public static final int STEER_ENCODER_ID = 2; // TODO
-            public static final double STEER_ENCODER_OFFSET = 0.242919921875; // TODO
+            public static final int STEER_ENCODER_ID = 2;
+            public static final double STEER_ENCODER_OFFSET = 0.475830078125; // TODO
         }
 
         public static final class BackRight {
             public static final int DRIVE_MOTOR_ID = 7;
             public static final int STEER_MOTOR_ID = 8;
-            public static final int STEER_ENCODER_ID = 3; // TODO
-            public static final double STEER_ENCODER_OFFSET = 0.498046875 - 0.003; // TODO
+            public static final int STEER_ENCODER_ID = 3;
+            public static final double STEER_ENCODER_OFFSET = 0.23828125; // TODO
         }
 
-        public static final boolean DRIVE_MOTORS_INVERTED = false; // TODO
+        public static final boolean DRIVE_MOTORS_INVERTED = true; // TODO
         public static final boolean STEER_MOTORS_INVERTED = true; // TODO
         public static final boolean STEER_CANCODERS_INVERTED = RobotBase.isReal() ? false : true;
 

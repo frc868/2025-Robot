@@ -1,55 +1,77 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.ControlRequest;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
-
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.subsystems.Pivot.Constants.CAN;
+import frc.robot.subsystems.Pivot.Constants.Feedback;
+import frc.robot.subsystems.Pivot.Constants.Feedforward;
+import frc.robot.subsystems.Pivot.Constants.MotionMagic;
+import frc.robot.subsystems.Pivot.Constants.Position;
 
 import java.util.function.Supplier;
 
+import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.Pivot.Constants.*;
 
 /** Subsystem which rotates manipulator. */
 public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Position> {
     /**
      * Direction of motor rotation defined as positive rotation. Defined for
-     * manipulator pivot to be rotation away from zero point.
+     * manipulator pivot to be rotation which raises manipulator when moving away
+     * from the pivot where the force of gravity is the strongest on the manipulator
+     * and manipuator pivot.
      */
-    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+    public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
     /** Ratio of motor rotations to pivot rotations. */
     public static final double SENSOR_TO_MECHANISM = 12 / 1;
     /** Current limit of manipulator motor. */
-    public static final double CURRENT_LIMIT = 10; // TODO find good # amps
-    public static final double POS_TOLERANCE = .05; // TODO
-    public static final double VEL_TOLERANCE = 10; // TODO i have no clue what this # should be
+    public static final double CURRENT_LIMIT = 60; // TODO find good # amps\\
+    public static final double POSITION_TOLERANCE = 0.01;
 
-    /** Constant values of manipualtor.. */
+    /** Constant values of manipulator pivot. */
     public static final class Constants {
-        /** CAN information of manipulator motor. */
+        /** CAN information of manipulator pivot. */
         public static final class CAN {
-            /** CAN bus pivot motor is on. */
+            /** CAN bus manipulator pivot motor is on. */
             public static final String BUS = "rio";
-            /** CAN ID of pivot motor. */
+            /** CAN ID of manipulator pivot motor. */
             public static final int ID = 13;
         }
 
-        /** Positions pivot can be in. */
+        /**
+         * Positions manipulator pivot can be in, in manipulator pivot rotations. 0 is
+         * defined to be where the force of gravity is the
+         */
         public static enum Position {
-            ZERO(0),
-            TEMP(0);
+            HARD_STOP(0.405029296875),
+            NET(0),
+            PAST_ELEVATOR(0.04922),
+            L1(0.03),
+            L2(-0.06),
+            L3(-0.06),
+            L4(-0.06),
+            ALGAE(0.01),
+            SOFT_STOP(0.092);
 
-            public final double value;
+            public final double position;
 
-            private Position(final double value) {
-                this.value = value;
+            private Position(final double position) {
+                this.position = position;
             }
         }
 
@@ -58,13 +80,13 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static final class Feedforward {
             /** Voltage required to overcome gravity. */
-            public static final double kG = 0; // TODO find good value
+            public static final double kG = 0.62; // TODO find good value
             /** Voltage required to overcome motor's static friction. */
-            public static final double kS = 0; // TODO find good value
+            public static final double kS = 0.832; // TODO find good value
             /** Voltage required to maintain constant velocity on motor. */
-            public static final double kV = 0; // TODO find good value
+            public static final double kV = 1.49; // TODO find good value
             /** Voltage required to induce a given acceleration on motor. */
-            public static final double kA = 0; // TODO find good value
+            public static final double kA = 0.13; // TODO find good value
         }
 
         /**
@@ -73,7 +95,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static final class Feedback {
             /** Proportional term constant which drives error to zero proportionally. */
-            public static final double kP = 0; // TODO find good value
+            public static double kP = 25; // TODO find good value
             /**
              * Integral term constant which overcomes steady-state error. Should be used
              * with caution due to integral windup.
@@ -89,23 +111,62 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static final class MotionMagic {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 0; // TODO
+            public static final double CRUISE_VELOCITY = 2; // TODO
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 0; // TODO
+            public static final double ACCELERATION = 2; // TODO
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
     }
 
     /** Pivot motor */
-    private final TalonFX motor = new TalonFX(CAN.ID);
-    /** Pivot motor configuration object. */
+    private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
+    /** Configuration object for pivot motor. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /** Pivot motor Motion Magic voltage request object. */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(0);
 
-    /** Initialize pivot motor configurations. */
-    public Pivot() {
+    /**
+     * Request object for motor voltage according to Motion Magic motion profile.
+     */
+    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
+    /** Request object for setting elevator motors' voltage directly. */
+    private final VoltageOut voltageRequest = new VoltageOut(0);
+    /** Request object for stopping the motor. */
+    private final NeutralOut stopRequest = new NeutralOut();
+
+    /**
+     * SysId routine to run to empirically determine feedforward and feedback
+     * constant values, using CTRE's Phoenix 6 {@link SignalLogger Signal Logger}.
+     */
+    private SysIdRoutine sysIdRoutine = new SysIdRoutine(
+            new SysIdRoutine.Config(Volts.of(0.125).per(Second), Volts.of(0.5), null,
+                    state -> {
+                        SignalLogger.writeString("state", state.toString());
+                    }),
+            new SysIdRoutine.Mechanism(voltage -> {
+                setVoltage(voltage.magnitude());
+            }, null, this));
+
+    /**
+     * Global position tracker object for tracking mechanism positions for
+     * calculating safeties.
+     */
+    private PositionTracker positionTracker;
+
+    /**
+     * Whether manipulator pivot position has been reset while the manipulator pivot
+     * is resting against its hard stop using. If uninitialized, the mechanism
+     * should not be able to move at all. Initialized to {@code false} until
+     * position is reset by {@link frc.robot.HoundBrian HoundBrian}.
+     */
+    private boolean initalized = false;
+
+    /**
+     * Initialize manipulator pivot configurations and add pivot position to global
+     * position tracker.
+     * 
+     * @param positionTracker global position tracker object
+     */
+    public Pivot(PositionTracker positionTracker) {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
         motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
@@ -125,173 +186,114 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         motorConfigs.MotionMagic.MotionMagicJerk = MotionMagic.JERK;
 
         motor.getConfigurator().apply(motorConfigs);
+
+        motor.setNeutralMode(NeutralModeValue.Brake);
+
+        this.positionTracker = positionTracker;
+        positionTracker.addPositionSupplier("Pivot", this::getPosition);
+
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
-     * Gets the current position of the pivot mechanism.
+     * Determines if a desired control request for the motor(s) is safe for the
+     * mechanism or not, and stops the motor(s) if unsafe. Unsafe control requests
+     * include any requests when the mechanism is uninitialized, if the request will
+     * cause the mechanism to exceed its physical limits, or if the request will
+     * interfere with and break another mechanism.
      * 
-     * @return the position of the mechanism, in radians.
+     * @param controlRequest desired control request
+     * @return desired control request if safe, else the control request to stop the
+     *         motor.
      */
+    public ControlRequest outputRequestWithSafeties(ControlRequest controlRequest) {
+        if (!initalized) {
+            return stopRequest;
+        }
+
+        // if (positionTracker.getPosition("Elevator") > 0) {
+        // return
+        // motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true);
+        // }
+
+        return controlRequest;
+    }
+
+    public boolean atGoal() {
+        return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
+    }
+
     @Override
     public double getPosition() {
         return motor.getPosition().getValueAsDouble();
     }
 
-    /**
-     * Resets the position of the pivot mechanism to a specific value.
-     */
     @Override
     public void resetPosition() {
-        motor.setPosition(Position.ZERO.value);
+        motor.setPosition(Position.HARD_STOP.position);
     }
 
-    /**
-     * Explicitly set the voltage of the pivot mechanism's motor.
-     * 
-     * @param voltage the voltage [-12, 12]
-     */
     @Override
     public void setVoltage(final double voltage) {
-        motor.setVoltage(MathUtil.clamp(voltage, -12, 12));
+        motor.setControl(outputRequestWithSafeties(voltageRequest.withOutput(voltage)));
     }
 
-    /**
-     * Command to continuously have the pivot mechanism move to the currently set
-     * goal.
-     * 
-     * @return the command
-     */
     @Override
     public Command moveToCurrentGoalCommand() {
-        return run(() -> {
-            motor.setControl(motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position));
-        }).withName("pivot.moveToCurrentGoalCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToCurrentGoalCommand'");
+        return run(() -> motor.setControl(outputRequestWithSafeties(
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))))
+                .until(this::atGoal).withName("pivot.moveToCurrentGoalCommand");
     }
 
-    /**
-     * Command that sets the current goal to the setpoint,
-     * and cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param goalPositionSupplier a supplier of an instance of the position enum
-     * @return the command
-     */
     @Override
     public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return Commands.sequence(
-                runOnce(() -> motor
-                        .setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get().value))),
-                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToPositionCommand");
+        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
+                .withName("pivot.moveToPositionCommand");
     }
 
-    /*
-     * couldn't find a method to see if motion magic has reached its goal, so... if
-     * statement, yay.
-     * I doubt this works perfectly due to allowed tolerances in position probably
-     * being needed, but ¯\_(ツ)_/¯
-     */
-    public boolean atGoal2() {
-        if (motionMagicVoltageRequest.Position <= motor.getPosition().getValueAsDouble() + POS_TOLERANCE
-                && motionMagicVoltageRequest.Position >= motor.getPosition().getValueAsDouble()
-                        - POS_TOLERANCE) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /*
-     * lifted straight from the source code assuming target velocity = 0
-     * https://github.wpilib.org/allwpilib/docs/release/java/src-html/edu/wpi/first/
-     * math/controller/PIDController.html#line-299
-     */
-    public boolean atGoal() {
-        return Math.abs(
-                motionMagicVoltageRequest.Position - motor.getPosition().getValueAsDouble()) < POS_TOLERANCE
-                && Math.abs(motor.getVelocity().getValueAsDouble()) < VEL_TOLERANCE;
-    }
-
-    /**
-     * Command that sets the current goal position to the setpoint,
-     * and cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param goalPositionSupplier a supplier of a position to move to, in radians
-     * @return the command
-     */
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-                runOnce(() -> motor.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()))),
-                moveToCurrentGoalCommand().until(this::atGoal)).withName("pivot.moveToArbitraryPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'moveToArbitraryPositionCommand'");
+                runOnce(() -> motor
+                        .setControl(outputRequestWithSafeties(motionMagicVoltageRequest
+                                .withPosition(goalPositionSupplier.get()).withEnableFOC(true)))),
+                moveToCurrentGoalCommand()).withName("pivot.moveToArbitraryPositionCommand");
     }
 
-    /**
-     * Command that sets the current goal position to the setpoint plus
-     * the delta (the additional distance to move, relative to the current
-     * position), and
-     * cancels once the pivot mechanism has reached that goal.
-     * 
-     * @param delta a supplier of a delta to move, in radians
-     * @return the command
-     */
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
         return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position + delta.get())
                 .withName("pivot.movePositionDeltaCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'movePositionDeltaCommand'");
     }
 
-    /**
-     * Command that sets the goal to the current position, and moves to
-     * that goal until cancelled.
-     * 
-     * @return the command
-     */
     @Override
     public Command holdCurrentPositionCommand() {
-        return movePositionDeltaCommand(() -> 0.0).withName("pivot.holdCurrentPositionCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'holdCurrentPositionCommand'");
+        return runOnce(() -> {
+            double currentPosition = getPosition();
+
+            if (currentPosition >= Position.HARD_STOP.position) {
+                motor.setControl(stopRequest);
+            } else {
+                motor.setControl(outputRequestWithSafeties(
+                        motionMagicVoltageRequest.withPosition(currentPosition).withEnableFOC(true)));
+            }
+        }).withName("pivot.holdCurrentPositionCommand");
     }
 
-    /**
-     * Creates an instantaneous command that resets the position of the pivot
-     * mechanism.
-     * 
-     * @return the command
-     */
     @Override
     public Command resetPositionCommand() {
-        return runOnce(this::resetPosition).withName("pivot.resetPosition");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'resetPositionCommand'");
+        return runOnce(() -> {
+            resetPosition();
+            initalized = true;
+        }).withName("pivot.resetPosition");
     }
 
-    /**
-     * Creates a command that manually sets the speed of the pivot mechanism.
-     * 
-     * @param speed the speed [-1,1]
-     * @return the command
-     */
     @Override
     public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
         return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
                 .withName("pivot.setOverriddenSpeedCommand");
-        // throw new UnsupportedOperationException("Unimplemented method
-        // 'setOverridenSpeedCommand'");
     }
 
-    /**
-     * Command to stop the motor, sets it to coast mode, and then set it back to
-     * brake mode on end. Allows for
-     * moving the pivot mechanism manually.
-     * 
-     * @return the command
-     */
     @Override
     public Command coastMotorsCommand() {
         return runOnce(motor::stopMotor).andThen(() -> {
@@ -299,5 +301,29 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         }).finallyDo((d) -> {
             motor.setNeutralMode(NeutralModeValue.Coast);
         }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("pivot.coastMotorsCommand");
+    }
+
+    /**
+     * Creates a command to run a SysId quasistatic test in the specified direction,
+     * which gradually ramps up voltage fed to mechanism in such a way as to
+     * eliminate the effect of voltage on the mechanism's acceleration.
+     * 
+     * @param direction direction to run test in
+     * @return the command
+     */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction);
+    }
+
+    /**
+     * Creates a command to run a SysId dynamic test in the specified direction,
+     * which steps up voltage fed to mechanism by a constant value to determine
+     * mechanism behavior while accelerating.
+     * 
+     * @param direction direction to run test in
+     * @return the command
+     */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction);
     }
 }
