@@ -59,10 +59,10 @@ public class Controls {
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
-        joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
-        joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
-        joystick.bottomHatLeft().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L1));
+        joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L1));
+        joystick.bottomHatLeft().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
+        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
+        joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
 
         joystick.triggerSoftPress()
                 .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
