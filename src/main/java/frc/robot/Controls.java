@@ -70,7 +70,9 @@ public class Controls {
                         elevator, pivot));
         joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
                 .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
-        // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
+
+        joystick.redButton().whileTrue(climber.setCurrentCommand());
+
         joystick.blackThumbButton().onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
     }
 

@@ -82,6 +82,10 @@ public class Climber extends SubsystemBase {
                 .withOutput(MathUtil.clamp(current, -CURRENT_LIMIT, CURRENT_LIMIT)));
     }
 
+    public Command setCurrentCommand() {
+        return runEnd(() -> setCurrent(CURRENT), () -> setCurrent(0)).withName("intake.setCurrentCommand");
+    }
+
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setCurrent(speed.get() * CURRENT), () -> setCurrent(0))
                 .withName("climbr.setOverridenSpeedCommand");
