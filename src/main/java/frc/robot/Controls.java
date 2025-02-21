@@ -1,12 +1,12 @@
 package frc.robot;
 
-
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.Constants.ReefLevel;
+import frc.robot.Constants.Level;
+import frc.robot.Constants.Mode;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.Elevator;
@@ -60,10 +60,17 @@ public class Controls {
                 drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L1));
-        joystick.bottomHatLeft().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
-        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
-        joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
+        joystick.flipTriggerIn().onTrue(RobotCommands.setModeCommand(Mode.ALGAE));
+        joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
+
+        joystick.bottomHatDown()
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L1, Level.PROCESSOR));
+        joystick.bottomHatLeft()
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L2, Level.PROCESSOR));
+        joystick.bottomHatUp()
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L3, Level.NET));
+        joystick.bottomHatRight()
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L4, Level.NET));
 
         joystick.triggerSoftPress()
                 .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,

@@ -89,55 +89,66 @@ public class Constants {
                 REEF_L4_ANGLE };
     }
 
-    public static enum ReefLevel {
+    public static enum Level {
         L1(Elevator.Constants.Position.L1, Pivot.Constants.Position.L1),
         L2(Elevator.Constants.Position.L2, Pivot.Constants.Position.L2),
         L3(Elevator.Constants.Position.L3, Pivot.Constants.Position.L3),
-        L4(Elevator.Constants.Position.L4_NET, Pivot.Constants.Position.L4);
+        L4(Elevator.Constants.Position.L4_NET, Pivot.Constants.Position.L4),
+        GROUND(Elevator.Constants.Position.GROUND_ALGAE, Pivot.Constants.Position.GROUND_ALGAE),
+        PROCESSOR(Elevator.Constants.Position.PROCESSOR, Pivot.Constants.Position.PROCESSOR),
+        REEF_LOW_ALGAE(Elevator.Constants.Position.REEF_LOW_ALGAE, Pivot.Constants.Position.ALGAE),
+        REEF_HIGH_ALGAE(Elevator.Constants.Position.REEF_HIGH_ALGAE, Pivot.Constants.Position.ALGAE),
+        NET(Elevator.Constants.Position.L4_NET, Pivot.Constants.Position.NET);
 
         public final Elevator.Constants.Position elevatorPosition;
         public final Pivot.Constants.Position pivotPosition;
 
-        private ReefLevel(Elevator.Constants.Position elevatorPosition,
+        private Level(Elevator.Constants.Position elevatorPosition,
                 Pivot.Constants.Position pivotPosition) {
             this.elevatorPosition = elevatorPosition;
             this.pivotPosition = pivotPosition;
         }
+    }
 
-        public static final class LEDs {
-                public static enum LEDSection implements BaseLEDSection {
-                        ALL(0, 326, true);
+    public static enum Mode {
+        CORAL,
+        ALGAE;
+    }
 
-                        private final int startIdx;
-                        private final int endIdx;
-                        private final boolean inverted;
+    public static final class LEDs {
+        public static enum LEDSection implements BaseLEDSection {
+            ALL(0, 326, true);
 
-                        private LEDSection(int startIdx, int endIdx, boolean inverted) {
-                                this.startIdx = startIdx;
-                                this.endIdx = endIdx;
-                                this.inverted = inverted;
-                        }
+            private final int startIdx;
+            private final int endIdx;
+            private final boolean inverted;
 
-                        public int start() {
-                                return startIdx;
-                        }
+            private LEDSection(int startIdx, int endIdx, boolean inverted) {
+                this.startIdx = startIdx;
+                this.endIdx = endIdx;
+                this.inverted = inverted;
+            }
 
-                        public int end() {
-                                return endIdx;
-                        }
+            public int start() {
+                return startIdx;
+            }
 
-                        public boolean inverted() {
-                                return inverted;
-                        }
+            public int end() {
+                return endIdx;
+            }
 
-                        public int length() {
-                                return endIdx - startIdx + 1;
-                        }
-                }
+            public boolean inverted() {
+                return inverted;
+            }
 
-                public static final int PORT = 0; // Change depending on PWM
-                public static final int LENGTH = 310; // Adjust as needed
-
-                public static final List<LEDState> DEFAULT_STATES = List.of();
+            public int length() {
+                return endIdx - startIdx + 1;
+            }
         }
+
+        public static final int PORT = 0; // Change depending on PWM
+        public static final int LENGTH = 310; // Adjust as needed
+
+        public static final List<LEDState> DEFAULT_STATES = List.of();
+    }
 }

@@ -59,6 +59,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static enum Position {
             HARD_STOP(0.405029296875),
+            GROUND_ALGAE(0), // TODO
+            PROCESSOR(0), // TODO
             NET(0),
             PAST_ELEVATOR(0.04922),
             L1(0.03),

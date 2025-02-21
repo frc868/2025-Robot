@@ -110,6 +110,10 @@ public class Intake extends SubsystemBase implements BaseIntake {
         pivotLeftMotor.setControl(pivotCurrentRequest.withOutput(Pivot.CURRENT));
     }
 
+    public Command setCurrentCommand() {
+        return runEnd(() -> setCurrent(Pivot.CURRENT), () -> setCurrent(0)).withName("intake.setCurrentCommand");
+    }
+
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
         return runEnd(() -> setCurrent(speed.get() * Pivot.CURRENT), () -> setCurrent(0))
                 .withName("intake.setOverridenSpeedCommand");

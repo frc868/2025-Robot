@@ -73,12 +73,13 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         /** Positions elevator can be in, in spool drum rotations */
         public static enum Position {
             HARD_STOP(0),
+            GROUND_ALGAE(0), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
             L2(2.95), // TODO get actual position
-            LOW_ALGAE(3.95),
+            REEF_LOW_ALGAE(3.95),
             L3(5.25), // TODO get actual position
-            HIGH_ALGAE(6.95),
+            REEF_HIGH_ALGAE(6.95),
             L4_NET(8.8);
 
             public final double position;

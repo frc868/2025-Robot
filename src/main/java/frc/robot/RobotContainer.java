@@ -49,7 +49,7 @@ public class RobotContainer {
     private final LEDs leds = new LEDs();
 
     @Log(groups = "subsystems")
-    private final HoundBrian houndBrian = new HoundBrian(drivetrain, elevator, pivot);
+    private final HoundBrian houndBrian = new HoundBrian(drivetrain, elevator, pivot, leds);
 
     @SendableLog(groups = "wpilib")
     private final CommandScheduler commandScheduler = CommandScheduler.getInstance();
@@ -75,7 +75,6 @@ public class RobotContainer {
         // return drivetrain.getInitialized();
         // }).onTrue(GlobalStates.INITIALIZED.enableCommand());
     }
-
 
     private void configureBindings() {
         Controls.configureDriverControls(0, drivetrain, elevator, pivot, manipulator, intake, climber, leds);
