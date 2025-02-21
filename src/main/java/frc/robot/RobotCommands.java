@@ -13,30 +13,14 @@ import frc.robot.subsystems.Pivot;
 /** Robot commands which involve multiple subsystems. */
 public class RobotCommands {
     public static Command setTargetReefLevelCommand(ReefLevel reefLevel) {
-        return Commands.runOnce(() -> {
-            RobotStates.setTargetLevel(reefLevel);
-            System.out.println("Current target level:" + reefLevel);
-            System.out.println("Current robot state target level: " + RobotStates.getTargetLevel());
-        });
+        return Commands.runOnce(() -> RobotStates.setTargetLevel(reefLevel));
     }
 
     public static Command moveToScoreCommand(Supplier<ReefLevel> reefLevel, Elevator elevator, Pivot pivot) {
         return pivot.moveToPositionCommand(() -> reefLevel.get().pivotPosition)
-                .until(() -> {
-                    double currentPosition = pivot.getPosition();
-                    double targetPosition = reefLevel.get().pivotPosition.position;
-                    boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
-                    return isAtTarget;
-                })
-                .andThen(pivot.holdCurrentPositionCommand())
+                .until(pivot::atGoal)
                 .andThen(elevator.moveToPositionCommand(() -> reefLevel.get().elevatorPosition))
-                .until(() -> {
-                    double elevatorCurrentPosition = elevator.getPosition();
-                    double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
-                    boolean isElevatorAtTarget = Math.abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.05;
-                    return isElevatorAtTarget;
-                })
-                .andThen(elevator.holdCurrentPositionCommand());
+                .until(elevator::atGoal);
     }
 
     public static Command moveToScoreCommandComp(Supplier<ReefLevel> reefLevel, Elevator elevator) {
@@ -53,7 +37,7 @@ public class RobotCommands {
     public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
             Manipulator manipulator) {
         return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
-                .until(() -> elevator.getPosition() <= 0.05)
+                .until(elevator::atGoal)
                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP));
     }
 
@@ -71,6 +55,6 @@ public class RobotCommands {
     public static Command scoreScoringElementCommand(Manipulator manipulator,
             Elevator elevator, Pivot pivot) {
         return manipulator.reverseRollersCommand()
-                .handleInterrupt(() -> rehomeMechanismsCommand(elevator, pivot, manipulator));
+                .finallyDo(() -> rehomeMechanismsCommand(elevator, pivot, manipulator));
     }
 }

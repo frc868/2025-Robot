@@ -92,6 +92,9 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
         public static final int PIGEON_ID = 0;
 
+        public static final double CORAL_INTAKE_SPEED_LIMIT = 0.8;
+        public static final double CORAL_INTAKE_ROTATION_LIMIT = 0.8;
+
         public static final class FrontLeft {
             public static final int DRIVE_MOTOR_ID = 1;
             public static final int STEER_MOTOR_ID = 2;
@@ -896,6 +899,14 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
             drive(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), driveMode);
         }).withName("drivetrain.teleopDrive");
+    }
+
+    public Command controlledRotateRelativeAngle(DoubleSupplier angle) {
+        return Commands.run(() -> {
+            if (angle.getAsDouble() < -1000.0)
+                return;
+            controlledRotateCommand(() -> getRotation().getRadians() + angle.getAsDouble());
+        }).withName("drivetrain.alignToCoral");
     }
 
     @Override

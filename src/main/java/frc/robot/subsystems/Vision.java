@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.simulation.VisionSystemSim;
+import org.photonvision.targeting.PhotonPipelineResult;
 
 import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera;
 import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera.PhotonCameraConstants;
@@ -21,6 +22,8 @@ import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -33,11 +36,18 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 
 import static frc.robot.subsystems.Vision.Constants.*;
+import frc.robot.subsystems.ObjectPhotonCamera;
+import frc.robot.subsystems.ObjectPhotonCamera.*;
+import frc.utils.TargetAlign;
 
 public class Vision implements BaseVision {
     public static final class Constants {
+        public static final float MIN_OBJECT_CONFIDENCE = 0.8f;
+        public static final int ALGAE_OBJECT_ID = 1; // TODO
+
         public static final Matrix<N3, N1> SINGLE_TAG_STD_DEVS = VecBuilder.fill(Double.MAX_VALUE,
                 Double.MAX_VALUE,
                 Double.MAX_VALUE); // TODO
@@ -55,6 +65,20 @@ public class Vision implements BaseVision {
             CAMERA_CONSTANTS.AVG_LATENCY = 30; // TODO
             CAMERA_CONSTANTS.STDDEV_LATENCY = 15; // TODO
         }
+
+        public static final ObjectCameraConstants OBJECT_CAMERA_CONSTANTS = new ObjectCameraConstants();
+        static {
+            OBJECT_CAMERA_CONSTANTS.WIDTH = 1600; // TODO
+            OBJECT_CAMERA_CONSTANTS.HEIGHT = 1200; // TODO
+            OBJECT_CAMERA_CONSTANTS.FOV = 95.39; // TODO
+            OBJECT_CAMERA_CONSTANTS.FPS = 35; // TODO
+            OBJECT_CAMERA_CONSTANTS.AVG_LATENCY = 30; // TODO
+            OBJECT_CAMERA_CONSTANTS.STDDEV_LATENCY = 15; // TODO
+
+        }
+
+        public static final int[] sideToTagIDBlue = { 18, 17, 22, 21, 20, 19 };
+        public static final int[] sideToTagIDRed = { 7, 8, 9, 10, 11, 6 };
 
         // 2/17/24
         public static final Transform3d[] ROBOT_TO_CAMS = new Transform3d[] {
@@ -81,7 +105,14 @@ public class Vision implements BaseVision {
                                 -Units.inchesToMeters(10.707761),
                                 Units.inchesToMeters(12.116848)), // TODO
                         new Rotation3d(0, Units.degreesToRadians(-20),
-                                Units.degreesToRadians(-70))) // TODO
+                                Units.degreesToRadians(-70))), // TODO
+                // object camera
+                new Transform3d(
+                        new Translation3d(
+                                Units.inchesToMeters(0),
+                                Units.inchesToMeters(0),
+                                Units.inchesToMeters(0)),
+                        new Rotation3d(0, Units.degreesToRadians(0), Units.degreesToRadians(0)))
         };
     }
 
@@ -116,6 +147,9 @@ public class Vision implements BaseVision {
     @Log(groups = "cameras")
     private final AprilTagPhotonCamera backCam = new AprilTagPhotonCamera("Back",
             ROBOT_TO_CAMS[2], CAMERA_CONSTANTS, 0.2, 0.1);
+    @Log(groups = "cameras")
+    private final ObjectPhotonCamera objectCam = new ObjectPhotonCamera("Object",
+            ROBOT_TO_CAMS[3], OBJECT_CAMERA_CONSTANTS, 0.2, 0.1);
 
     private final AprilTagPhotonCamera[] cameras = new AprilTagPhotonCamera[] {
             frontLeftCam, frontRightCam, backCam };
@@ -259,5 +293,89 @@ public class Vision implements BaseVision {
         }
 
         return result;
+    }
+
+    /**
+     * Gets the yaw of the closest
+     * 
+     * @return the position of the closest algae piece
+     */
+    @Log
+    public double getClosestAlgaeYaw() {
+        Optional<ObjectBearing[]> optionalBearings = objectCam.getDetectedObjects();
+        ObjectBearing[] bearings = optionalBearings.orElse(new ObjectBearing[0]);
+        double largestArea = 0;
+        double largestYaw = -10000.0;
+
+        if (bearings.length == 0) {
+            return -10000.0;
+        }
+        for (int i = 0; i < bearings.length; i++) {
+            if (bearings[i].id == ALGAE_OBJECT_ID) {
+                if (bearings[i].conf > MIN_OBJECT_CONFIDENCE) {
+                    if (bearings[i].area > largestArea) {
+                        largestYaw = Units.degreesToRadians(bearings[i].yaw);
+                        largestArea = bearings[i].area;
+                    }
+                }
+            }
+        }
+
+        if (largestArea == 0)
+            return -10000.0;
+        return largestYaw;
+    }
+
+    /**
+     * Provides the pose3d needed to be driven to to score based on the front 2
+     * cameras, assuming both can see the tag related to the scoring position.
+     * Returns null if cannot detect tag.
+     * 
+     * @param tagID the ID of the tag to score on
+     * @param left  whether to score on the leftside or rightside.
+     */
+    @Log
+    public Pose2d getScoringPosition(int side, boolean left) {
+        int tagID;
+        if (DriverStation.getAlliance().orElse(null) == Alliance.Red) {
+            tagID = sideToTagIDRed[side];
+        } else {
+            tagID = sideToTagIDBlue[side];
+        }
+
+        Transform3d transforms[] = new Transform3d[2];
+        Transform3d averagedTransform = new Transform3d();
+        int numCanSeeTag = 0;
+        for (int i = 0; i < 2; i++) {
+            Transform3d transform = cameras[i].getRelativeTransformsOfTarget(tagID);
+            if (transform == null) {
+                continue;
+            } else {
+                transforms[i] = transform;
+                numCanSeeTag++;
+            }
+        }
+
+        if (numCanSeeTag++ < 1) {
+            return TargetAlign.getInitialPoint(side);
+            // return null;
+        } else {
+            for (int i = 0; i < 2; i++) {
+                averagedTransform = averagedTransform.plus(transforms[i]);
+            }
+            averagedTransform = averagedTransform.times(1.0 / numCanSeeTag);
+        }
+        Transform2d transform = new Transform2d(
+                new Translation2d(averagedTransform.getX(), averagedTransform.getY()),
+                new Rotation2d(averagedTransform.getRotation().getZ()));
+
+        updatePoseEstimator();
+        Pose2d targetPose = new Pose2d(
+                poseEstimator.getEstimatedPosition().plus(transform)
+                        .plus(TargetAlign.getTargetTransformFromAprilTag(left, side)).getX(),
+                poseEstimator.getEstimatedPosition().plus(transform)
+                        .plus(TargetAlign.getTargetTransformFromAprilTag(left, side)).getY(),
+                TargetAlign.getTargetRotation(side));
+        return targetPose;
     }
 }

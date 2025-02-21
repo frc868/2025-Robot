@@ -54,6 +54,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
         /** Current limit of elevator motors, in amps. */
         public static final double CURRENT_LIMIT = 80;
+        public static final double POSITION_TOLERANCE = 0.1;
 
         /** CAN information of elevator motors. */
         public static final class CAN {
@@ -210,7 +211,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        // setDefaultCommand(holdCurrentPositionCommand());
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -244,6 +245,10 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         return controlRequest;
     }
 
+    public boolean atGoal() {
+        return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
+    }
+
     @Override
     public double getPosition() {
         return leftMotor.getPosition().getValueAsDouble();
@@ -263,23 +268,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
 
     @Override
     public Command moveToCurrentGoalCommand() {
-        return run(() -> {
-            double currentPosition = getPosition();
-            double targetPosition = motionMagicVoltageRequest.Position;
-            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
-
-            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
-                    + ", At Target: " + atTarget);
-
-            if (!atTarget) {
-                leftMotor.setControl(controlRequestWithSafeties(
-                        motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
-            }
-        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
-                .andThen(runOnce(() -> {
-                    System.out.println("Elevator Reached goal position.");
-                }))
-                .withName("elevator.moveToCurrentGoalCommand");
+        return run(() -> leftMotor.setControl(controlRequestWithSafeties(
+                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))))
+                .until(this::atGoal).withName("elevator.moveToCurrentGoalCommand");
     }
 
     @Override
