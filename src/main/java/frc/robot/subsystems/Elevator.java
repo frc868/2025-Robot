@@ -23,6 +23,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.subsystems.Elevator.Constants.CAN;
+import frc.robot.subsystems.Elevator.Constants.Feedback;
+import frc.robot.subsystems.Elevator.Constants.Feedforward;
+import frc.robot.subsystems.Elevator.Constants.MotionProfile;
+import frc.robot.subsystems.Elevator.Constants.Position;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import static edu.wpi.first.units.Units.Volts;
@@ -218,7 +223,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**
@@ -237,17 +242,18 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stopRequest;
         }
 
-        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
-            return controlRequest;
-        }
+        // if (getPosition() > Position.L3.position && getPosition() <=
+        // Position.L4_NET.position) {
+        // return controlRequest;
+        // }
 
         if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
             return stopRequest;
         }
 
-        if (getPosition() > Position.L4_NET.position) {
-            return stopRequest;
-        }
+        // if (getPosition() > Position.L4_NET.position) {
+        // return stopRequest;
+        // }
 
         return controlRequest;
     }
@@ -275,11 +281,31 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                 controlRequestWithSafeties(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12))));
     }
 
+    // @Override
+    // public Command moveToCurrentGoalCommand() {
+    // return run(() -> leftMotor.setControl(controlRequestWithSafeties(
+    // motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))))
+    // .until(this::atGoal).withName("elevator.moveToCurrentGoalCommand");
+    // }
     @Override
     public Command moveToCurrentGoalCommand() {
-        return run(() -> leftMotor.setControl(controlRequestWithSafeties(
-                motionMagicVoltageRequest.withPosition(motionMagicVoltageRequest.Position).withEnableFOC(true))))
-                .until(this::atGoal).withName("elevator.moveToCurrentGoalCommand");
+        return run(() -> {
+            double currentPosition = getPosition();
+            double targetPosition = motionMagicVoltageRequest.Position;
+            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+
+            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
+                    + ", At Target: " + atTarget);
+
+            if (!atTarget) {
+                leftMotor.setControl(controlRequestWithSafeties(
+                        motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
+            }
+        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
+                .andThen(runOnce(() -> {
+                    System.out.println("Elevator Reached goal position.");
+                }))
+                .withName("elevator.moveToCurrentGoalCommand");
     }
 
     @Override

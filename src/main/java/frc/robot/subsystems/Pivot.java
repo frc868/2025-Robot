@@ -202,7 +202,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
-        setDefaultCommand(holdCurrentPositionCommand());
+        // setDefaultCommand(holdCurrentPositionCommand());
     }
 
     /**

@@ -33,9 +33,9 @@ public class Intake extends SubsystemBase implements BaseIntake {
             /** CAN IDs of intake motors. */
             public static final class IDs {
                 /** CAN ID of intake pivot left motor. */
-                private static final int PIVOT_LEFT = 17;
+                private static final int PIVOT_LEFT = 16;
                 /** CAN ID of intake pivot right motor. */
-                private static final int PIVOT_RIGHT = 16;
+                // private static final int PIVOT_RIGHT = 17;
                 /** CAN ID of intake rollers motor. */
                 private static final int ROLLERS = 15;
             }

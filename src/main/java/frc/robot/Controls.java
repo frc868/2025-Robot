@@ -19,168 +19,169 @@ import frc.robot.subsystems.Pivot;
  * Controls configurations for robot.
  */
 public class Controls {
-    public static final class Constants {
-        enum ControllerType {
-            XboxController,
-            FlightStick
+        public static final class Constants {
+                enum ControllerType {
+                        XboxController,
+                        FlightStick
+                }
+
+                public static final boolean DEBUG_MODE = false;
+
+                public static final ControllerType CONTROLLER_TYPE = ControllerType.FlightStick;
+
+                public static final double PERIOD = 0.020;
+
+                public static final class Teleop {
+                        /**
+                         * A value inputted into the rate limiter (the joystick input) can move from 0
+                         * to 1 in 1/RATE_LIMIT seconds.
+                         * 
+                         * A rate limit of 3, for example, means that 0->1 in 1/3 sec.
+                         * Larger numbers mean less of a rate limit.
+                         */
+                        public static final double JOYSTICK_INPUT_RATE_LIMIT = 15.0; // TODO
+                        public static final double JOYSTICK_INPUT_DEADBAND = 0.05; // TODO
+                        public static final double JOYSTICK_CURVE_EXP = 2; // TODO
+                        public static final double JOYSTICK_ROT_CURVE_EXP = 1; // TODO
+                }
         }
 
-        public static final boolean DEBUG_MODE = false;
+        /**
+         * Configure driver controls on a Virpil Controls Alpha-R joystick.
+         * 
+         * @param port        port that joystick is connected to
+         * @param drivetrain  drivetrain subsystem object
+         * @param elevator    elevator subsystem object
+         * @param pivot       pivot subsystem object
+         * @param manipulator manipulator subsystem object
+         * @param intake      intake subsystem object
+         * @param climber     climber subsystem object
+         */
+        public static void configureDriverControls(int port, Drivetrain drivetrain, Elevator elevator,
+                        Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
+                CommandVirpilJoystick joystick = new CommandVirpilJoystick(port);
 
-        public static final ControllerType CONTROLLER_TYPE = ControllerType.FlightStick;
+                drivetrain.setDefaultCommand(
+                                drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
+                                                () -> -joystick.getTwist()));
 
-        public static final double PERIOD = 0.020;
+                joystick.flipTriggerIn().onTrue(RobotCommands.setModeCommand(Mode.ALGAE));
+                joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
 
-        public static final class Teleop {
-            /**
-             * A value inputted into the rate limiter (the joystick input) can move from 0
-             * to 1 in 1/RATE_LIMIT seconds.
-             * 
-             * A rate limit of 3, for example, means that 0->1 in 1/3 sec.
-             * Larger numbers mean less of a rate limit.
-             */
-            public static final double JOYSTICK_INPUT_RATE_LIMIT = 15.0; // TODO
-            public static final double JOYSTICK_INPUT_DEADBAND = 0.05; // TODO
-            public static final double JOYSTICK_CURVE_EXP = 2; // TODO
-            public static final double JOYSTICK_ROT_CURVE_EXP = 1; // TODO
+                joystick.bottomHatDown()
+                                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                                                Level.L1, Level.PROCESSOR));
+                joystick.bottomHatLeft()
+                                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                                                Level.L2, Level.PROCESSOR));
+                joystick.bottomHatUp()
+                                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                                                Level.L3, Level.NET));
+                joystick.bottomHatRight()
+                                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                                                Level.L4, Level.NET));
+
+                joystick.centerBottomHatUp()
+                                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
+                                                elevator, pivot));
+                joystick.centerBottomHatRight()
+                                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
+                                                elevator, pivot));
+                joystick.centerBottomHatDown()
+                                .onTrue(intake.intakeGroundAlgaeCommand()
+                                                .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
+                                                                elevator, pivot)));
+
+                joystick.triggerSoftPress()
+                                .onTrue(RobotCommands.moveToTargetLevelCommand(RobotStates::getTargetLevel,
+                                                elevator, pivot));
+                // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
+                // manipulator));
+                joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
+                                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
+                                                manipulator));
+                joystick.redButton().whileTrue(climber.setCurrentCommand());
+
+                joystick.blackThumbButton()
+                                .onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
         }
-    }
 
-    /**
-     * Configure driver controls on a Virpil Controls Alpha-R joystick.
-     * 
-     * @param port        port that joystick is connected to
-     * @param drivetrain  drivetrain subsystem object
-     * @param elevator    elevator subsystem object
-     * @param pivot       pivot subsystem object
-     * @param manipulator manipulator subsystem object
-     * @param intake      intake subsystem object
-     * @param climber     climber subsystem object
-     */
-    public static void configureDriverControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
-        CommandVirpilJoystick joystick = new CommandVirpilJoystick(port);
+        /**
+         * Configure operator controls on Xbox controller for manual overrides in
+         * case automatic features stop working.
+         * 
+         * @param port        port that controller is connected to
+         * @param drivetrain  drivetrain subsystem object
+         * @param elevator    elevator subsystem object
+         * @param pivot       pivot subsystem object
+         * @param manipulator manipulator subsystem object
+         * @param intake      intake subsystem object
+         * @param climber     climber subsystem object
+         */
+        public static void configureOperatorControls(int port, Drivetrain drivetrain, Elevator elevator,
+                        Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
+                CommandXboxController controller = new CommandXboxController(port);
 
-        drivetrain.setDefaultCommand(
-                drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
-                        () -> -joystick.getTwist()));
+                controller.y().whileTrue(elevator.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.1));
+                controller.b().whileTrue(pivot.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
+                controller.a().whileTrue(intake.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
+                controller.x().whileTrue(climber.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
 
-        joystick.flipTriggerIn().onTrue(RobotCommands.setModeCommand(Mode.ALGAE));
-        joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
+                controller.rightBumper().whileTrue(manipulator.runRollersCommand());
+                controller.leftBumper().whileTrue(manipulator.reverseRollersCommand());
 
-        joystick.bottomHatDown()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
-                        Level.L1, Level.PROCESSOR));
-        joystick.bottomHatLeft()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
-                        Level.L2, Level.PROCESSOR));
-        joystick.bottomHatUp()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
-                        Level.L3, Level.NET));
-        joystick.bottomHatRight()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
-                        Level.L4, Level.NET));
+                controller.rightTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> 0.5));
+                controller.leftTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> -0.5));
+        }
 
-        joystick.centerBottomHatUp()
-                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
-                        elevator, pivot));
-        joystick.centerBottomHatRight()
-                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
-                        elevator, pivot));
-        joystick.centerBottomHatDown()
-                .onTrue(intake.intakeGroundAlgaeCommand()
-                        .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
-                                elevator, pivot)));
+        /**
+         * Configure override controls on Xbox controller for overriding mechanism
+         * safeties.
+         * 
+         * @param port        port that controller is connected to
+         * @param drivetrain  drivetrain subsystem object
+         * @param elevator    elevator subsystem object
+         * @param pivot       pivot subsystem object
+         * @param manipulator manipulator subsystem object
+         * @param intake      intake subsystem object
+         * @param climber     climber subsystem object
+         */
+        public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
+                        Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
+                CommandXboxController controller = new CommandXboxController(port);
 
-        joystick.triggerSoftPress()
-                .onTrue(RobotCommands.moveToTargetLevelCommand(RobotStates::getTargetLevel,
-                        elevator, pivot))
-                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
-                        manipulator));
-        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
+                controller.x().whileTrue(intake.runRollersCommand());
+                controller.y().whileTrue(intake.reverseRollersCommand());
+        }
 
-        joystick.redButton().whileTrue(climber.setCurrentCommand());
+        /**
+         * Configure controls on Xbox controller for running SysId routines.
+         * 
+         * @param port        port that controller is connected to
+         * @param drivetrain  drivetrain subsystem object
+         * @param elevator    elevator subsystem object
+         * @param pivot       pivot subsystem object
+         * @param manipulator manipulator subsystem object
+         * @param intake      intake subsystem object
+         * @param climber     climber subsystem object
+         */
+        public static void configureSysIdControls(int port, Drivetrain drivetrain, Elevator elevator,
+                        Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
+                CommandXboxController controller = new CommandXboxController(port);
 
-        joystick.blackThumbButton()
-                .onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
-    }
+                controller.x().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kForward));
+                controller.y().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kReverse));
+                controller.a().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kForward));
+                controller.b().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kReverse));
 
-    /**
-     * Configure operator controls on Xbox controller for manual overrides in
-     * case automatic features stop working.
-     * 
-     * @param port        port that controller is connected to
-     * @param drivetrain  drivetrain subsystem object
-     * @param elevator    elevator subsystem object
-     * @param pivot       pivot subsystem object
-     * @param manipulator manipulator subsystem object
-     * @param intake      intake subsystem object
-     * @param climber     climber subsystem object
-     */
-    public static void configureOperatorControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
-        CommandXboxController controller = new CommandXboxController(port);
+                controller.x().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
+                controller.y().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
+                controller.a().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
+                controller.b().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
 
-        controller.y().whileTrue(elevator.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.1));
-        controller.b().whileTrue(pivot.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
-        controller.a().whileTrue(intake.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
-        controller.x().whileTrue(climber.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
-
-        controller.rightBumper().whileTrue(manipulator.runRollersCommand());
-        controller.leftBumper().whileTrue(manipulator.reverseRollersCommand());
-
-        controller.rightTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> 0.5));
-        controller.leftTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> -0.5));
-    }
-
-    /**
-     * Configure override controls on Xbox controller for overriding mechanism
-     * safeties.
-     * 
-     * @param port        port that controller is connected to
-     * @param drivetrain  drivetrain subsystem object
-     * @param elevator    elevator subsystem object
-     * @param pivot       pivot subsystem object
-     * @param manipulator manipulator subsystem object
-     * @param intake      intake subsystem object
-     * @param climber     climber subsystem object
-     */
-    public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
-        CommandXboxController controller = new CommandXboxController(port);
-
-        controller.x().whileTrue(intake.runRollersCommand());
-        controller.y().whileTrue(intake.reverseRollersCommand());
-    }
-
-    /**
-     * Configure controls on Xbox controller for running SysId routines.
-     * 
-     * @param port        port that controller is connected to
-     * @param drivetrain  drivetrain subsystem object
-     * @param elevator    elevator subsystem object
-     * @param pivot       pivot subsystem object
-     * @param manipulator manipulator subsystem object
-     * @param intake      intake subsystem object
-     * @param climber     climber subsystem object
-     */
-    public static void configureSysIdControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
-        CommandXboxController controller = new CommandXboxController(port);
-
-        controller.x().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kForward));
-        controller.y().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kForward));
-        controller.b().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kReverse));
-    }
+                controller.x().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kForward));
+                controller.y().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kReverse));
+                controller.a().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kForward));
+                controller.b().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kReverse));
+        }
 }
