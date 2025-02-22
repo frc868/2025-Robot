@@ -1,15 +1,18 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.TorqueCurrentFOC;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.SignalManager;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
-import edu.wpi.first.math.filter.MedianFilter;
+import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -27,6 +30,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
         /** Manipulator motor current limit. */
         public static final double CURRENT_LIMIT = 100;
+        public static final double CURRENT_DETECTION_THRESHOLD = 0; // TODO
 
         /** CAN information of manipulator motor. */
         public static final class CAN {
@@ -37,21 +41,21 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         }
 
         /**
-         * Currents to set the manipulator motor to for various actions, in amps.
+         * Voltages to set the manipulator motor to for various actions, in amps.
          */
-        public enum Currents {
-            /** Current to run manipulator motor at to intake a scoring element. */
-            INTAKE(80),
+        public enum Voltages {
+            /** Voltage to run manipulator motor at to intake a scoring element. */
+            INTAKE(6),
             /** Current to run manipulator motor at to score a scoring element. */
-            SCORE(-40),
-            /** Current to run manipulator motor at to hold a scoring element. */
+            SCORE(-4),
+            /** Voltage to run manipulator motor at to hold a scoring element. */
             HOLD(0.0); // TODO
 
             /** Current to run manipulator motor at, in amps. */
-            public final double current;
+            public final double voltage;
 
-            private Currents(final double current) {
-                this.current = current;
+            private Voltages(final double voltage) {
+                this.voltage = voltage;
             }
         };
     }
@@ -65,12 +69,13 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * Manipulator motor torque current request object, using field oriented
      * control.
      */
-    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
+    private final VoltageOut voltageRequest = new VoltageOut(0);
 
+    private final StatusSignal<Current> currentSignal = motor.getTorqueCurrent();
     /** Debouncer for filtering out current spike outliers. */
-    private final MedianFilter filter = new MedianFilter(10);
+    private final Debouncer filter = new Debouncer(0.5);
     @Log
-    private double temp;
+    private boolean temp;
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
@@ -81,6 +86,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         motor.getConfigurator().apply(motorConfigs);
 
         motor.setNeutralMode(NeutralModeValue.Brake);
+
+        SignalManager.register(currentSignal);
 
         // setDefaultCommand(intakeScoringElementCommand());
     }
@@ -93,7 +100,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Log
     public boolean hasScoringElement() {
-        double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
+        boolean temp = filter.calculate(currentSignal.getValueAsDouble() > CURRENT_DETECTION_THRESHOLD);
         this.temp = temp;
         // return temp < 60 && temp > 0;
         return false;
@@ -101,24 +108,25 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
 
     @Override
     public Command runRollersCommand() {
-        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
-                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.runRollers");
+        return runEnd(() -> motor.setControl(voltageRequest.withOutput(Voltages.INTAKE.voltage).withEnableFOC(true)),
+                () -> motor.setControl(voltageRequest.withOutput(0))).withName("manipulator.runRollers");
     }
 
     @Override
     public Command reverseRollersCommand() {
-        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.SCORE.current)),
-                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.reverseRollers");
+        return runEnd(() -> motor.setControl(voltageRequest.withOutput(Voltages.SCORE.voltage).withEnableFOC(true)),
+                () -> motor.setControl(voltageRequest.withOutput(0))).withName("manipulator.reverseRollers");
     }
 
     /**
      * Creates a command to hold a scoring element in the manipulator by applying a
-     * current.
+     * voltage.
      * 
      * @return the command
      */
     public Command holdRollersCommand() {
-        return run(() -> torqueCurrentRequest.withOutput(Currents.HOLD.current)).withName("manipulator.holdRollers");
+        return run(() -> voltageRequest.withOutput(Voltages.HOLD.voltage).withEnableFOC(true))
+                .withName("manipulator.holdRollers");
     }
 
     /**
@@ -128,6 +136,6 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     public Command intakeScoringElementCommand() {
         return runRollersCommand().until(this::hasScoringElement).andThen(holdRollersCommand())
-                .withName("manipulator.intakeGamePiece");
+                .withName("manipulator.intakeScoringElement");
     }
 }

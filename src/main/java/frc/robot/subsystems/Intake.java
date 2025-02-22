@@ -5,12 +5,14 @@ import java.util.function.Supplier;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.TorqueCurrentFOC;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -48,10 +50,10 @@ public class Intake extends SubsystemBase implements BaseIntake {
             public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
             public static final double GEAR_RATIO = 24.0 / 11.0;
             /** Ratio of motor rotations to intake pivot rotations. */
-            public static final double SENSOR_TO_MECHANISM = Units.rotationsToRadians(GEAR_RATIO);
+            public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
             /** Intake pivot motor current limit. */
-            public static final double CURRENT_LIMIT = 20; // TODO
-            public static final double CURRENT = 20;
+            public static final double CURRENT_LIMIT = 40; // TODO
+            public static final double VOLTAGE = 20;
         }
 
         /** Constant values of intake rollers. */
@@ -64,7 +66,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
             /** Intake rollers motor current limit. */
             public static final double CURRENT_LIMIT = 10; // TODO
             /** Voltage to run intake rollers motor at. */
-            public static final double CURRENT = 10; // TODO
+            public static final double VOLTAGE = 10; // TODO
         }
     }
 
@@ -77,7 +79,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
     /** Intake pivot motor configuration object. */
     private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
     /** Request object for setting motor current. */
-    private final TorqueCurrentFOC pivotCurrentRequest = new TorqueCurrentFOC(0);
+    private final VoltageOut pivotVoltageRequest = new VoltageOut(0);
 
     /** Intake rollers motor. */
     @Log
@@ -85,13 +87,11 @@ public class Intake extends SubsystemBase implements BaseIntake {
     /** Intake rollers motor configuration object. */
     private final TalonFXConfiguration rollersMotorConfigs = new TalonFXConfiguration();
     /** Intake rollers motor current request object. */
-    private final TorqueCurrentFOC rollerCurrentRequest = new TorqueCurrentFOC(0);
+    private final VoltageOut rollersVoltageRequest = new VoltageOut(0);
 
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
         pivotMotorConfigs.MotorOutput.Inverted = Pivot.LEFT_MOTOR_DIRECTION;
-
-        pivotMotorConfigs.Feedback.SensorToMechanismRatio = Pivot.SENSOR_TO_MECHANISM;
 
         pivotMotorConfigs.CurrentLimits.StatorCurrentLimit = Pivot.CURRENT_LIMIT;
 
@@ -110,32 +110,40 @@ public class Intake extends SubsystemBase implements BaseIntake {
     /**
      * Sets the current of the intake's pivot
      * 
-     * @param current The current to set the intake to
+     * @param voltage The current to set the intake to
      */
-    public void setCurrent(double current) {
-        pivotLeftMotor.setControl(pivotCurrentRequest.withOutput(Pivot.CURRENT));
+    public void setPivotVoltage(double voltage) {
+        pivotLeftMotor.setControl(pivotVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)).withEnableFOC(true));
     }
 
-    public Command setCurrentCommand() {
-        return runEnd(() -> setCurrent(Pivot.CURRENT), () -> setCurrent(0)).withName("intake.setCurrentCommand");
+    public Command extendPivotCommand() {
+        return startEnd(() -> setPivotVoltage(Pivot.VOLTAGE), () -> setPivotVoltage(0));
+    }
+
+    public Command retractPivotCommand() {
+        return startEnd(() -> setPivotVoltage(-Pivot.VOLTAGE), () -> setPivotVoltage(0));
     }
 
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        return runEnd(() -> setCurrent(speed.get() * Pivot.CURRENT), () -> setCurrent(0))
+        return runEnd(() -> setPivotVoltage(speed.get() * 12), () -> setPivotVoltage(0))
                 .withName("intake.setOverridenSpeedCommand");
     }
 
     @Override
     public Command runRollersCommand() {
-        return startEnd(() -> rollersMotor.setControl(rollerCurrentRequest.withOutput(Rollers.CURRENT)),
+        return startEnd(() -> rollersMotor.setControl(rollersVoltageRequest.withOutput(Rollers.VOLTAGE)),
                 () -> rollersMotor.stopMotor())
                 .withName("intake.runRollers");
     }
 
     @Override
     public Command reverseRollersCommand() {
-        return startEnd(() -> rollersMotor.setControl(rollerCurrentRequest.withOutput(-Rollers.CURRENT)),
+        return startEnd(() -> rollersMotor.setControl(rollersVoltageRequest.withOutput(-Rollers.VOLTAGE)),
                 () -> rollersMotor.stopMotor())
                 .withName("intake.reverseRollers");
+    }
+
+    public Command intakeGroundAlgaeCommand() {
+        return extendPivotCommand().withTimeout(0.5).andThen(runRollersCommand()).withTimeout(0.5);
     }
 }

@@ -18,10 +18,11 @@ public class RobotCommands {
     }
 
     public static Command setScoringTargetLevelCommand(Supplier<Mode> mode, Level coralLevel, Level algaeLevel) {
-        return Commands.runOnce(() -> RobotStates.setTargetLevel(mode.get() == Mode.CORAL ? coralLevel : algaeLevel));
+        return Commands.runOnce(
+                () -> RobotStates.setTargetLevel(mode.get() == Mode.CORAL ? coralLevel : algaeLevel));
     }
 
-    public static Command moveToScoreCommand(Supplier<Level> level, Elevator elevator, Pivot pivot) {
+    public static Command moveToTargetLevelCommand(Supplier<Level> level, Elevator elevator, Pivot pivot) {
         return pivot.moveToPositionCommand(() -> level.get().pivotPosition)
                 .until(pivot::atGoal)
                 .andThen(elevator.moveToPositionCommand(() -> level.get().elevatorPosition))

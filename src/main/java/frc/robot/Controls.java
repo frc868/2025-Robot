@@ -72,11 +72,22 @@ public class Controls {
         joystick.bottomHatRight()
                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L4, Level.NET));
 
-        joystick.triggerSoftPress()
-                .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
+        joystick.centerBottomHatUp()
+                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
                         elevator, pivot));
-        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
+        joystick.centerBottomHatRight()
+                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
+                        elevator, pivot));
+        joystick.centerBottomHatDown()
+                .onTrue(intake.intakeGroundAlgaeCommand()
+                        .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
+                                elevator, pivot)));
+
+        joystick.triggerSoftPress()
+                .onTrue(RobotCommands.moveToTargetLevelCommand(RobotStates::getTargetLevel,
+                        elevator, pivot))
                 .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
+        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
 
         joystick.redButton().whileTrue(climber.setCurrentCommand());
 
