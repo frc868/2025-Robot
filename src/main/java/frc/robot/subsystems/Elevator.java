@@ -12,13 +12,20 @@ import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.sim.TalonFXSimState;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.simulation.ElevatorSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
@@ -63,6 +70,16 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         /** Current limit of elevator motors, in amps. */
         public static final double CURRENT_LIMIT = 80;
         public static final double POSITION_TOLERANCE = 0.1;
+        public static final DCMotor MOTOR_GEARBOX_REPR = DCMotor.getKrakenX60(2);
+        public static final double MASS_KG = Units.lbsToKilograms(20);
+        public static final double DRUM_RADIUS_METERS = Units.inchesToMeters(2.5) / 2.0; // 0.03175 m
+        public static final double MIN_HEIGHT_METERS = 0.005; // TODO
+        public static final double MAX_HEIGHT_METERS = 1.565; // TODO
+        /**
+         * The height at which the manipulator touches the top of the first stage,
+         * making the first stage start moving.
+         */
+        public static final double STAGE_MOVEMENT_HEIGHT = 0.785;
 
         /** CAN information of elevator motors. */
         public static final class CAN {
@@ -187,6 +204,16 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                 setVoltage(voltage.magnitude());
             }, null, this));
 
+    private final ElevatorSim elevatorSim = new ElevatorSim(
+            MOTOR_GEARBOX_REPR,
+            GEAR_RATIO,
+            MASS_KG,
+            DRUM_RADIUS_METERS,
+            MIN_HEIGHT_METERS,
+            MAX_HEIGHT_METERS,
+            false,
+            Position.HARD_STOP.position);
+
     /**
      * Initialize elevator configurations and add pivot position to global position
      * tracker.
@@ -224,6 +251,33 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
         // setDefaultCommand(holdCurrentPositionCommand());
+    }
+
+    @Override
+    public void simulationPeriodic() {
+        TalonFXSimState talonFXSim = leftMotor.getSimState();
+        Voltage motorVoltage = talonFXSim.getMotorVoltageMeasure();
+
+        elevatorSim.setInputVoltage(motorVoltage.in(Volts));
+        elevatorSim.update(0.020);
+
+        // set positions of the rotors by working back through units
+        talonFXSim.setRawRotorPosition(elevatorSim.getPositionMeters() / DRUM_CIRCUMFERENCE * GEAR_RATIO);
+        talonFXSim.setRotorVelocity(elevatorSim.getVelocityMetersPerSecond() / DRUM_CIRCUMFERENCE * GEAR_RATIO);
+    }
+
+    @Log(groups = "components")
+    public Pose3d getStageComponentPose() {
+        Transform3d transform = new Transform3d();
+        if (getPosition() > STAGE_MOVEMENT_HEIGHT) {
+            transform = new Transform3d(0, 0, getPosition() - STAGE_MOVEMENT_HEIGHT, new Rotation3d());
+        }
+        return new Pose3d(0.1747, 0, 0.0417, new Rotation3d()).plus(transform);
+    }
+
+    @Log(groups = "components")
+    public Pose3d getCarriageComponentPose() {
+        return new Pose3d(0.1747, 0, 0.0671 + getPosition(), new Rotation3d());
     }
 
     /**

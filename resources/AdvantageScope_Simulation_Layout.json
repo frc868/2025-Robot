@@ -1,0 +1,122 @@
+{
+  "hubs": [
+    {
+      "x": 0,
+      "y": 43,
+      "width": 1800,
+      "height": 1126,
+      "state": {
+        "sidebar": {
+          "width": 300,
+          "expanded": [
+            "/HoundLog",
+            "/HoundLog/elevator/components",
+            "/HoundLog/arm/components",
+            "/HoundLog/arm",
+            "/HoundLog/elevator",
+            "/HoundLog/drivetrain/simPose",
+            "/HoundLog/drivetrain/simPose/translation",
+            "/HoundLog/climber",
+            "/HoundLog/subsystems",
+            "/HoundLog/subsystems/drivetrain"
+          ]
+        },
+        "tabs": {
+          "selected": 1,
+          "tabs": [
+            {
+              "type": 0,
+              "path": "../docs/INDEX.md"
+            },
+            {
+              "type": 6,
+              "uuid": "2r2tbv18xlsld2mujt90ri61hmwkkfcl",
+              "fields": [],
+              "listFields": [
+                [
+                  {
+                    "type": "Component (Robot)",
+                    "key": "NT:/HoundLog//componentPoses",
+                    "sourceTypeIndex": 2,
+                    "sourceType": "Pose3d[]"
+                  },
+                  {
+                    "type": "Game Piece 0",
+                    "key": "NT:/HoundLog//coralPose",
+                    "sourceTypeIndex": 1,
+                    "sourceType": "Pose3d"
+                  }
+                ],
+                [
+                  {
+                    "type": "Robot",
+                    "key": "NT:/HoundLog/subsystems/drivetrain/pose",
+                    "sourceTypeIndex": 1,
+                    "sourceType": "Pose2d"
+                  }
+                ]
+              ],
+              "options": {
+                "field": "2025 Field (AndyMark)",
+                "alliance": "blue",
+                "robot": "2025-Robot",
+                "unitDistance": "meters",
+                "unitRotation": "radians"
+              },
+              "configHidden": false,
+              "visualizer": {
+                "cameraIndex": -2,
+                "orbitFov": 50,
+                "cameraPosition": [
+                  -1.3204569188172064,
+                  1.511074841766912,
+                  -2.1081247674292842
+                ],
+                "cameraTarget": [
+                  -0.30401921017949685,
+                  0.40778521292291053,
+                  0.1035647733615068
+                ]
+              },
+              "title": "3D Field"
+            },
+            {
+              "type": 1,
+              "legendHeight": 0.3,
+              "legends": {
+                "left": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": [
+                    {
+                      "key": "NT:/HoundLog/drivetrain/simPose/translation/x",
+                      "color": "#2b66a2",
+                      "show": true
+                    }
+                  ]
+                },
+                "discrete": {
+                  "fields": []
+                },
+                "right": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": []
+                }
+              },
+              "title": "Line Graph"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "satellites": [],
+  "version": "3.2.1"
+}
