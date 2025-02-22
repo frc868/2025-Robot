@@ -30,7 +30,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
         /** Manipulator motor current limit. */
         public static final double CURRENT_LIMIT = 100;
-        public static final double CURRENT_DETECTION_THRESHOLD = 0; // TODO
+        public static final double CURRENT_DETECTION_THRESHOLD = 20; // TODO
 
         /** CAN information of manipulator motor. */
         public static final class CAN {
@@ -45,7 +45,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
          */
         public enum Voltages {
             /** Voltage to run manipulator motor at to intake a scoring element. */
-            INTAKE(6),
+            INTAKE(10),
             /** Current to run manipulator motor at to score a scoring element. */
             SCORE(-4),
             /** Voltage to run manipulator motor at to hold a scoring element. */
@@ -70,10 +70,10 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * control.
      */
     private final VoltageOut voltageRequest = new VoltageOut(0);
-
+    @Log
     private final StatusSignal<Current> currentSignal = motor.getTorqueCurrent();
     /** Debouncer for filtering out current spike outliers. */
-    private final Debouncer filter = new Debouncer(0.5);
+    private final Debouncer filter = new Debouncer(0.25);
     @Log
     private boolean temp;
 
@@ -81,7 +81,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public Manipulator() {
         motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
 
-        motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+        // motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
 
         motor.getConfigurator().apply(motorConfigs);
 
@@ -100,10 +100,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     @Log
     public boolean hasScoringElement() {
-        boolean temp = filter.calculate(currentSignal.getValueAsDouble() > CURRENT_DETECTION_THRESHOLD);
-        this.temp = temp;
-        // return temp < 60 && temp > 0;
-        return false;
+        return filter.calculate(motor.getTorqueCurrent().getValueAsDouble() > CURRENT_DETECTION_THRESHOLD);
     }
 
     @Override
