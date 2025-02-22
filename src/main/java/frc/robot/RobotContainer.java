@@ -13,6 +13,7 @@ import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.SendableLog;
 
 import edu.wpi.first.epilogue.Logged;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -58,6 +59,23 @@ public class RobotContainer {
 
     @SendableLog(groups = "wpilib")
     private final CommandScheduler commandScheduler = CommandScheduler.getInstance();
+
+    @Log
+    private Supplier<Pose3d[]> componentPoses = () -> new Pose3d[] {
+            elevator.getStageComponentPose(),
+            elevator.getCarriageComponentPose(),
+            pivot.getComponentPose(),
+            intake.getLeftFrontBarComponentPose(),
+            intake.getRightFrontBarComponentPose(),
+            intake.getTopBarComponentPose(),
+            intake.getLeftBackBarComponentPose(),
+            intake.getRightBackBarComponentPose(),
+            climber.getComponentPose()
+    };
+    @Log
+    private Supplier<Pose3d> coralPose = () -> new Pose3d(drivetrain.getSimPose()).plus(pivot.getCoralTransform());
+    @Log
+    private Supplier<Pose3d> algaePose = () -> new Pose3d(drivetrain.getSimPose()).plus(pivot.getAlgaeTransform());
 
     private double prevLoopTime = 0.0;
 

@@ -2,13 +2,7 @@ package frc.robot;
 
 import java.util.List;
 
-import com.pathplanner.lib.config.ModuleConfig;
-import com.pathplanner.lib.config.RobotConfig;
-import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera.PhotonCameraConstants;
 import com.techhounds.houndutil.houndlib.leds.BaseLEDSection;
-
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -16,16 +10,8 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
 
-import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import frc.robot.subsystems.LEDs.LEDState;
 
-import com.techhounds.houndutil.houndlib.swerve.CoaxialSwerveModule.SwerveConstants;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
-
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.system.plant.DCMotor;
 import frc.robot.subsystems.Elevator;
 import frc.robot.subsystems.Pivot;
 

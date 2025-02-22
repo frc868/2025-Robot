@@ -10,11 +10,20 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.sim.TalonFXSimState;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -49,6 +58,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         /** Current limit of manipulator motor. */
         public static final double CURRENT_LIMIT = 60;
         public static final double POSITION_TOLERANCE = 0.01;
+
+        public static final DCMotor MOTOR_GEARBOX_REPR = DCMotor.getKrakenX60(1);
+        public static final double GEARING = 12.0; // TODO
+        public static final double MASS_KG = Units.lbsToKilograms(20); // TODO
+        public static final double COM_DISTANCE_METERS = Units.inchesToMeters(6); // TODO
+        public static final double MOI = SingleJointedArmSim.estimateMOI(COM_DISTANCE_METERS, MASS_KG);
+        public static final double MIN_ANGLE_RADIANS = Units.degreesToRadians(-48);
+        public static final double MAX_ANGLE_RADIANS = Units.degreesToRadians(170);
 
         /** CAN information of manipulator pivot. */
         public static final class CAN {
@@ -154,6 +171,16 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
                 setVoltage(voltage.magnitude());
             }, null, this));
 
+    private final SingleJointedArmSim armSim = new SingleJointedArmSim(
+            MOTOR_GEARBOX_REPR,
+            GEARING,
+            MOI,
+            COM_DISTANCE_METERS,
+            MIN_ANGLE_RADIANS,
+            MAX_ANGLE_RADIANS,
+            true,
+            Position.HARD_STOP.position);
+
     /**
      * Global position tracker object for tracking mechanism positions for
      * calculating safeties.
@@ -203,6 +230,40 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         positionTracker.addPositionSupplier("Pivot", this::getPosition);
 
         // setDefaultCommand(holdCurrentPositionCommand());
+    }
+
+    @Override
+    public void simulationPeriodic() {
+        TalonFXSimState talonFXSim = motor.getSimState();
+        Voltage motorVoltage = talonFXSim.getMotorVoltageMeasure();
+
+        armSim.setInputVoltage(motorVoltage.in(Volts));
+        armSim.update(0.020);
+
+        talonFXSim.setRawRotorPosition(armSim.getAngleRads() / (2 * Math.PI) * GEARING);
+        talonFXSim.setRotorVelocity(armSim.getVelocityRadPerSec() / (2 * Math.PI) * GEARING);
+
+    }
+
+    @Log(groups = "components")
+    public Pose3d getComponentPose() {
+        // since 0 position needs to be horizontal
+        return new Pose3d(0.275, 0, 0.435 + positionTracker.getPosition("elevator"), new Rotation3d(0, -0.45, 0))
+                .plus(new Transform3d(new Translation3d(), new Rotation3d(0, -getPosition(), 0)));
+    }
+
+    public Transform3d getCoralTransform() {
+        // since 0 position needs to be horizontal
+        return new Transform3d(new Pose3d(),
+                getComponentPose()
+                        .plus(new Transform3d(0.3, 0, -0.1325, new Rotation3d(0, Units.degreesToRadians(-130), 0))));
+    }
+
+    public Transform3d getAlgaeTransform() {
+        // since 0 position needs to be horizontal
+        return new Transform3d(new Pose3d(),
+                getComponentPose()
+                        .plus(new Transform3d(0.42, 0, -0.3, new Rotation3d())));
     }
 
     /**
