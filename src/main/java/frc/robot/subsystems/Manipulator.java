@@ -87,7 +87,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
 
         motor.setNeutralMode(NeutralModeValue.Brake);
 
-        SignalManager.register(currentSignal);
+        // SignalManager.register(currentSignal);
 
         setDefaultCommand(intakeScoringElementCommand());
     }

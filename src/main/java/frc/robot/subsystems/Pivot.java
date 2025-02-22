@@ -183,6 +183,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
         motorConfigs.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+
         motorConfigs.Slot0.kS = Feedforward.kS;
         motorConfigs.Slot0.kG = Feedforward.kG;
         motorConfigs.Slot0.kV = Feedforward.kV;

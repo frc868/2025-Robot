@@ -19,7 +19,9 @@ public class RobotCommands {
 
         public static Command setScoringTargetLevelCommand(Supplier<Mode> mode, Level coralLevel, Level algaeLevel) {
                 return Commands.runOnce(
-                                () -> RobotStates.setTargetLevel(mode.get() == Mode.CORAL ? coralLevel : algaeLevel));
+                                () -> RobotStates.setTargetLevel(
+                                                mode.get() == Mode.CORAL || mode.get() == null ? coralLevel
+                                                                : algaeLevel));
         }
 
         public static Command moveToTargetLevelCommand(Supplier<Level> reefLevel, Elevator elevator, Pivot pivot) {
@@ -27,7 +29,7 @@ public class RobotCommands {
                                 .until(() -> {
                                         double currentPosition = pivot.getPosition();
                                         double targetPosition = reefLevel.get().pivotPosition.position;
-                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
                                         System.out.println("Pivot position: " + currentPosition + ", Target: "
                                                         + targetPosition
                                                         + ", At Target: " + isAtTarget);
@@ -39,7 +41,7 @@ public class RobotCommands {
                                         double elevatorCurrentPosition = elevator.getPosition();
                                         double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
                                         boolean isElevatorAtTarget = Math
-                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.05;
+                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
                                         System.out.println(
                                                         "Elevator position: " + elevatorCurrentPosition + ", Target: "
                                                                         + elevatorTargetPosition
@@ -69,13 +71,25 @@ public class RobotCommands {
                                 .andThen(elevator.holdCurrentPositionCommand());
         }
 
+        // public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
+        // Manipulator manipulator) {
+        // return pivot.moveToPositionCommand(() ->
+        // Pivot.Constants.Position.PAST_ELEVATOR)
+        // .until(pivot::atGoal)
+        // .andThen(elevator.moveToPositionCommand(() ->
+        // Elevator.Constants.Position.HARD_STOP))
+        // .until(elevator::atGoal)
+        // .andThen(pivot.moveToPositionCommand(() ->
+        // Pivot.Constants.Position.HARD_STOP));
+        // }
+
         public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
                         Manipulator manipulator) {
-                return pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)
-                                .until(pivot::atGoal)
-                                .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP))
-                                .until(elevator::atGoal)
-                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP));
+                return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
+                                .until(() -> elevator.getPosition() <= 0.05)
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
+                                                .until(() -> pivot.getPosition() <= 0.05),
+                                                manipulator.intakeScoringElementCommand());
         }
 
         public static Command rehomeMechanismsCommandComp(Elevator elevator, Pivot pivot, Manipulator manipulator) {

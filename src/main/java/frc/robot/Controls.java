@@ -98,8 +98,8 @@ public class Controls {
                 // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
                 // manipulator));
                 joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
-                                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
-                                                manipulator));
+                                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
+
                 joystick.redButton().whileTrue(climber.setCurrentCommand());
 
                 joystick.blackThumbButton()
