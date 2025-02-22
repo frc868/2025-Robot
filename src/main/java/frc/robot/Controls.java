@@ -49,8 +49,13 @@ public class Controls {
     /**
      * Configure driver controls on a Virpil Controls Alpha-R joystick.
      * 
-     * @param port       port that joystick is connected to
-     * @param drivetrain drivetrain subsystem object
+     * @param port        port that joystick is connected to
+     * @param drivetrain  drivetrain subsystem object
+     * @param elevator    elevator subsystem object
+     * @param pivot       pivot subsystem object
+     * @param manipulator manipulator subsystem object
+     * @param intake      intake subsystem object
+     * @param climber     climber subsystem object
      */
     public static void configureDriverControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
@@ -102,10 +107,15 @@ public class Controls {
 
     /**
      * Configure operator controls on Xbox controller for manual overrides in
-     * caseautomatic features stop working.
+     * case automatic features stop working.
      * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
+     * @param port        port that controller is connected to
+     * @param drivetrain  drivetrain subsystem object
+     * @param elevator    elevator subsystem object
+     * @param pivot       pivot subsystem object
+     * @param manipulator manipulator subsystem object
+     * @param intake      intake subsystem object
+     * @param climber     climber subsystem object
      */
     public static void configureOperatorControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
@@ -127,8 +137,13 @@ public class Controls {
      * Configure override controls on Xbox controller for overriding mechanism
      * safeties.
      * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
+     * @param port        port that controller is connected to
+     * @param drivetrain  drivetrain subsystem object
+     * @param elevator    elevator subsystem object
+     * @param pivot       pivot subsystem object
+     * @param manipulator manipulator subsystem object
+     * @param intake      intake subsystem object
+     * @param climber     climber subsystem object
      */
     public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
@@ -141,8 +156,13 @@ public class Controls {
     /**
      * Configure controls on Xbox controller for running SysId routines.
      * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
+     * @param port        port that controller is connected to
+     * @param drivetrain  drivetrain subsystem object
+     * @param elevator    elevator subsystem object
+     * @param pivot       pivot subsystem object
+     * @param manipulator manipulator subsystem object
+     * @param intake      intake subsystem object
+     * @param climber     climber subsystem object
      */
     public static void configureSysIdControls(int port, Drivetrain drivetrain, Elevator elevator,
             Pivot pivot, Manipulator manipulator, Intake intake, Climber climber) {
