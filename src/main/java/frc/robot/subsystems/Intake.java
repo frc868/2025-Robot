@@ -47,13 +47,13 @@ public class Intake extends SubsystemBase implements BaseIntake {
              * Direction of motor rotation defined as positive rotation. Defined for intake
              * pivot to be rotation away from zero point.
              */
-            public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive;
+            public static final InvertedValue MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive;
             public static final double GEAR_RATIO = 24.0 / 11.0;
             /** Ratio of motor rotations to intake pivot rotations. */
             public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
             /** Intake pivot motor current limit. */
             public static final double CURRENT_LIMIT = 40; // TODO
-            public static final double VOLTAGE = 20;
+            public static final double VOLTAGE = 2;
         }
 
         /** Constant values of intake rollers. */
@@ -66,16 +66,13 @@ public class Intake extends SubsystemBase implements BaseIntake {
             /** Intake rollers motor current limit. */
             public static final double CURRENT_LIMIT = 10; // TODO
             /** Voltage to run intake rollers motor at. */
-            public static final double VOLTAGE = 10; // TODO
+            public static final double VOLTAGE = 6; // TODO
         }
     }
 
     /** Intake pivot left motor. */
     @Log
-    private final TalonFX pivotLeftMotor = new TalonFX(CAN.IDs.PIVOT_LEFT, CAN.BUS);
-    /** Intake pivot right motor. */
-    @Log
-    private final TalonFX pivotRightMotor = new TalonFX(CAN.IDs.PIVOT_RIGHT, CAN.BUS);
+    private final TalonFX pivotMotor = new TalonFX(CAN.IDs.PIVOT_LEFT, CAN.BUS);
     /** Intake pivot motor configuration object. */
     private final TalonFXConfiguration pivotMotorConfigs = new TalonFXConfiguration();
     /** Request object for setting motor current. */
@@ -91,18 +88,15 @@ public class Intake extends SubsystemBase implements BaseIntake {
 
     /** Initialize intake pivot and rollers motor configurations. */
     public Intake() {
-        pivotMotorConfigs.MotorOutput.Inverted = Pivot.LEFT_MOTOR_DIRECTION;
+        pivotMotorConfigs.MotorOutput.Inverted = Pivot.MOTOR_DIRECTION;
 
         // pivotMotorConfigs.CurrentLimits.StatorCurrentLimit = Pivot.CURRENT_LIMIT;
 
-        pivotLeftMotor.getConfigurator().apply(pivotMotorConfigs);
-        pivotRightMotor.getConfigurator().apply(pivotMotorConfigs);
-
-        pivotRightMotor.setControl(new Follower(pivotLeftMotor.getDeviceID(), true));
+        pivotMotor.getConfigurator().apply(pivotMotorConfigs);
 
         rollersMotorConfigs.MotorOutput.Inverted = Rollers.MOTOR_DIRECTION;
 
-        rollersMotorConfigs.CurrentLimits.SupplyCurrentLimit = Rollers.CURRENT_LIMIT;
+        // rollersMotorConfigs.CurrentLimits.SupplyCurrentLimit = Rollers.CURRENT_LIMIT;
 
         rollersMotor.getConfigurator().apply(rollersMotorConfigs);
     }
@@ -113,7 +107,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
      * @param voltage The current to set the intake to
      */
     public void setPivotVoltage(double voltage) {
-        pivotLeftMotor.setControl(pivotVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)).withEnableFOC(true));
+        pivotMotor.setControl(pivotVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)).withEnableFOC(true));
     }
 
     public Command extendPivotCommand() {

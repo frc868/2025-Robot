@@ -64,13 +64,17 @@ public class Controls {
         joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
 
         joystick.bottomHatDown()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L1, Level.PROCESSOR));
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                        Level.L1, Level.PROCESSOR));
         joystick.bottomHatLeft()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L2, Level.PROCESSOR));
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                        Level.L2, Level.PROCESSOR));
         joystick.bottomHatUp()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L3, Level.NET));
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                        Level.L3, Level.NET));
         joystick.bottomHatRight()
-                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode, Level.L4, Level.NET));
+                .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
+                        Level.L4, Level.NET));
 
         joystick.centerBottomHatUp()
                 .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
@@ -86,12 +90,14 @@ public class Controls {
         joystick.triggerSoftPress()
                 .onTrue(RobotCommands.moveToTargetLevelCommand(RobotStates::getTargetLevel,
                         elevator, pivot))
-                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
+                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
+                        manipulator));
         joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
 
         joystick.redButton().whileTrue(climber.setCurrentCommand());
 
-        joystick.blackThumbButton().onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
+        joystick.blackThumbButton()
+                .onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
     }
 
     /**

@@ -43,7 +43,9 @@ public class RobotCommands {
 
     public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
             Manipulator manipulator) {
-        return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
+        return pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)
+                .until(pivot::atGoal)
+                .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP))
                 .until(elevator::atGoal)
                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP));
     }
