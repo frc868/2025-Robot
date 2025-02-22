@@ -47,7 +47,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
              * Direction of motor rotation defined as positive rotation. Defined for intake
              * pivot to be rotation away from zero point.
              */
-            public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
+            public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive;
             public static final double GEAR_RATIO = 24.0 / 11.0;
             /** Ratio of motor rotations to intake pivot rotations. */
             public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
@@ -93,7 +93,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
     public Intake() {
         pivotMotorConfigs.MotorOutput.Inverted = Pivot.LEFT_MOTOR_DIRECTION;
 
-        pivotMotorConfigs.CurrentLimits.StatorCurrentLimit = Pivot.CURRENT_LIMIT;
+        // pivotMotorConfigs.CurrentLimits.StatorCurrentLimit = Pivot.CURRENT_LIMIT;
 
         pivotLeftMotor.getConfigurator().apply(pivotMotorConfigs);
         pivotRightMotor.getConfigurator().apply(pivotMotorConfigs);
