@@ -89,7 +89,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
 
         SignalManager.register(currentSignal);
 
-        // setDefaultCommand(intakeScoringElementCommand());
+        setDefaultCommand(intakeScoringElementCommand());
     }
 
     /**
