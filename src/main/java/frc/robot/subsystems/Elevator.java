@@ -348,9 +348,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             double targetPosition = motionMagicVoltageRequest.Position;
             boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
 
-            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
-                    + ", At Target: " + atTarget);
-
             if (!atTarget) {
                 leftMotor.setControl(controlRequestWithSafeties(
                         motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
@@ -373,7 +370,6 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         return Commands.sequence(
                 runOnce(() -> {
                     double targetPosition = goalPositionSupplier.get();
-                    System.out.println("Elevator Moving to position: " + targetPosition);
                     leftMotor.setControl(
                             controlRequestWithSafeties(motionMagicVoltageRequest.withPosition(targetPosition)
                                     .withEnableFOC(true)));

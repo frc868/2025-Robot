@@ -30,9 +30,6 @@ public class RobotCommands {
                                         double currentPosition = pivot.getPosition();
                                         double targetPosition = reefLevel.get().pivotPosition.position;
                                         boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
-                                        System.out.println("Pivot position: " + currentPosition + ", Target: "
-                                                        + targetPosition
-                                                        + ", At Target: " + isAtTarget);
                                         return isAtTarget;
                                 })
                                 .andThen(pivot.holdCurrentPositionCommand())
@@ -42,10 +39,6 @@ public class RobotCommands {
                                         double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
                                         boolean isElevatorAtTarget = Math
                                                         .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
-                                        System.out.println(
-                                                        "Elevator position: " + elevatorCurrentPosition + ", Target: "
-                                                                        + elevatorTargetPosition
-                                                                        + ", At Target: " + isElevatorAtTarget);
                                         return isElevatorAtTarget;
                                 })
                                 .andThen(elevator.holdCurrentPositionCommand());
