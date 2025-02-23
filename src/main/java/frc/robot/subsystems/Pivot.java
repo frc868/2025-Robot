@@ -37,6 +37,7 @@ import frc.robot.subsystems.Pivot.Constants.Position;
 
 import java.util.function.Supplier;
 
+import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.Pivot.Constants.*;
@@ -61,7 +62,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         public static final DCMotor MOTOR_GEARBOX_REPR = DCMotor.getKrakenX60(1);
         public static final double GEARING = 12.0; // TODO
-        public static final double MASS_KG = Units.lbsToKilograms(20); // TODO
+        public static final double MASS_KG = Units.lbsToKilograms(5); // TODO
         public static final double COM_DISTANCE_METERS = Units.inchesToMeters(6); // TODO
         public static final double MOI = SingleJointedArmSim.estimateMOI(COM_DISTANCE_METERS, MASS_KG);
         public static final double MIN_ANGLE_RADIANS = Units.degreesToRadians(-48);
@@ -179,7 +180,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             MIN_ANGLE_RADIANS,
             MAX_ANGLE_RADIANS,
             true,
-            Position.HARD_STOP.position);
+            Units.rotationsToRadians(Position.HARD_STOP.position));
 
     /**
      * Global position tracker object for tracking mechanism positions for
@@ -248,7 +249,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     @Log(groups = "components")
     public Pose3d getComponentPose() {
         // since 0 position needs to be horizontal
-        return new Pose3d(0.275, 0, 0.435 + positionTracker.getPosition("elevator"), new Rotation3d(0, -0.45, 0))
+        return new Pose3d(0.275, 0, 0.435 + positionTracker.getPosition("Elevator"), new Rotation3d(0, -0.45, 0))
                 .plus(new Transform3d(new Translation3d(), new Rotation3d(0, -getPosition(), 0)));
     }
 
@@ -297,7 +298,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
     @Override
     public double getPosition() {
-        return motor.getPosition().getValueAsDouble();
+        return motor.getPosition().getValue().in(Radians);
     }
 
     @Override
