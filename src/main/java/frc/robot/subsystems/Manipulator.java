@@ -51,7 +51,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** Current to run manipulator motor at to score a scoring element. */
             SCORE(-4),
             /** Voltage to run manipulator motor at to hold a scoring element. */
-            HOLD(4);
+            CORAL_HOLD(4);
 
             /** Current to run manipulator motor at, in amps. */
             public final double voltage;
@@ -125,8 +125,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     public Command holdRollersCommand() {
         return run(() -> {
-            System.out.println("Holding Rollers with Voltage: " + Voltages.HOLD.voltage);
-            voltageRequest.withOutput(Voltages.HOLD.voltage).withEnableFOC(true);
+            System.out.println("Holding Rollers with Voltage: " + Voltages.CORAL_HOLD.voltage);
+            voltageRequest.withOutput(Voltages.CORAL_HOLD.voltage).withEnableFOC(true);
         }).withName("manipulator.holdRollers");
     }
 
