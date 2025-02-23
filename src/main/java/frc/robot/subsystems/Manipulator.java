@@ -15,6 +15,8 @@ import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.subsystems.Manipulator.Constants.CAN;
+import frc.robot.subsystems.Manipulator.Constants.Voltages;
 
 import static frc.robot.subsystems.Manipulator.Constants.*;
 
@@ -45,11 +47,11 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
          */
         public enum Voltages {
             /** Voltage to run manipulator motor at to intake a scoring element. */
-            INTAKE(10),
+            INTAKE(9),
             /** Current to run manipulator motor at to score a scoring element. */
             SCORE(-4),
             /** Voltage to run manipulator motor at to hold a scoring element. */
-            HOLD(0.75);
+            HOLD(4);
 
             /** Current to run manipulator motor at, in amps. */
             public final double voltage;
@@ -122,8 +124,10 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      * @return the command
      */
     public Command holdRollersCommand() {
-        return run(() -> voltageRequest.withOutput(Voltages.HOLD.voltage).withEnableFOC(true))
-                .withName("manipulator.holdRollers");
+        return run(() -> {
+            System.out.println("Holding Rollers with Voltage: " + Voltages.HOLD.voltage);
+            voltageRequest.withOutput(Voltages.HOLD.voltage).withEnableFOC(true);
+        }).withName("manipulator.holdRollers");
     }
 
     /**

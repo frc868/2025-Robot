@@ -101,7 +101,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             GROUND_ALGAE(1.89), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(2.58), // TODO get actual position
+            L2(2.63), // TODO get actual position
             REEF_LOW_ALGAE(2.5),
             L3(4.82), // TODO get actual position
             REEF_HIGH_ALGAE(5),
@@ -150,9 +150,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 2; // 90
+            public static final double CRUISE_VELOCITY = 22; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 2; // 80
+            public static final double ACCELERATION = 16; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
@@ -250,7 +250,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         this.positionTracker = positionTracker;
         positionTracker.addPositionSupplier("Elevator", this::getPosition);
 
-        // setDefaultCommand(holdCurrentPositionCommand());
+        setDefaultCommand(holdCurrentPositionCommand());
     }
 
     @Override
@@ -296,18 +296,17 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stopRequest;
         }
 
-        // if (getPosition() > Position.L3.position && getPosition() <=
-        // Position.L4_NET.position) {
-        // return controlRequest;
-        // }
+        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
+            return controlRequest;
+        }
 
         if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
             return stopRequest;
         }
 
-        // if (getPosition() > Position.L4_NET.position) {
-        // return stopRequest;
-        // }
+        if (getPosition() > Position.L4_NET.position) {
+            return stopRequest;
+        }
 
         return controlRequest;
     }

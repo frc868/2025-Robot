@@ -20,6 +20,9 @@ public class RobotCommands {
                                 () -> RobotStates.setTargetLevel(
                                                 mode.get() == Mode.CORAL || mode.get() == null ? coralLevel
                                                                 : algaeLevel));
+                // .andThen(() -> {
+                // System.out.println(mode.get().toString());
+                // });
         }
 
         public static Command moveToTargetLevelCommand(Supplier<Level> reefLevel, Elevator elevator, Pivot pivot) {

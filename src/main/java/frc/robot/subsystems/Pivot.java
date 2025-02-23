@@ -90,7 +90,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             L1(0.03),
             L2(-0.06),
             L3(-0.06),
-            L4(-0.06),
+            L4(-0.07),
             ALGAE(-0.01),
             SOFT_STOP(0.092);
 
