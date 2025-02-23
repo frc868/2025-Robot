@@ -98,13 +98,13 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         /** Positions elevator can be in, in spool drum rotations */
         public static enum Position {
             HARD_STOP(0),
-            GROUND_ALGAE(1), // TODO
+            GROUND_ALGAE(1.89), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
             L2(2.58), // TODO get actual position
-            REEF_LOW_ALGAE(3.95),
+            REEF_LOW_ALGAE(2.5),
             L3(4.82), // TODO get actual position
-            REEF_HIGH_ALGAE(6.95),
+            REEF_HIGH_ALGAE(5),
             L4_NET(8.8);
 
             public final double position;
@@ -150,19 +150,19 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 20; // 90
+            public static final double CRUISE_VELOCITY = 2; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 16; // 80
+            public static final double ACCELERATION = 2; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
     }
 
     /** Elevator left motor. */
-    @Log
+    // @Log
     private final TalonFX leftMotor = new TalonFX(CAN.IDs.LEFT_MOTOR, CAN.BUS);
     /** Elevator right motor. */
-    @Log
+    // @Log
     private final TalonFX rightMotor = new TalonFX(CAN.IDs.RIGHT_MOTOR, CAN.BUS);
     /**
      * Configuration object for configurations shared across both elevator motors.
@@ -296,17 +296,18 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stopRequest;
         }
 
-        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
-            return controlRequest;
-        }
+        // if (getPosition() > Position.L3.position && getPosition() <=
+        // Position.L4_NET.position) {
+        // return controlRequest;
+        // }
 
         if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
             return stopRequest;
         }
 
-        if (getPosition() > Position.L4_NET.position) {
-            return stopRequest;
-        }
+        // if (getPosition() > Position.L4_NET.position) {
+        // return stopRequest;
+        // }
 
         return controlRequest;
     }
@@ -346,6 +347,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             double currentPosition = getPosition();
             double targetPosition = motionMagicVoltageRequest.Position;
             boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+
+            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
+                    + ", At Target: " + atTarget);
 
             if (!atTarget) {
                 leftMotor.setControl(controlRequestWithSafeties(

@@ -82,15 +82,16 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
          */
         public static enum Position {
             HARD_STOP(0.405029296875),
-            GROUND_ALGAE(-0.1), // TODO
+            GROUND_ALGAE(-0.19), // TODO
             PROCESSOR(0), // TODO
             NET(0),
-            PAST_ELEVATOR(0.04922),
+            PAST_ELEVATOR(0.06),
+            SAFE(0),
             L1(0.03),
             L2(-0.06),
             L3(-0.06),
             L4(-0.06),
-            ALGAE(0.01),
+            ALGAE(-0.01),
             SOFT_STOP(0.092);
 
             public final double position;
@@ -145,7 +146,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
     }
 
     /** Pivot motor */
-    @Log
+    // @Log
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Configuration object for pivot motor. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
@@ -210,7 +211,7 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
 
         motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
 
-        motorConfigs.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+        // motorConfigs.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
 
         motorConfigs.Slot0.kS = Feedforward.kS;
         motorConfigs.Slot0.kG = Feedforward.kG;
@@ -297,9 +298,14 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
         return Math.abs(getPosition() - motionMagicVoltageRequest.Position) < POSITION_TOLERANCE;
     }
 
+    // @Override%
+    // public double getPosition() {
+    // return motor.getPosition().getValue().in(Radians);
+    // }
+
     @Override
     public double getPosition() {
-        return motor.getPosition().getValue().in(Radians);
+        return motor.getPosition().getValueAsDouble();
     }
 
     @Override

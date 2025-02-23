@@ -28,6 +28,9 @@ public class RobotCommands {
                                         double currentPosition = pivot.getPosition();
                                         double targetPosition = reefLevel.get().pivotPosition.position;
                                         boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
+                                        // System.out.println("Pivot position: " + currentPosition + ", Target: "
+                                        // + targetPosition
+                                        // + ", At Target: " + isAtTarget);
                                         return isAtTarget;
                                 })
                                 .andThen(pivot.holdCurrentPositionCommand())
@@ -37,9 +40,43 @@ public class RobotCommands {
                                         double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
                                         boolean isElevatorAtTarget = Math
                                                         .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
+                                        // System.out.println(
+                                        // "Elevator position: " + elevatorCurrentPosition + ", Target: "
+                                        // + elevatorTargetPosition
+                                        // + ", At Target: " + isElevatorAtTarget);
                                         return isElevatorAtTarget;
                                 })
                                 .andThen(elevator.holdCurrentPositionCommand());
+        }
+
+        public static Command moveToTargetLevelIntakeCommand(Supplier<Level> reefLevel, Elevator elevator,
+                        Pivot pivot) {
+
+                return pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SAFE)
+                                .until(() -> {
+                                        double currentSafePosition = pivot.getPosition();
+                                        double targetSafePosition = Pivot.Constants.Position.SAFE.position;
+                                        boolean isAtSafeTarget = Math
+                                                        .abs(currentSafePosition - targetSafePosition) <= 0.01;
+                                        return isAtSafeTarget;
+                                })
+                                .andThen(pivot.holdCurrentPositionCommand())
+                                .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.GROUND_ALGAE))
+                                .until(() -> {
+                                        double elevatorCurrentPosition = elevator.getPosition();
+                                        double elevatorTargetPosition = Elevator.Constants.Position.GROUND_ALGAE.position;
+                                        boolean isElevatorAtTarget = Math
+                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
+                                        return isElevatorAtTarget;
+                                })
+                                .andThen(elevator.holdCurrentPositionCommand())
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.GROUND_ALGAE))
+                                .until(() -> {
+                                        double currentPosition = pivot.getPosition();
+                                        double targetPosition = Pivot.Constants.Position.GROUND_ALGAE.position;
+                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
+                                        return isAtTarget;
+                                });
         }
 
         // public static Command moveToTargetLevelCommand(Supplier<Level> level,
@@ -80,10 +117,12 @@ public class RobotCommands {
                                 .until(() -> elevator.getPosition() <= 0.05)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
                                                 .until(() -> pivot.getPosition() <= 0.05),
+                                                // intake.retractPivotCommand(),
                                                 manipulator.intakeScoringElementCommand());
         }
 
-        public static Command rehomeMechanismsCommandComp(Elevator elevator, Pivot pivot, Manipulator manipulator) {
+        public static Command rehomeMechanismsCommandComp(Elevator elevator, Pivot pivot, Manipulator manipulator,
+                        Intake intake) {
                 return new SequentialCommandGroup(
                                 pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)
                                                 .until(() -> pivot.getPosition() <= 0.05),
@@ -91,6 +130,7 @@ public class RobotCommands {
                                                 .until(() -> elevator.getPosition() <= 0.05),
                                 pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
                                                 .until(() -> pivot.getPosition() <= 0.05),
+                                intake.retractPivotCommand(),
                                 manipulator.runRollersCommand());
         }
 
@@ -104,8 +144,9 @@ public class RobotCommands {
                         Intake intake) {
                 return intake.extendPivotCommand().withTimeout(0.5)
                                 .andThen(intake.runRollersCommand())
-                                .withTimeout(0.5)
-                                .alongWith(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
+                                // .withTimeout(0.5)
+                                .andThen(Commands.waitSeconds(1))
+                                .alongWith(RobotCommands.moveToTargetLevelIntakeCommand(() -> Level.GROUND,
                                                 elevator, pivot));
         }
 }

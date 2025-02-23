@@ -61,7 +61,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     }
 
     /** Manipulator motor. */
-    @Log
+    // @Log
     private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
     /** Manipulator motor configuration object. */
     private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();

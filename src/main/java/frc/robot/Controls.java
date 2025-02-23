@@ -84,12 +84,12 @@ public class Controls {
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L4, Level.NET));
 
-                joystick.centerBottomHatRight()
-                                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
-                                                elevator, pivot));
-
                 joystick.centerBottomHatLeft()
                                 .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
+                                                elevator, pivot));
+
+                joystick.centerBottomHatRight()
+                                .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
                                                 elevator, pivot));
 
                 joystick.centerBottomHatUp()

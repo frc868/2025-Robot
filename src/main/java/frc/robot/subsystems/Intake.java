@@ -5,6 +5,7 @@ import static edu.wpi.first.units.Units.Volts;
 import java.util.function.Supplier;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -101,6 +102,8 @@ public class Intake extends SubsystemBase implements BaseIntake {
     private final TalonFXConfiguration rollersMotorConfigs = new TalonFXConfiguration();
     /** Intake rollers motor current request object. */
     private final VoltageOut rollersVoltageRequest = new VoltageOut(0);
+
+    private final NeutralOut stopRequest = new NeutralOut();
 
     private final SingleJointedArmSim armSim = new SingleJointedArmSim(
             Pivot.MOTOR_GEARBOX_REPR,
