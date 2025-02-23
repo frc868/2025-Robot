@@ -98,7 +98,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         /** Positions elevator can be in, in spool drum rotations */
         public static enum Position {
             HARD_STOP(0),
-            GROUND_ALGAE(0), // TODO
+            GROUND_ALGAE(1), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
             L2(2.58), // TODO get actual position
@@ -296,18 +296,17 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             return stopRequest;
         }
 
-        // if (getPosition() > Position.L3.position && getPosition() <=
-        // Position.L4_NET.position) {
-        // return controlRequest;
-        // }
+        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
+            return controlRequest;
+        }
 
         if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
             return stopRequest;
         }
 
-        // if (getPosition() > Position.L4_NET.position) {
-        // return stopRequest;
-        // }
+        if (getPosition() > Position.L4_NET.position) {
+            return stopRequest;
+        }
 
         return controlRequest;
     }

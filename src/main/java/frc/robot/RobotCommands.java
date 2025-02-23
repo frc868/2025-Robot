@@ -7,9 +7,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.Constants.Level;
 import frc.robot.Constants.Mode;
-import frc.robot.subsystems.Elevator;
-import frc.robot.subsystems.Manipulator;
-import frc.robot.subsystems.Pivot;
+import frc.robot.subsystems.*;
 
 /** Robot commands which involve multiple subsystems. */
 public class RobotCommands {
@@ -77,7 +75,7 @@ public class RobotCommands {
         // }
 
         public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
-                        Manipulator manipulator) {
+                        Manipulator manipulator, Intake intake) {
                 return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
                                 .until(() -> elevator.getPosition() <= 0.05)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
@@ -97,8 +95,17 @@ public class RobotCommands {
         }
 
         public static Command scoreScoringElementCommand(Manipulator manipulator,
-                        Elevator elevator, Pivot pivot) {
+                        Elevator elevator, Pivot pivot, Intake intake) {
                 return manipulator.reverseRollersCommand()
-                                .finallyDo(() -> rehomeMechanismsCommand(elevator, pivot, manipulator));
+                                .finallyDo(() -> rehomeMechanismsCommand(elevator, pivot, manipulator, intake));
+        }
+
+        public static Command intakeGroundAlgaeCommand(Elevator elevator, Pivot pivot, Manipulator manipulator,
+                        Intake intake) {
+                return intake.extendPivotCommand().withTimeout(0.5)
+                                .andThen(intake.runRollersCommand())
+                                .withTimeout(0.5)
+                                .alongWith(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
+                                                elevator, pivot));
         }
 }

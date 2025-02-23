@@ -49,7 +49,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** Current to run manipulator motor at to score a scoring element. */
             SCORE(-4),
             /** Voltage to run manipulator motor at to hold a scoring element. */
-            HOLD(0.0); // TODO
+            HOLD(0.75);
 
             /** Current to run manipulator motor at, in amps. */
             public final double voltage;

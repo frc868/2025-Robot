@@ -66,14 +66,17 @@ public class Controls {
                                                 () -> -joystick.getTwist()));
 
                 joystick.flipTriggerIn().onTrue(RobotCommands.setModeCommand(Mode.ALGAE));
+
                 joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
 
                 joystick.bottomHatDown()
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L1, Level.PROCESSOR));
+
                 joystick.bottomHatLeft()
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L2, Level.PROCESSOR));
+
                 joystick.bottomHatUp()
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L3, Level.NET));
@@ -81,24 +84,27 @@ public class Controls {
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L4, Level.NET));
 
-                joystick.centerBottomHatUp()
+                joystick.centerBottomHatRight()
                                 .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_HIGH_ALGAE,
                                                 elevator, pivot));
-                joystick.centerBottomHatRight()
+
+                joystick.centerBottomHatLeft()
                                 .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
                                                 elevator, pivot));
+
+                joystick.centerBottomHatUp()
+                                .onTrue(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator, intake));
+
                 joystick.centerBottomHatDown()
-                                .onTrue(intake.intakeGroundAlgaeCommand()
-                                                .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.GROUND,
-                                                                elevator, pivot)));
+                                .onTrue(RobotCommands.intakeGroundAlgaeCommand(elevator, pivot, manipulator, intake));
 
                 joystick.triggerSoftPress()
                                 .onTrue(RobotCommands.moveToTargetLevelCommand(RobotStates::getTargetLevel,
                                                 elevator, pivot));
-                // .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot,
-                // manipulator));
+
                 joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
-                                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
+                                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator,
+                                                intake));
 
                 joystick.redButton().whileTrue(climber.setCurrentCommand());
 
