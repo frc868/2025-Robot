@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.Volts;
+import static frc.robot.subsystems.Manipulator.Constants.CURRENT_DETECTION_THRESHOLD;
 
 import java.util.function.Supplier;
 
@@ -15,6 +16,7 @@ import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -84,6 +86,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
             public static final double CURRENT_LIMIT = 10; // TODO
             /** Voltage to run intake rollers motor at. */
             public static final double VOLTAGE = 6; // TODO
+            public static final double CURRENT_DETECTION_THRESHOLD = 20;
         }
     }
 
@@ -104,6 +107,9 @@ public class Intake extends SubsystemBase implements BaseIntake {
     private final VoltageOut rollersVoltageRequest = new VoltageOut(0);
 
     private final NeutralOut stopRequest = new NeutralOut();
+
+    /** Debouncer for filtering out current spike outliers. */
+    private final Debouncer filter = new Debouncer(0.25);
 
     private final SingleJointedArmSim armSim = new SingleJointedArmSim(
             Pivot.MOTOR_GEARBOX_REPR,
@@ -173,6 +179,11 @@ public class Intake extends SubsystemBase implements BaseIntake {
     @Log
     public Pose3d getRightBackBarComponentPose() {
         return new Pose3d(0.2157, -0.3645, 0.18, new Rotation3d(0, -getPosition(), 0));
+    }
+
+    @Log
+    public boolean hasScoringElement() {
+        return filter.calculate(rollersMotor.getTorqueCurrent().getValueAsDouble() > CURRENT_DETECTION_THRESHOLD);
     }
 
     /**
