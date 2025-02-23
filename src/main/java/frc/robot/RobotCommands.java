@@ -117,9 +117,9 @@ public class RobotCommands {
         public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
                         Manipulator manipulator, Intake intake) {
                 return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
-                                .until(() -> elevator.getPosition() <= 0.05)
+                                .until(() -> elevator.getPosition() <= 0.01)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
-                                                .until(() -> pivot.getPosition() <= 0.05),
+                                                .until(() -> pivot.getPosition() <= 0.01),
                                                 // intake.retractPivotCommand(),
                                                 manipulator.intakeScoringElementCommand());
         }

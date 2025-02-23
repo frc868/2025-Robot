@@ -101,7 +101,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             GROUND_ALGAE(1.89), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(2.63), // TODO get actual position
+            L2(2.65), // TODO get actual position
             REEF_LOW_ALGAE(2.5),
             L3(4.82), // TODO get actual position
             REEF_HIGH_ALGAE(5),
@@ -345,7 +345,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
         return run(() -> {
             double currentPosition = getPosition();
             double targetPosition = motionMagicVoltageRequest.Position;
-            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
 
             System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
                     + ", At Target: " + atTarget);
@@ -354,7 +354,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
                 leftMotor.setControl(controlRequestWithSafeties(
                         motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
             }
-        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
+        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.01)
                 .andThen(runOnce(() -> {
                     System.out.println("Elevator Reached goal position.");
                 }))
