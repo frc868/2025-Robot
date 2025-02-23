@@ -106,6 +106,8 @@ public class Controls {
                                 .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator,
                                                 intake));
 
+                joystick.pinkieButton().onTrue(intake.extendPivotCommand()
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)));
                 joystick.redButton().whileTrue(climber.setCurrentCommand());
 
                 joystick.blackThumbButton()

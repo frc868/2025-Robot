@@ -221,4 +221,8 @@ public class Intake extends SubsystemBase implements BaseIntake {
                 () -> rollersMotor.stopMotor())
                 .withName("intake.reverseRollers");
     }
+
+    public Command intakeGroundAlgaeCommand() {
+        return runRollersCommand().until(this::hasScoringElement);
+    }
 }
