@@ -101,9 +101,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             GROUND_ALGAE(0), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(2.95), // TODO get actual position
+            L2(2.58), // TODO get actual position
             REEF_LOW_ALGAE(3.95),
-            L3(5.25), // TODO get actual position
+            L3(4.82), // TODO get actual position
             REEF_HIGH_ALGAE(6.95),
             L4_NET(8.8);
 
@@ -150,9 +150,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 2; // 90
+            public static final double CRUISE_VELOCITY = 20; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 2; // 80
+            public static final double ACCELERATION = 16; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
