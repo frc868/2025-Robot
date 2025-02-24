@@ -111,8 +111,7 @@ public class Controls {
                 joystick.redButton().onTrue(
                                 intake.retractPivotCommand().withTimeout(1.5).alongWith(climber.setCurrentCommand()));
 
-                joystick.blackThumbButton()
-                                .onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
+                joystick.blackThumbButton().onTrue(manipulator.intakeScoringElementCommand());
         }
 
         /**
