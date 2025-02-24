@@ -108,7 +108,8 @@ public class Controls {
 
                 joystick.pinkieButton().onTrue(intake.extendPivotCommand().withTimeout(1.5)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)));
-                joystick.redButton().whileTrue(climber.setCurrentCommand());
+                joystick.redButton().onTrue(
+                                intake.retractPivotCommand().withTimeout(1.5).alongWith(climber.setCurrentCommand()));
 
                 joystick.blackThumbButton()
                                 .onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
