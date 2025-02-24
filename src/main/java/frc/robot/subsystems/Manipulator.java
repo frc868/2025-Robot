@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -47,11 +48,11 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
          */
         public enum Voltages {
             /** Voltage to run manipulator motor at to intake a scoring element. */
-            INTAKE(9),
+            INTAKE(8),
             /** Current to run manipulator motor at to score a scoring element. */
             SCORE(-4),
             /** Voltage to run manipulator motor at to hold a scoring element. */
-            CORAL_HOLD(4);
+            CORAL_HOLD(6);
 
             /** Current to run manipulator motor at, in amps. */
             public final double voltage;
@@ -78,6 +79,8 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     private final Debouncer filter = new Debouncer(0.25);
     @Log
     private boolean temp;
+
+    private final NeutralOut stopRequest = new NeutralOut();
 
     /** Initialize manipulator motor configurations. */
     public Manipulator() {
@@ -115,6 +118,12 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public Command reverseRollersCommand() {
         return runEnd(() -> motor.setControl(voltageRequest.withOutput(Voltages.SCORE.voltage).withEnableFOC(true)),
                 () -> motor.setControl(voltageRequest.withOutput(0))).withName("manipulator.reverseRollers");
+    }
+
+    public Command stopRollersCommand() {
+        return run(() -> {
+            motor.setControl(stopRequest);
+        }).withName("manipulator.stopRollersCommand");
     }
 
     /**
