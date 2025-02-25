@@ -150,9 +150,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 20; // 90
+            public static final double CRUISE_VELOCITY = 30; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 16; // 80
+            public static final double ACCELERATION = 26; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
@@ -357,7 +357,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             }
         }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.01)
                 .andThen(runOnce(() -> {
-                    System.out.println("Elevator Reached goal position.");
+                    // System.out.println("Elevator Reached goal position.");
                 }))
                 .withName("elevator.moveToCurrentGoalCommand");
     }

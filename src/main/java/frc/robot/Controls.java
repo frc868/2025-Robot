@@ -95,7 +95,8 @@ public class Controls {
                                                 elevator, pivot));
 
                 joystick.centerBottomHatUp()
-                                .onTrue(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator, intake));
+                                .onTrue(RobotCommands.rehomeIntakeMechanismsCommand(elevator, pivot, manipulator,
+                                                intake));
 
                 joystick.centerBottomHatDown()
                                 .onTrue(RobotCommands.intakeGroundAlgaeCommand(elevator, pivot, manipulator, intake));

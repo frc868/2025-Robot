@@ -32,9 +32,6 @@ public class RobotCommands {
                                         double currentPosition = pivot.getPosition();
                                         double targetPosition = reefLevel.get().pivotPosition.position;
                                         boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
-                                        // System.out.println("Pivot position: " + currentPosition + ", Target: "
-                                        // + targetPosition
-                                        // + ", At Target: " + isAtTarget);
                                         return isAtTarget;
                                 })
                                 .andThen(pivot.holdCurrentPositionCommand())
@@ -44,10 +41,6 @@ public class RobotCommands {
                                         double elevatorTargetPosition = reefLevel.get().elevatorPosition.position;
                                         boolean isElevatorAtTarget = Math
                                                         .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
-                                        // System.out.println(
-                                        // "Elevator position: " + elevatorCurrentPosition + ", Target: "
-                                        // + elevatorTargetPosition
-                                        // + ", At Target: " + isElevatorAtTarget);
                                         return isElevatorAtTarget;
                                 })
                                 .andThen(elevator.holdCurrentPositionCommand());
@@ -88,10 +81,9 @@ public class RobotCommands {
         public static Command rehomeMechanismsCommand(Elevator elevator, Pivot pivot,
                         Manipulator manipulator, Intake intake) {
                 return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
-                                .until(() -> elevator.getPosition() <= 0.05)
+                                .until(() -> elevator.getPosition() <= 0.01)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
-                                                .until(() -> pivot.getPosition() <= 0.05),
-                                                // intake.retractPivotCommand(),
+                                                .until(() -> pivot.getPosition() <= 0.01),
                                                 manipulator.intakeScoringElementCommand());
         }
 
@@ -184,6 +176,17 @@ public class RobotCommands {
                 );
         }
 
+        public static Command rehomeIntakeMechanismsCommand(Elevator elevator, Pivot pivot,
+                        Manipulator manipulator, Intake intake) {
+                return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.HARD_STOP)
+                                .until(() -> elevator.getPosition() <= 0.01)
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.HARD_STOP)
+                                                .until(() -> pivot.getPosition() <= 0.01),
+                                                intake.reverseRollersCommand().withTimeout(1.5),
+                                                intake.retractPivotCommand().withTimeout(1.5),
+                                                manipulator.intakeScoringElementCommand());
+        }
+
         // Climb
         public static Command climbCommand(Pivot pivot, Intake intake, Climber climber, Manipulator manipulator) {
                 return intake.retractPivotCommand().withTimeout(1.5)
@@ -211,10 +214,6 @@ public class RobotCommands {
                                         double elevatorTargetPosition = Elevator.Constants.Position.L4_NET.position;
                                         boolean isElevatorAtTarget = Math
                                                         .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.005;
-                                        System.out.println(
-                                                        "Elevator position: " + elevatorCurrentPosition + ", Target: "
-                                                                        + elevatorTargetPosition
-                                                                        + ", At Target: " + isElevatorAtTarget);
                                         return isElevatorAtTarget;
                                 })
                                 .andThen(elevator.holdCurrentPositionCommand())
@@ -223,9 +222,6 @@ public class RobotCommands {
                                         double currentPosition = pivot.getPosition();
                                         double targetPosition = Pivot.Constants.Position.NET.position;
                                         boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
-                                        System.out.println("Pivot position: " + currentPosition + ", Target: "
-                                                        + targetPosition
-                                                        + ", At Target: " + isAtTarget);
                                         return isAtTarget;
                                 })
                                 .andThen(pivot.holdCurrentPositionCommand());
