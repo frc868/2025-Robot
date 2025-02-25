@@ -150,9 +150,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
          */
         public static final class MotionProfile {
             /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 2; // 90
+            public static final double CRUISE_VELOCITY = 20; // 90
             /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 2; // 80
+            public static final double ACCELERATION = 16; // 80
             /** Target jerk along course of motion. */
             public static final double JERK = 0; // TODO
         }
@@ -347,8 +347,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             double targetPosition = motionMagicVoltageRequest.Position;
             boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
 
-            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
-                    + ", At Target: " + atTarget);
+            // System.out.println("Elevator Current: " + currentPosition + ", Target: " +
+            // targetPosition
+            // + ", At Target: " + atTarget);
 
             if (!atTarget) {
                 leftMotor.setControl(controlRequestWithSafeties(

@@ -84,8 +84,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             HARD_STOP(0.405029296875),
             GROUND_ALGAE(-0.19), // TODO
             PROCESSOR(0), // TODO
-            NET(0),
-            PAST_ELEVATOR(0.06),
+            NET(0.13),
+            PAST_ELEVATOR(0.07),
             SAFE(0),
             L1(0.03),
             L2(-0.06),

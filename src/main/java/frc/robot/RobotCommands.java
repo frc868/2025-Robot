@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.Constants.Level;
 import frc.robot.Constants.Mode;
 import frc.robot.subsystems.*;
@@ -143,15 +144,44 @@ public class RobotCommands {
                                 });
         }
 
+        // public static Command intakeGroundAlgaeCommand(Elevator elevator, Pivot
+        // pivot, Manipulator manipulator,
+        // Intake intake) {
+        // return intake.extendPivotCommand().withTimeout(1)
+        // // .withTimeout(0.5)
+        // .andThen(Commands.waitSeconds(1))
+        // .alongWith(RobotCommands.moveToTargetLevelIntakeCommand(() -> Level.GROUND,
+        // elevator, pivot))
+        // .andThen(intake.runRollersCommand().until(manipulator::hasScoringElement))
+        // .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.L2, elevator,
+        // pivot));
+        // }
+
+        // Ground Algae
         public static Command intakeGroundAlgaeCommand(Elevator elevator, Pivot pivot, Manipulator manipulator,
                         Intake intake) {
-                return intake.extendPivotCommand().withTimeout(1)
-                                // .withTimeout(0.5)
-                                .andThen(Commands.waitSeconds(1))
-                                .alongWith(RobotCommands.moveToTargetLevelIntakeCommand(() -> Level.GROUND,
-                                                elevator, pivot))
-                                .andThen(intake.runRollersCommand().until(manipulator::hasScoringElement))
-                                .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.L2, elevator, pivot));
+                return Commands.sequence(
+                                intake.extendPivotCommand().withTimeout(1),
+
+                                RobotCommands.moveToTargetLevelIntakeCommand(() -> Level.GROUND, elevator, pivot),
+
+                                Commands.parallel(
+                                                manipulator.runRollersCommand(),
+                                                intake.runRollersCommand().until(manipulator::hasScoringElement)
+                                                                .andThen(pivot.moveToPositionCommand(
+                                                                                () -> Pivot.Constants.Position.PAST_ELEVATOR)
+                                                                                .until(() -> {
+                                                                                        double currentPosition = pivot
+                                                                                                        .getPosition();
+                                                                                        double targetPosition = Pivot.Constants.Position.PAST_ELEVATOR.position;
+                                                                                        boolean isAtTarget = Math
+                                                                                                        .abs(currentPosition
+                                                                                                                        - targetPosition) <= 0.01;
+                                                                                        return isAtTarget;
+                                                                                }))
+                                                                .andThen(intake.retractPivotCommand().withTimeout(2)))
+
+                );
         }
 
         // Climb
@@ -169,5 +199,35 @@ public class RobotCommands {
                                 .andThen(pivot.holdCurrentPositionCommand());
 
                 // .alongWith(climber.setCurrentCommand());
+        }
+
+        // Net
+        public static Command moveToTargetLevelNetCommand(Supplier<Level> reefLevel, Elevator elevator,
+                        Pivot pivot) {
+
+                return elevator.moveToPositionCommand(() -> Elevator.Constants.Position.L4_NET)
+                                .until(() -> {
+                                        double elevatorCurrentPosition = elevator.getPosition();
+                                        double elevatorTargetPosition = Elevator.Constants.Position.L4_NET.position;
+                                        boolean isElevatorAtTarget = Math
+                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.005;
+                                        System.out.println(
+                                                        "Elevator position: " + elevatorCurrentPosition + ", Target: "
+                                                                        + elevatorTargetPosition
+                                                                        + ", At Target: " + isElevatorAtTarget);
+                                        return isElevatorAtTarget;
+                                })
+                                .andThen(elevator.holdCurrentPositionCommand())
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.NET))
+                                .until(() -> {
+                                        double currentPosition = pivot.getPosition();
+                                        double targetPosition = Pivot.Constants.Position.NET.position;
+                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
+                                        System.out.println("Pivot position: " + currentPosition + ", Target: "
+                                                        + targetPosition
+                                                        + ", At Target: " + isAtTarget);
+                                        return isAtTarget;
+                                })
+                                .andThen(pivot.holdCurrentPositionCommand());
         }
 }

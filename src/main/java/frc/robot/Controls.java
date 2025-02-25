@@ -69,6 +69,7 @@ public class Controls {
 
                 joystick.flipTriggerOut().onTrue(RobotCommands.setModeCommand(Mode.CORAL));
 
+                // CORAL MODE
                 joystick.bottomHatDown()
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L1, Level.PROCESSOR));
@@ -84,6 +85,7 @@ public class Controls {
                                 .onTrue(RobotCommands.setScoringTargetLevelCommand(RobotStates::getMode,
                                                 Level.L4, Level.NET));
 
+                // ALGAE MODE
                 joystick.centerBottomHatLeft()
                                 .onTrue(RobotCommands.moveToTargetLevelCommand(() -> Level.REEF_LOW_ALGAE,
                                                 elevator, pivot));
@@ -113,6 +115,9 @@ public class Controls {
                 // .toggleOnFalse(climber.setReverseCurrentCommand().withTimeout(0.5));
 
                 joystick.blackThumbButton().onTrue(manipulator.intakeScoringElementCommand());
+
+                joystick.topRightHatDown().onTrue(RobotCommands.moveToTargetLevelNetCommand(() -> Level.NET,
+                                elevator, pivot));
         }
 
         /**

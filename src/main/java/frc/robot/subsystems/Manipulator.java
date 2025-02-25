@@ -15,6 +15,7 @@ import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Manipulator.Constants.CAN;
 import frc.robot.subsystems.Manipulator.Constants.Voltages;
@@ -50,9 +51,10 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
             /** Voltage to run manipulator motor at to intake a scoring element. */
             INTAKE(8),
             /** Current to run manipulator motor at to score a scoring element. */
-            SCORE(-4),
+            SCORE(-4.5),
             /** Voltage to run manipulator motor at to hold a scoring element. */
-            CORAL_HOLD(6);
+            CORAL_HOLD(0.75),
+            ALGAE_HOLD(6);
 
             /** Current to run manipulator motor at, in amps. */
             public final double voltage;
@@ -107,6 +109,17 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public boolean hasScoringElement() {
         return filter.calculate(motor.getTorqueCurrent().getValueAsDouble() > CURRENT_DETECTION_THRESHOLD);
     }
+    // @Log
+    // public boolean hasScoringElement() {
+    // double current = motor.getTorqueCurrent().getValueAsDouble();
+    // boolean detected = filter.calculate(current > CURRENT_DETECTION_THRESHOLD);
+
+    // System.out.println("Current: " + current +
+    // ", Threshold: " + CURRENT_DETECTION_THRESHOLD +
+    // ", Detected: " + detected);
+
+    // return detected;
+    // }
 
     @Override
     public Command runRollersCommand() {
@@ -134,8 +147,17 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
      */
     public Command holdRollersCommand() {
         return run(() -> {
-            System.out.println("Holding Rollers with Voltage: " + Voltages.CORAL_HOLD.voltage);
+            // System.out.println("Holding Rollers with Voltage: " +
+            // Voltages.CORAL_HOLD.voltage);
             motor.setControl(voltageRequest.withOutput(Voltages.CORAL_HOLD.voltage).withEnableFOC(true));
+        }).withName("manipulator.holdRollers");
+    }
+
+    public Command holdRollersAlgaeCommand() {
+        return run(() -> {
+            // System.out.println("Holding Rollers with Voltage: " +
+            // Voltages.ALGAE_HOLD.voltage);
+            motor.setControl(voltageRequest.withOutput(Voltages.ALGAE_HOLD.voltage).withEnableFOC(true));
         }).withName("manipulator.holdRollers");
     }
 
@@ -148,4 +170,15 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
         return runRollersCommand().until(this::hasScoringElement).andThen(holdRollersCommand())
                 .withName("manipulator.intakeScoringElement");
     }
+
+    public Command intakeScoringAlgaeCommand() {
+        return run(() -> {
+            runRollersCommand();
+        })
+                .until(this::hasScoringElement)
+                .andThen(holdRollersAlgaeCommand())
+                .withName("manipulator.intakeScoringAlgaeElement")
+                .withInterruptBehavior(InterruptionBehavior.kCancelIncoming);
+    }
+
 }
