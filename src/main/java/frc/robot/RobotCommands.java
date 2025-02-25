@@ -145,7 +145,7 @@ public class RobotCommands {
 
         public static Command intakeGroundAlgaeCommand(Elevator elevator, Pivot pivot, Manipulator manipulator,
                         Intake intake) {
-                return intake.extendPivotCommand().withTimeout(0.5)
+                return intake.extendPivotCommand().withTimeout(1)
                                 // .withTimeout(0.5)
                                 .andThen(Commands.waitSeconds(1))
                                 .alongWith(RobotCommands.moveToTargetLevelIntakeCommand(() -> Level.GROUND,
