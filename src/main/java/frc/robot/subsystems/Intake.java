@@ -65,6 +65,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
             /** Intake pivot motor current limit. */
             public static final double CURRENT_LIMIT = 40; // TODO
             public static final double VOLTAGE = 2;
+            public static final double VOLTAGE_RETRACT = -1.9;
             public static final DCMotor MOTOR_GEARBOX_REPR = DCMotor.getKrakenX60(2);
             public static final double MASS_KG = Units.lbsToKilograms(3);
             public static final double COM_DISTANCE_METERS = Units.inchesToMeters(6); // TODO
@@ -200,7 +201,7 @@ public class Intake extends SubsystemBase implements BaseIntake {
     }
 
     public Command retractPivotCommand() {
-        return startEnd(() -> setPivotVoltage(-Pivot.VOLTAGE), () -> setPivotVoltage(0));
+        return startEnd(() -> setPivotVoltage(Pivot.VOLTAGE_RETRACT), () -> setPivotVoltage(0));
     }
 
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
@@ -223,6 +224,6 @@ public class Intake extends SubsystemBase implements BaseIntake {
     }
 
     public Command intakeGroundAlgaeCommand() {
-        return runRollersCommand().until(this::hasScoringElement);
+        return runRollersCommand();
     }
 }

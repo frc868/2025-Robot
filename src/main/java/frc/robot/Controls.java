@@ -108,8 +108,9 @@ public class Controls {
 
                 joystick.pinkieButton().onTrue(intake.extendPivotCommand().withTimeout(1.5)
                                 .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.PAST_ELEVATOR)));
-                joystick.redButton().onTrue(
-                                intake.retractPivotCommand().withTimeout(1.5).alongWith(climber.setCurrentCommand()));
+
+                joystick.redButton().onTrue(RobotCommands.climbCommand(pivot, intake, climber, manipulator));
+                // .toggleOnFalse(climber.setReverseCurrentCommand().withTimeout(0.5));
 
                 joystick.blackThumbButton().onTrue(manipulator.intakeScoringElementCommand());
         }

@@ -92,7 +92,8 @@ public class Pivot extends SubsystemBase implements BaseSingleJointedArm<Positio
             L3(-0.06),
             L4(-0.07),
             ALGAE(-0.01),
-            SOFT_STOP(0.092);
+            SOFT_STOP(0.092),
+            CLIMB_RETRACT(0.2);
 
             public final double position;
 

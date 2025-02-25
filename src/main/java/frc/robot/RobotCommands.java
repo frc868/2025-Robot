@@ -52,36 +52,6 @@ public class RobotCommands {
                                 .andThen(elevator.holdCurrentPositionCommand());
         }
 
-        public static Command moveToTargetLevelIntakeCommand(Supplier<Level> reefLevel, Elevator elevator,
-                        Pivot pivot) {
-
-                return pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SAFE)
-                                .until(() -> {
-                                        double currentSafePosition = pivot.getPosition();
-                                        double targetSafePosition = Pivot.Constants.Position.SAFE.position;
-                                        boolean isAtSafeTarget = Math
-                                                        .abs(currentSafePosition - targetSafePosition) <= 0.01;
-                                        return isAtSafeTarget;
-                                })
-                                .andThen(pivot.holdCurrentPositionCommand())
-                                .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.GROUND_ALGAE))
-                                .until(() -> {
-                                        double elevatorCurrentPosition = elevator.getPosition();
-                                        double elevatorTargetPosition = Elevator.Constants.Position.GROUND_ALGAE.position;
-                                        boolean isElevatorAtTarget = Math
-                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
-                                        return isElevatorAtTarget;
-                                })
-                                .andThen(elevator.holdCurrentPositionCommand())
-                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.GROUND_ALGAE))
-                                .until(() -> {
-                                        double currentPosition = pivot.getPosition();
-                                        double targetPosition = Pivot.Constants.Position.GROUND_ALGAE.position;
-                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
-                                        return isAtTarget;
-                                });
-        }
-
         // public static Command moveToTargetLevelCommand(Supplier<Level> level,
         // Elevator elevator, Pivot pivot) {
         // return pivot.moveToPositionCommand(() -> level.get().pivotPosition)
@@ -143,6 +113,36 @@ public class RobotCommands {
                                 .finallyDo(() -> rehomeMechanismsCommand(elevator, pivot, manipulator, intake));
         }
 
+        public static Command moveToTargetLevelIntakeCommand(Supplier<Level> reefLevel, Elevator elevator,
+                        Pivot pivot) {
+
+                return pivot.moveToPositionCommand(() -> Pivot.Constants.Position.SAFE)
+                                .until(() -> {
+                                        double currentSafePosition = pivot.getPosition();
+                                        double targetSafePosition = Pivot.Constants.Position.SAFE.position;
+                                        boolean isAtSafeTarget = Math
+                                                        .abs(currentSafePosition - targetSafePosition) <= 0.01;
+                                        return isAtSafeTarget;
+                                })
+                                .andThen(pivot.holdCurrentPositionCommand())
+                                .andThen(elevator.moveToPositionCommand(() -> Elevator.Constants.Position.GROUND_ALGAE))
+                                .until(() -> {
+                                        double elevatorCurrentPosition = elevator.getPosition();
+                                        double elevatorTargetPosition = Elevator.Constants.Position.GROUND_ALGAE.position;
+                                        boolean isElevatorAtTarget = Math
+                                                        .abs(elevatorCurrentPosition - elevatorTargetPosition) <= 0.01;
+                                        return isElevatorAtTarget;
+                                })
+                                .andThen(elevator.holdCurrentPositionCommand())
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.GROUND_ALGAE))
+                                .until(() -> {
+                                        double currentPosition = pivot.getPosition();
+                                        double targetPosition = Pivot.Constants.Position.GROUND_ALGAE.position;
+                                        boolean isAtTarget = Math.abs(currentPosition - targetPosition) <= 0.01;
+                                        return isAtTarget;
+                                });
+        }
+
         public static Command intakeGroundAlgaeCommand(Elevator elevator, Pivot pivot, Manipulator manipulator,
                         Intake intake) {
                 return intake.extendPivotCommand().withTimeout(1)
@@ -152,5 +152,22 @@ public class RobotCommands {
                                                 elevator, pivot))
                                 .andThen(intake.runRollersCommand().until(manipulator::hasScoringElement))
                                 .andThen(RobotCommands.moveToTargetLevelCommand(() -> Level.L2, elevator, pivot));
+        }
+
+        // Climb
+        public static Command climbCommand(Pivot pivot, Intake intake, Climber climber, Manipulator manipulator) {
+                return intake.retractPivotCommand().withTimeout(1.5)
+                                .andThen(pivot.moveToPositionCommand(() -> Pivot.Constants.Position.CLIMB_RETRACT))
+                                .until(() -> {
+                                        double currentSafePosition = pivot.getPosition();
+                                        double targetSafePosition = Pivot.Constants.Position.CLIMB_RETRACT.position;
+                                        boolean isAtSafeTarget = Math
+                                                        .abs(currentSafePosition - targetSafePosition) <= 0.01;
+                                        return isAtSafeTarget;
+                                })
+                                .andThen(manipulator.stopRollersCommand())
+                                .andThen(pivot.holdCurrentPositionCommand());
+
+                // .alongWith(climber.setCurrentCommand());
         }
 }
