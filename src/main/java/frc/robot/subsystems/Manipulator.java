@@ -126,7 +126,7 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
     public Command holdRollersCommand() {
         return run(() -> {
             System.out.println("Holding Rollers with Voltage: " + Voltages.CORAL_HOLD.voltage);
-            voltageRequest.withOutput(Voltages.CORAL_HOLD.voltage).withEnableFOC(true);
+            motor.setControl(voltageRequest.withOutput(Voltages.CORAL_HOLD.voltage).withEnableFOC(true));
         }).withName("manipulator.holdRollers");
     }
 
