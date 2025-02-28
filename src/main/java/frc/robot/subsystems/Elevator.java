@@ -101,9 +101,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Posit
             GROUND_ALGAE(1.95), // TODO
             PROCESSOR(0.0), // TODO get actual position
             L1(0.0), // TODO get actual position
-            L2(2.65), // TODO get actual position
+            L2(2.81), // TODO get actual position
             REEF_LOW_ALGAE(2.5),
-            L3(4.82), // TODO get actual position
+            L3(4.98), // TODO get actual position
             REEF_HIGH_ALGAE(5),
             L4_NET(8.8);
 
