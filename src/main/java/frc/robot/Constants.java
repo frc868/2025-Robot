@@ -96,11 +96,6 @@ public class Constants {
         }
     }
 
-    public static enum Mode {
-        CORAL,
-        ALGAE;
-    }
-
     public static final class LEDs {
         public static enum LEDSection implements BaseLEDSection {
             ALL(0, 326, true);
