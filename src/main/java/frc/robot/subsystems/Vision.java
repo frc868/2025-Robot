@@ -82,37 +82,20 @@ public class Vision implements BaseVision {
 
         // 2/17/24
         public static final Transform3d[] ROBOT_TO_CAMS = new Transform3d[] {
-                // front camera
-                new Transform3d(
-                        new Translation3d(
-                                Units.inchesToMeters(11.886316),
-                                -Units.inchesToMeters(7.507594),
-                                Units.inchesToMeters(9.541569)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-25),
-                                Units.degreesToRadians(10))), // TODO
                 // left camera
                 new Transform3d(
                         new Translation3d(
-                                -Units.inchesToMeters(1.765373),
-                                Units.inchesToMeters(10.707761),
-                                Units.inchesToMeters(12.116848)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-20),
-                                Units.degreesToRadians(70))), // TODO
+                                0.31603696,
+                                0.1679575,
+                                0.210531964),
+                        new Rotation3d(0, Units.degreesToRadians(-5), Units.degreesToRadians(-35))),
                 // right camera
                 new Transform3d(
                         new Translation3d(
-                                -Units.inchesToMeters(1.765373),
-                                -Units.inchesToMeters(10.707761),
-                                Units.inchesToMeters(12.116848)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-20),
-                                Units.degreesToRadians(-70))), // TODO
-                // object camera
-                new Transform3d(
-                        new Translation3d(
-                                Units.inchesToMeters(0),
-                                Units.inchesToMeters(0),
-                                Units.inchesToMeters(0)),
-                        new Rotation3d(0, Units.degreesToRadians(0), Units.degreesToRadians(0)))
+                                0.31603696,
+                                -0.1679575,
+                                0.210531964),
+                        new Rotation3d(0, Units.degreesToRadians(-5), Units.degreesToRadians(35)))
         };
     }
 
