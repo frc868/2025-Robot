@@ -1,131 +1,146 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.TorqueCurrentFOC;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.subsystems.BaseIntake;
+import com.techhounds.houndutil.houndlog.SignalManager;
+import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
+import com.techhounds.houndutil.houndlog.annotations.SendableLog;
 
-import edu.wpi.first.math.filter.LinearFilter;
-import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import static frc.robot.Constants.Arm.*;
 
-import static frc.robot.subsystems.Manipulator.Constants.*;
-
-/** Subsystem which intakes, holds, and scores scoring elements. */
 @LoggedObject
 public class Manipulator extends SubsystemBase implements BaseIntake {
-    /** Constant values of manipulator subsystem. */
-    public static final class Constants {
-        /**
-         * Direction of motor rotation defined as positive rotation. Defined for
-         * manipulator to be rotation which intakes a scoring element.
-         */
-        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive;
-        /** Manipulator motor current limit. */
-        public static final double CURRENT_LIMIT = 100;
+    @Log
+    private final TalonFX rollerMotor;
 
-        /** CAN information of manipulator motor. */
-        public static final class CAN {
-            /** CAN bus manipulator motor is on. */
-            public static final String BUS = "rio";
-            /** CAN ID of manipulator motor. */
-            public static final int ID = 14;
+    private final VoltageOut rollerVoltageRequest = new VoltageOut(0).withEnableFOC(true);
+
+    private final StatusSignal<Current> currentSignal;
+
+    @Log
+    public final Trigger hasGamePiece;
+    @Log
+    public final Trigger hasCoral;
+    @Log
+    public final Trigger hasAlgae;
+
+    private boolean coralLatch = false;
+
+    private final Debouncer filter = new Debouncer(0.3);
+
+    private final NeutralOut stopRequest = new NeutralOut();
+
+    private boolean manualCoralTrigger = false;
+
+    @SendableLog
+    private Command simulateCoralIntakeCommand = simulateCoralIntakeCommand();
+
+    public Manipulator(Trigger isStowed) {
+        rollerMotor = new TalonFX(ROLLER_MOTOR_ID, ROLLER_MOTOR_CAN_BUS);
+        TalonFXConfigurator rollerMotorConfigurator = rollerMotor.getConfigurator();
+        TalonFXConfiguration rollerMotorConfig = new TalonFXConfiguration();
+        rollerMotorConfig.MotorOutput.Inverted = ROLLER_MOTOR_INVERSION;
+
+        rollerMotorConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+
+        if (RobotBase.isReal()) {
+            rollerMotorConfig.CurrentLimits.StatorCurrentLimit = ROLLER_CURRENT_LIMIT;
+            rollerMotorConfig.CurrentLimits.StatorCurrentLimitEnable = true;
         }
 
-        /**
-         * Currents to set the manipulator motor to for various actions, in amps.
-         */
-        public enum Currents {
-            /** Current to run manipulator motor at to intake a scoring element. */
-            INTAKE(80),
-            /** Current to run manipulator motor at to score a scoring element. */
-            SCORE(-40),
-            /** Current to run manipulator motor at to hold a scoring element. */
-            HOLD(0.0); // TODO
+        rollerMotorConfigurator.apply(rollerMotorConfig);
 
-            /** Current to run manipulator motor at, in amps. */
-            public final double current;
+        currentSignal = rollerMotor.getStatorCurrent();
 
-            private Currents(final double current) {
-                this.current = current;
-            }
-        };
-    }
+        SignalManager.register(ROLLER_MOTOR_CAN_BUS, currentSignal);
 
-    /** Manipulator motor. */
-    private final TalonFX motor = new TalonFX(CAN.ID, CAN.BUS);
-    /** Manipulator motor configuration object. */
-    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /**
-     * Manipulator motor torque current request object, using field oriented
-     * control.
-     */
-    private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
+        hasGamePiece = new Trigger(
+                () -> filter.calculate((currentSignal.getValueAsDouble() > ROLLER_CURRENT_THRESHOLD)
+                        && RobotBase.isReal()) || manualCoralTrigger);
 
-    /** Debouncer for filtering out current spike outliers. */
-    private final LinearFilter filter = LinearFilter.backwardFiniteDifference(1, 2, 0.25);
+        isStowed.and(hasGamePiece).onTrue(Commands.runOnce(() -> coralLatch = true));
+        hasGamePiece.onFalse(Commands.runOnce(() -> coralLatch = false));
 
-    /** Initialize manipulator motor configurations. */
-    public Manipulator() {
-        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
+        hasCoral = new Trigger(() -> coralLatch);
+        hasAlgae = isStowed.negate().and(hasGamePiece).and(hasCoral.negate());
 
-        motorConfigs.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+        new Trigger(hasCoral).whileTrue(runRollersWithCoralCommand());
 
-        motor.getConfigurator().apply(motorConfigs);
-
-        motor.setNeutralMode(NeutralModeValue.Brake);
-
-        // setDefaultCommand(intakeScoringElementCommand());
-    }
-
-    /**
-     * Checks the values of the motor current and compares them to a threshold to
-     * identify if there is a game piece in the intake
-     * 
-     * @return Whether or not there is a game piece in the intake
-     */
-    public boolean hasScoringElement() { // TODO
-        motor.getVelocity().refresh();
-
-        double temp = filter.calculate(motor.getVelocity().getValueAsDouble());
-        System.out.println("Temp: " + temp);
-        DriverStation.reportWarning("Temps: " + temp, false);
-        return false;
+        setDefaultCommand(runRollersCommand());
     }
 
     @Override
     public Command runRollersCommand() {
-        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.INTAKE.current)),
-                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.runRollers");
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(10)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.runRollers");
+    }
+
+    public Command runRollersWithCoralCommand() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(1)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.runRollersWithCoral");
     }
 
     @Override
     public Command reverseRollersCommand() {
-        return runEnd(() -> motor.setControl(torqueCurrentRequest.withOutput(Currents.SCORE.current)),
-                () -> motor.setControl(torqueCurrentRequest.withOutput(0))).withName("manipulator.reverseRollers");
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-7.5)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollers");
     }
 
-    /**
-     * Creates a command to hold a scoring element in the manipulator by applying a
-     * current.
-     * 
-     * @return the command
-     */
-    public Command holdRollersCommand() {
-        return run(() -> torqueCurrentRequest.withOutput(Currents.HOLD.current)).withName("manipulator.holdRollers");
+    public Command scoreNetCommand() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-7.5)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollers");
     }
 
-    /**
-     * Creates a command to intake a scoring element and then hold it.
-     * 
-     * @return the command
-     */
-    public Command intakeScoringElementCommand() {
-        return runRollersCommand().until(this::hasScoringElement).andThen(holdRollersCommand())
-                .withName("manipulator.intakeGamePiece");
+    public Command scoreL1Command() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-3)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollers");
+    }
+
+    public Command scoreL23Command() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-4)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollers");
+    }
+
+    public Command groundIntakeAlgaeRollersCommand() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(8)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollers");
+    }
+
+    public Command stopRollersCommand() {
+        return run(() -> {
+            rollerMotor.setControl(stopRequest);
+        }).withName("manipulator.stopRollersCommand");
+    }
+
+    public Command simulateCoralIntakeCommand() {
+        return Commands.startEnd(() -> manualCoralTrigger = true, () -> manualCoralTrigger = false);
     }
 }

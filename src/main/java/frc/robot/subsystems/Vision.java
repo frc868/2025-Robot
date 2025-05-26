@@ -4,87 +4,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
-
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.simulation.VisionSystemSim;
 
 import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera;
-import com.techhounds.houndutil.houndlib.AprilTagPhotonCamera.PhotonCameraConstants;
 import com.techhounds.houndutil.houndlib.TriConsumer;
-import com.techhounds.houndutil.houndlib.subsystems.BaseVision;
 import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
 import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import static frc.robot.Constants.Vision.*;
 
-import static frc.robot.subsystems.Vision.Constants.*;
-
-public class Vision implements BaseVision {
-    public static final class Constants {
-        public static final Matrix<N3, N1> SINGLE_TAG_STD_DEVS = VecBuilder.fill(Double.MAX_VALUE,
-                Double.MAX_VALUE,
-                Double.MAX_VALUE); // TODO
-        public static final Matrix<N3, N1> MULTI_TAG_STD_DEVS = VecBuilder.fill(0.1, 0.1,
-                Double.MAX_VALUE); // TODO
-        public static final Matrix<N3, N1> MULTI_TAG_TELEOP_STD_DEVS = VecBuilder.fill(0.01, 0.01,
-                Double.MAX_VALUE); // TODO
-
-        public static final PhotonCameraConstants CAMERA_CONSTANTS = new PhotonCameraConstants();
-        static {
-            CAMERA_CONSTANTS.WIDTH = 1600; // TODO
-            CAMERA_CONSTANTS.HEIGHT = 1200; // TODO
-            CAMERA_CONSTANTS.FOV = 95.39; // TODO
-            CAMERA_CONSTANTS.FPS = 35; // TODO
-            CAMERA_CONSTANTS.AVG_LATENCY = 30; // TODO
-            CAMERA_CONSTANTS.STDDEV_LATENCY = 15; // TODO
-        }
-
-        // 2/17/24
-        public static final Transform3d[] ROBOT_TO_CAMS = new Transform3d[] {
-                // front camera
-                new Transform3d(
-                        new Translation3d(
-                                Units.inchesToMeters(11.886316),
-                                -Units.inchesToMeters(7.507594),
-                                Units.inchesToMeters(9.541569)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-25),
-                                Units.degreesToRadians(10))), // TODO
-                // left camera
-                new Transform3d(
-                        new Translation3d(
-                                -Units.inchesToMeters(1.765373),
-                                Units.inchesToMeters(10.707761),
-                                Units.inchesToMeters(12.116848)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-20),
-                                Units.degreesToRadians(70))), // TODO
-                // right camera
-                new Transform3d(
-                        new Translation3d(
-                                -Units.inchesToMeters(1.765373),
-                                -Units.inchesToMeters(10.707761),
-                                Units.inchesToMeters(12.116848)), // TODO
-                        new Rotation3d(0, Units.degreesToRadians(-20),
-                                Units.degreesToRadians(-70))) // TODO
-        };
-    }
-
+@LoggedObject
+public class Vision extends SubsystemBase {
     /**
      * The pose estimator to receive the latest robot position from (used for
      * logging and the "closest to last pose" strategy).
@@ -96,6 +45,11 @@ public class Vision implements BaseVision {
      */
     private TriConsumer<Pose2d, Double, Matrix<N3, N1>> visionMeasurementConsumer = null;
     /**
+     * The consumer for vision measurements, taking in the pose, the timestamp, and
+     * the standard deviations.
+     */
+    private TriConsumer<Pose2d, Double, Matrix<N3, N1>> preciseVisionMeasurementConsumer = null;
+    /**
      * Supplier for drivetrain chassis speeds, used to disable pose estimation when
      * moving too quickly.
      */
@@ -104,25 +58,31 @@ public class Vision implements BaseVision {
      * Pose supplier for a ground source of truth pose via odometry, for simulation.
      */
     private Supplier<Pose2d> simPoseSupplier = null;
+
+    private Supplier<Rotation2d> headingSupplier = null;
     /** A simulation of the vision system. */
     private final VisionSystemSim visionSim = new VisionSystemSim("main");
 
     @Log(groups = "cameras")
-    private final AprilTagPhotonCamera frontLeftCam = new AprilTagPhotonCamera("FrontLeft",
+    private final AprilTagPhotonCamera houndeye01 = new AprilTagPhotonCamera("FrontLeft",
             ROBOT_TO_CAMS[0], CAMERA_CONSTANTS, 0.2, 0.1);
     @Log(groups = "cameras")
-    private final AprilTagPhotonCamera frontRightCam = new AprilTagPhotonCamera("FrontRight",
+    private final AprilTagPhotonCamera houndeye02 = new AprilTagPhotonCamera("FrontRight",
             ROBOT_TO_CAMS[1], CAMERA_CONSTANTS, 0.2, 0.1);
-    @Log(groups = "cameras")
-    private final AprilTagPhotonCamera backCam = new AprilTagPhotonCamera("Back",
-            ROBOT_TO_CAMS[2], CAMERA_CONSTANTS, 0.2, 0.1);
+    // @Log(groups = "cameras")
+    // private final AprilTagPhotonCamera houndeye03 = new
+    // AprilTagPhotonCamera("BackLeft",
+    // ROBOT_TO_CAMS[1], CAMERA_CONSTANTS, 0.2, 0.1);
 
     private final AprilTagPhotonCamera[] cameras = new AprilTagPhotonCamera[] {
-            frontLeftCam, frontRightCam, backCam };
+            houndeye01, houndeye02 };
+
+    private final Pose3d[] latestUsedPoses = new Pose3d[] { Pose3d.kZero, Pose3d.kZero };
+    private final Pose3d[] latestUsedTrigPoses = new Pose3d[] { Pose3d.kZero, Pose3d.kZero };
+
+    private final AprilTagFieldLayout tagLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded);
 
     public Vision() {
-        AprilTagFieldLayout tagLayout = AprilTagFields.k2025ReefscapeAndyMark.loadAprilTagLayoutField();
-
         if (RobotBase.isSimulation()) {
             visionSim.addAprilTags(tagLayout);
             for (AprilTagPhotonCamera camera : cameras) {
@@ -131,40 +91,88 @@ public class Vision implements BaseVision {
         }
     }
 
+    /**
+     * Updates vision estimates periodically.
+     */
     @Override
-    public void updatePoseEstimator() {
+    public void periodic() {
+        updateVisionEstimates();
+    }
+
+    /**
+     * Updates the vision simulation with the latest ground truth pose.
+     */
+    @Override
+    public void simulationPeriodic() {
+        visionSim.update(simPoseSupplier.get());
+    }
+
+    /**
+     * Updates the measurement consumer with the latest data from all cameras.
+     */
+    public void updateVisionEstimates() {
         if (poseEstimator == null) {
             return;
         }
 
         Pose2d prevEstimatedRobotPose = poseEstimator.getEstimatedPosition();
-        for (AprilTagPhotonCamera photonCamera : cameras) {
+        for (int i = 0; i < cameras.length; i++) {
+            AprilTagPhotonCamera photonCamera = cameras[i];
+
+            // HEADING
+            photonCamera.addHeadingData(Timer.getFPGATimestamp(), headingSupplier.get());
             Optional<EstimatedRobotPose> result = photonCamera
                     .getEstimatedGlobalPose(prevEstimatedRobotPose);
 
             if (result.isPresent()) {
                 EstimatedRobotPose estPose = result.get();
+                latestUsedPoses[i] = estPose.estimatedPose;
                 Pose2d pose = estPose.estimatedPose.toPose2d();
 
                 Matrix<N3, N1> stddevs = photonCamera.getEstimationStdDevs(pose,
-                        SINGLE_TAG_STD_DEVS,
-                        DriverStation.isAutonomous() ? MULTI_TAG_STD_DEVS
-                                : MULTI_TAG_TELEOP_STD_DEVS);
+                        SINGLE_TAG_PRECISE_STD_DEVS,
+                        DriverStation.isAutonomous() ? MULTI_TAG_STD_DEVS : MULTI_TAG_TELEOP_STD_DEVS);
 
                 double normSpeed = new Translation2d(chassisSpeedsSupplier.get().vxMetersPerSecond,
                         chassisSpeedsSupplier.get().vyMetersPerSecond).getNorm();
-                if (normSpeed < 0.5 || !DriverStation.isAutonomous()) {
-                    if (photonCamera.getName() == "HoundEye01" || !DriverStation.isAutonomous()) {
-                        visionMeasurementConsumer.accept(pose, Timer.getFPGATimestamp(),
-                                stddevs);
-                    }
+                if (normSpeed < 0.8 || !DriverStation.isAutonomous()) {
+                    visionMeasurementConsumer.accept(pose, estPose.timestampSeconds, stddevs);
                 }
+            } else {
+                latestUsedPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
+            }
+
+            Optional<EstimatedRobotPose> preciseResult = photonCamera.getEstimatedTrigPose();
+
+            if (preciseResult.isPresent()) {
+                EstimatedRobotPose estPose = preciseResult.get();
+                Pose2d pose = estPose.estimatedPose.toPose2d();
+                latestUsedTrigPoses[i] = estPose.estimatedPose;
+
+                double normSpeed = new Translation2d(chassisSpeedsSupplier.get().vxMetersPerSecond,
+                        chassisSpeedsSupplier.get().vyMetersPerSecond).getNorm();
+                if (normSpeed < 2.0 || !DriverStation.isAutonomous()) {
+                    preciseVisionMeasurementConsumer.accept(pose, estPose.timestampSeconds,
+                            SINGLE_TAG_PRECISE_STD_DEVS);
+                }
+
+            } else {
+                latestUsedTrigPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
             }
         }
     }
 
-    @Override
-    public Pose3d[] getCameraPoses() {
+    /**
+     * Gets the supplied camera poses in the global frame, based off of the robot
+     * pose.
+     * 
+     * @return the poses of each registered camera
+     */
+    @Log
+    public Pose3d[] cameraPoses() {
+        if (poseEstimator == null) {
+            return new Pose3d[] { new Pose3d() };
+        }
         List<Pose3d> poses = new ArrayList<Pose3d>();
         for (Transform3d transform : ROBOT_TO_CAMS) {
             poses.add(new Pose3d(poseEstimator.getEstimatedPosition()).plus(transform)
@@ -174,24 +182,27 @@ public class Vision implements BaseVision {
         return poses.toArray(poseArray);
     }
 
-    @Override
-    public Pose3d[] getAprilTagPoses() {
+    /**
+     * Gets the poses of all AprilTags in the current field layout.
+     * 
+     * @return the poses of all AprilTags
+     */
+    public Pose3d[] aprilTagPoses() {
         List<Pose3d> poses = new ArrayList<Pose3d>();
-        for (AprilTag tag : AprilTagFields.k2025ReefscapeAndyMark.loadAprilTagLayoutField().getTags()) {
+        for (AprilTag tag : tagLayout.getTags()) {
             poses.add(tag.pose);
         }
         Pose3d[] poseArray = new Pose3d[poses.size()];
         return poses.toArray(poseArray);
     }
 
-    @Override
+    /**
+     * Sets the pose estimator to use for the vision system.
+     * 
+     * @param poseEstimator the pose estimator to use
+     */
     public void setPoseEstimator(SwerveDrivePoseEstimator poseEstimator) {
         this.poseEstimator = poseEstimator;
-    }
-
-    @Override
-    public void setSimPoseSupplier(Supplier<Pose2d> simPoseSupplier) {
-        this.simPoseSupplier = simPoseSupplier;
     }
 
     /**
@@ -200,9 +211,28 @@ public class Vision implements BaseVision {
      * 
      * @param visionMeasurementConsumer the consumer to use
      */
-    public void setVisionMeasurementConsumer(
-            TriConsumer<Pose2d, Double, Matrix<N3, N1>> visionMeasurementConsumer) {
+    public void setVisionMeasurementConsumer(TriConsumer<Pose2d, Double, Matrix<N3, N1>> visionMeasurementConsumer) {
         this.visionMeasurementConsumer = visionMeasurementConsumer;
+    }
+
+    /**
+     * Sets the consumer for vision measurements, taking in the pose, the timestamp,
+     * and the standard deviations of a given measurement.
+     * 
+     * @param visionMeasurementConsumer the consumer to use
+     */
+    public void setPreciseVisionMeasurementConsumer(
+            TriConsumer<Pose2d, Double, Matrix<N3, N1>> preciseVisionMeasurementConsumer) {
+        this.preciseVisionMeasurementConsumer = preciseVisionMeasurementConsumer;
+    }
+
+    /**
+     * Sets the supplier for the ground truth simulation pose.
+     * 
+     * @param simPoseSupplier the pose supplier to use
+     */
+    public void setSimPoseSupplier(Supplier<Pose2d> simPoseSupplier) {
+        this.simPoseSupplier = simPoseSupplier;
     }
 
     /**
@@ -216,6 +246,15 @@ public class Vision implements BaseVision {
     }
 
     /**
+     * Sets the supplier for the robot's heading.
+     * 
+     * @param chassisSpeedsSupplier the supplier to use
+     */
+    public void setHeadingSupplier(Supplier<Rotation2d> headingSupplier) {
+        this.headingSupplier = headingSupplier;
+    }
+
+    /**
      * Gets an aggregated list of the latest cached measurements from all cameras,
      * so that they can be displayed easily. Does not actually update the cameras.
      * 
@@ -224,9 +263,43 @@ public class Vision implements BaseVision {
     @Log
     public Pose3d[] getEstimatedRobotPoses() {
         return new Pose3d[] {
-                frontLeftCam.getLoggedEstimatedRobotPose(),
-                frontRightCam.getLoggedEstimatedRobotPose(),
-                backCam.getLoggedEstimatedRobotPose() };
+                houndeye01.getLoggedEstimatedRobotPose(),
+                houndeye02.getLoggedEstimatedRobotPose() };
+    }
+
+    /**
+     * Gets an aggregated list of the latest cached measurements from all cameras,
+     * so that they can be displayed easily. Does not actually update the cameras.
+     * 
+     * @return the latest cached measurements from all cameras
+     */
+    @Log
+    public Pose3d[] getEstimatedPreciseRobotPoses() {
+        return new Pose3d[] {
+                houndeye01.getLoggedEstimatedTrigRobotPose(),
+                houndeye02.getLoggedEstimatedTrigRobotPose() };
+    }
+
+    @Log
+    public Pose3d[] getLastUsedRobotPoses() {
+        return new Pose3d[] {
+                latestUsedPoses[0],
+                latestUsedPoses[1]
+        };
+    }
+
+    /**
+     * Gets an aggregated list of the latest cached measurements from all cameras,
+     * so that they can be displayed easily. Does not actually update the cameras.
+     * 
+     * @return the latest cached measurements from all cameras
+     */
+    @Log
+    public Pose3d[] getLastUsedPreciseRobotPoses() {
+        return new Pose3d[] {
+                latestUsedTrigPoses[0],
+                latestUsedTrigPoses[1]
+        };
     }
 
     /**
@@ -239,9 +312,8 @@ public class Vision implements BaseVision {
     @Log
     public Pose3d[] getDetectedAprilTags() {
         Pose3d[][] detectedTags = {
-                frontLeftCam.getLoggedDetectedAprilTags(),
-                frontRightCam.getLoggedDetectedAprilTags(),
-                backCam.getLoggedDetectedAprilTags()
+                houndeye01.getLoggedDetectedAprilTags(),
+                houndeye02.getLoggedDetectedAprilTags()
         };
 
         int totalSize = 0;
@@ -250,6 +322,9 @@ public class Vision implements BaseVision {
         }
 
         Pose3d[] result = new Pose3d[totalSize];
+        for (int i = 0; i < totalSize; i++) {
+            result[i] = Pose3d.kZero;
+        }
 
         int index = 0;
         for (Pose3d[] tags : detectedTags) {

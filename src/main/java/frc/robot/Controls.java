@@ -2,143 +2,186 @@ package frc.robot;
 
 import com.techhounds.houndutil.houndlib.oi.CommandVirpilJoystick;
 
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.Constants.ReefLevel;
-import frc.robot.subsystems.Climber;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.Arm.ArmPosition;
+import frc.robot.FieldConstants.Reef.ReefLevel;
 import frc.robot.subsystems.Drivetrain;
-import frc.robot.subsystems.Elevator;
-import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.LEDs;
-import frc.robot.subsystems.Manipulator;
-import frc.robot.subsystems.Pivot;
+import frc.robot.subsystems.Superstructure;
 
-/**
- * Controls configurations for robot.
- */
 public class Controls {
-    public static final class Constants {
-        enum ControllerType {
-            XboxController,
-            FlightStick
-        }
 
-        public static final boolean DEBUG_MODE = false;
-
-        public static final ControllerType CONTROLLER_TYPE = ControllerType.FlightStick;
-
-        public static final double PERIOD = 0.020;
-
-        public static final class Teleop {
-            /**
-             * A value inputted into the rate limiter (the joystick input) can move from 0
-             * to 1 in 1/RATE_LIMIT seconds.
-             * 
-             * A rate limit of 3, for example, means that 0->1 in 1/3 sec.
-             * Larger numbers mean less of a rate limit.
-             */
-            public static final double JOYSTICK_INPUT_RATE_LIMIT = 15.0; // TODO
-            public static final double JOYSTICK_INPUT_DEADBAND = 0.05; // TODO
-            public static final double JOYSTICK_CURVE_EXP = 2; // TODO
-            public static final double JOYSTICK_ROT_CURVE_EXP = 1; // TODO
-        }
-    }
-
-    /**
-     * Configure driver controls on a Virpil Controls Alpha-R joystick.
-     * 
-     * @param port       port that joystick is connected to
-     * @param drivetrain drivetrain subsystem object
-     */
-    public static void configureDriverControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+    public static void configureControls(int port, Drivetrain drivetrain, Superstructure superstructure) {
         CommandVirpilJoystick joystick = new CommandVirpilJoystick(port);
 
         drivetrain.setDefaultCommand(
-                drivetrain.teleopDriveCommand(() -> -joystick.getY(), () -> -joystick.getX(),
+                drivetrain.teleopDriveCommand(
+                        () -> -joystick.getY(),
+                        () -> -joystick.getX(),
                         () -> -joystick.getTwist()));
 
-        joystick.bottomHatUp().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L4));
-        joystick.bottomHatRight().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L3));
-        joystick.bottomHatDown().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L2));
-        joystick.bottomHatLeft().onTrue(RobotCommands.setTargetReefLevelCommand(ReefLevel.L1));
+        new Trigger(() -> (Math.abs(joystick.getTwist()) > 0.05))
+                .whileTrue(drivetrain.disableControlledRotateCommand());
 
-        joystick.triggerSoftPress()
-                .onTrue(RobotCommands.moveToScoreCommand(RobotStates::getTargetLevel,
-                        elevator, pivot));
-        joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand())
-                .toggleOnFalse(RobotCommands.rehomeMechanismsCommand(elevator, pivot, manipulator));
-        // joystick.triggerHardPress().onTrue(manipulator.reverseRollersCommand());
-        joystick.blackThumbButton().onTrue(manipulator.runRollersCommand().until(manipulator::hasScoringElement));
+        // Gyro reset field position
+        joystick.stickButton().onTrue(drivetrain.resetGyroCommand());
+
+        // Default stow command
+        joystick.pinkieButton().onTrue(superstructure.stowCommand());
+
+        // Default score command
+        joystick.redButton().whileTrue(superstructure.manipulator.reverseRollersCommand().asProxy())
+                .onFalse(superstructure.stowAfterScoreCommand());
+
+        // Align to Coral Station
+        joystick.bottomHatLeft()
+                .whileTrue(drivetrain.controlledRotateCommand(() -> Units.degreesToRadians(-54)));
+        joystick.bottomHatRight()
+                .whileTrue(drivetrain.controlledRotateCommand(() -> Units.degreesToRadians(54)));
+
+        // Climb
+        joystick.flipTriggerIn().onTrue(superstructure.prepareClimbCommand(drivetrain));
+        joystick.flipTriggerIn().and(joystick.blackThumbButton()).onTrue(superstructure.afterClimbCommand());
+        joystick.topRightHatDown().whileTrue(superstructure.climber.declimbCommand());
+
+        // Coral Score
+        joystick.centerTopHatUp().onTrue(superstructure.prepareCoralScoreCommand(ReefLevel.L4));
+        joystick.centerTopHatRight().onTrue(superstructure.prepareCoralScoreCommand(ReefLevel.L3));
+        joystick.centerTopHatLeft().onTrue(superstructure.prepareCoralScoreCommand(ReefLevel.L2));
+        joystick.centerTopHatDown().onTrue(Commands.either(superstructure.prepareCoralScoreCommand(ReefLevel.L1),
+                superstructure.scoreProcessorCommand(), superstructure.isReadyForNetScore.negate()));
+
+        // Reef algae
+        joystick.centerBottomHatLeft()
+                .onTrue(superstructure.algaeReefIntakeCommand(ReefLevel.L2));
+        joystick.centerBottomHatRight()
+                .onTrue(superstructure.algaeReefIntakeCommand(ReefLevel.L3));
+        joystick.dialSoftPress().onTrue(superstructure.moveToNetScoreCommand());
+
+        // Ground algae
+        joystick.centerBottomHatDown()
+                .onTrue(superstructure.algaeGroundIntakeCommand(drivetrain));
+        joystick.centerBottomHatDown()
+                .whileTrue(drivetrain.lockToClosestGroundAlgaeCommand().until(superstructure.manipulator.hasAlgae)
+                        .andThen());
+
+        joystick.topRightHatUp().whileTrue(superstructure.arm.moveToPositionCommand(() -> ArmPosition.ELEVATOR_SAFE)
+                .alongWith(drivetrain.spinFastCommand()));
+
+        var coralScoringAutoDriveCommands = Commands.either(
+                Commands.none(),
+                Commands.either(
+                        drivetrain.lockToClosestBranchLineCommand(
+                                () -> -joystick.getY(), () -> -joystick.getX()),
+                        drivetrain.lockToClosestBranchAdaptiveCommand(
+                                () -> -joystick.getY(),
+                                () -> -joystick.getX(),
+                                () -> -joystick.getTwist(),
+                                () -> superstructure.getReefSetpoint().orElse(ReefLevel.L4)),
+                        GlobalStates.LOCK_TO_LINE_OVERRIDE::enabled),
+                GlobalStates.MANUAL_DRIVING_OVERRIDE::enabled);
+
+        joystick.triggerSoftPress().and(joystick.flipTriggerIn().negate()).whileTrue(
+                Commands.either(
+                        Commands.either(
+                                coralScoringAutoDriveCommands,
+                                drivetrain.lockToClosestNetScorePositionCommand(
+                                        () -> -joystick.getY(),
+                                        () -> -joystick.getX(),
+                                        () -> -joystick.getTwist())
+                                        .alongWith(superstructure.moveToAutoNetScoreCommand(drivetrain)),
+                                superstructure.isReadyForNetScore.negate()),
+                        Commands.deadline(
+                                Commands.waitUntil(superstructure.manipulator.hasAlgae)
+                                        .andThen(Commands.waitSeconds(0.8)),
+                                drivetrain.lockToClosestReefAlgaeAdaptiveCommand(() -> -joystick.getY(),
+                                        () -> -joystick.getX(), () -> -joystick.getTwist(),
+                                        superstructure.manipulator.hasAlgae)),
+                        superstructure.isInAlgaeReefPickupPosition.negate()));
+
+        joystick.triggerHardPress().and(joystick.flipTriggerIn().negate()).onTrue(
+                Commands.either(
+                        Commands.waitUntil(superstructure.isReadyToScore)
+                                .andThen(Commands.waitSeconds(0.1))
+                                .andThen(superstructure.finishAutoNetScoreCommand()),
+                        superstructure.scoreCoralContinuouslyCommand().withTimeout(1),
+                        superstructure.isReadyForNetScore));
+
+        joystick.triggerHardPress().and(joystick.flipTriggerIn().negate())
+                .onFalse(superstructure.stowAfterScoreCommand());
+
+        // TODO: reenable once coral trigger is better
+        // elevator.isStowed.and(manipulator.hasGamePiece).onTrue(arm.moveToPositionCommand(()
+        // -> ArmPosition.SAFE_CORAL));
+
     }
 
-    /**
-     * Configure operator controls on Xbox controller for manual overrides in
-     * caseautomatic features stop working.
-     * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
-     */
-    public static void configureOperatorControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
+    public static void configureTestingControls(int port, Drivetrain drivetrain, Superstructure superstructure) {
         CommandXboxController controller = new CommandXboxController(port);
 
-        controller.y().whileTrue(elevator.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.1));
-        controller.b().whileTrue(pivot.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
-        controller.a().whileTrue(intake.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
-        controller.x().whileTrue(climber.setOverridenSpeedCommand(() -> -controller.getLeftY() * 0.25));
+        controller.povLeft().whileTrue(
+                superstructure.arm.moveToArbitraryPositionCommand(() -> superstructure.arm.getPosition() - 0.1));
+        controller.povRight().whileTrue(
+                superstructure.arm.moveToArbitraryPositionCommand(() -> superstructure.arm.getPosition() + 0.1));
+        controller.povDown().whileTrue(
+                superstructure.elevator
+                        .moveToArbitraryPositionCommand(() -> superstructure.elevator.getPosition() - 0.1));
+        controller.povUp().whileTrue(
+                superstructure.elevator
+                        .moveToArbitraryPositionCommand(() -> superstructure.elevator.getPosition() + 0.1));
 
-        controller.rightBumper().whileTrue(manipulator.runRollersCommand());
-        controller.leftBumper().whileTrue(manipulator.reverseRollersCommand());
+        controller.rightTrigger().whileTrue(superstructure.manipulator.runRollersCommand());
+        controller.leftTrigger().whileTrue(superstructure.manipulator.reverseRollersCommand());
 
-        controller.rightTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> 0.5));
-        controller.leftTrigger().whileTrue(intake.setOverridenSpeedCommand(() -> -0.5));
+        controller.povDown().whileTrue(
+                superstructure.arm.moveToArbitraryPositionCommand(() -> superstructure.arm.getPosition() - 0.1));
+        controller.povUp().whileTrue(
+                superstructure.arm.moveToArbitraryPositionCommand(() -> superstructure.arm.getPosition() + 0.1));
+
+        controller.y().onTrue(Commands.parallel(
+                GlobalStates.LOCK_TO_LINE_OVERRIDE.disableCommand(),
+                GlobalStates.MANUAL_DRIVING_OVERRIDE.disableCommand()));
+        controller.b().onTrue(Commands.parallel(
+                GlobalStates.LOCK_TO_LINE_OVERRIDE.enableCommand(),
+                GlobalStates.MANUAL_DRIVING_OVERRIDE.disableCommand()));
+        controller.b().onTrue(Commands.parallel(
+                GlobalStates.LOCK_TO_LINE_OVERRIDE.disableCommand(),
+                GlobalStates.MANUAL_DRIVING_OVERRIDE.enableCommand()));
+
+        // controller.x().whileTrue(superstructure.elevator.sysIdQuasistaticCommand(Direction.kForward));
+        // controller.y().whileTrue(superstructure.elevator.sysIdQuasistaticCommand(Direction.kReverse));
+        // controller.a().whileTrue(superstructure.elevator.sysIdDynamicCommand(Direction.kForward));
+        // controller.b().whileTrue(superstructure.elevator.sysIdDynamicCommand(Direction.kReverse));
+
+        // superstructure.elevator
+        // .setDefaultCommand(superstructure.elevator.setOverridenSpeedCommand(() ->
+        // -0.5 *
+        // controller.getLeftY()));
+        // superstructure.arm
+        // .setDefaultCommand(superstructure.arm.setOverridenSpeedCommand(() -> -0.5 *
+        // controller.getRightY()));
+
+        controller.a().onTrue(superstructure.stowAfterScoreCommand());
+        controller.y().onTrue(superstructure.prepareCoralScoreCommand(ReefLevel.L4));
+        controller.b().onTrue(superstructure.prepareCoralScoreCommand(ReefLevel.L2));
+
+        controller.rightBumper().onTrue(
+                Commands.parallel(
+                        drivetrain.manualInitializeCommand(),
+                        superstructure.elevator.manualInitializeCommand(),
+                        superstructure.arm.manualInitializeCommand(),
+                        superstructure.climber.manualInitializeCommand())
+                        .ignoringDisable(true));
+
+        controller.leftBumper().and(DriverStation::isDisabled).onTrue(Commands.parallel(
+                drivetrain.resetGyroCommand(),
+                superstructure.elevator.resetPositionCommand(),
+                superstructure.arm.resetPositionCommand(),
+                superstructure.climber.resetPositionCommand()).ignoringDisable(true));
+
     }
 
-    /**
-     * Configure override controls on Xbox controller for overriding mechanism
-     * safeties.
-     * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
-     */
-    public static void configureOverrideControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
-        CommandXboxController controller = new CommandXboxController(port);
-
-        controller.x().whileTrue(intake.runRollersCommand());
-        controller.y().whileTrue(intake.reverseRollersCommand());
-    }
-
-    /**
-     * Configure controls on Xbox controller for running SysId routines.
-     * 
-     * @param port       port that controller is connected to
-     * @param drivetrain drivetrain subsystem object
-     */
-    public static void configureSysIdControls(int port, Drivetrain drivetrain, Elevator elevator,
-            Pivot pivot, Manipulator manipulator, Intake intake, Climber climber, LEDs leds) {
-        CommandXboxController controller = new CommandXboxController(port);
-
-        controller.x().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kForward));
-        controller.y().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kForward));
-        controller.b().and(controller.povUp()).whileTrue(drivetrain.sysIdDriveDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povDown()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povDown()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povLeft()).whileTrue(pivot.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povLeft()).whileTrue(pivot.sysIdDynamic(Direction.kReverse));
-
-        controller.x().and(controller.povRight()).whileTrue(intake.sysIdQuasistatic(Direction.kForward));
-        controller.y().and(controller.povRight()).whileTrue(intake.sysIdQuasistatic(Direction.kReverse));
-        controller.a().and(controller.povRight()).whileTrue(intake.sysIdDynamic(Direction.kForward));
-        controller.b().and(controller.povRight()).whileTrue(intake.sysIdDynamic(Direction.kReverse));
-    }
 }

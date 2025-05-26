@@ -1,35 +1,42 @@
 package frc.robot.subsystems;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
+import org.photonvision.PhotonCamera;
+import org.photonvision.targeting.PhotonPipelineResult;
+
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.Orchestra;
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.hardware.Pigeon2;
-
 import com.pathplanner.lib.commands.FollowPathCommand;
+import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.IdealStartingState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
-import com.pathplanner.lib.config.ModuleConfig;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.util.DriveFeedforwards;
 import com.techhounds.houndutil.houndauto.AutoManager;
+import com.techhounds.houndutil.houndauto.Reflector;
+import com.techhounds.houndutil.houndlib.BooleanContainer;
 import com.techhounds.houndutil.houndlib.ChassisAccelerations;
 import com.techhounds.houndutil.houndlib.MotorHoldMode;
+import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.subsystems.BaseSwerveDrive;
-import com.techhounds.houndutil.houndlib.swerve.CoaxialSwerveModule.SwerveConstants;
 import com.techhounds.houndutil.houndlib.swerve.KrakenCoaxialSwerveModule;
 import com.techhounds.houndutil.houndlog.annotations.Log;
 import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 import com.techhounds.houndutil.houndlog.annotations.SendableLog;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.ProfiledPIDController;
@@ -38,6 +45,7 @@ import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -48,19 +56,19 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
-
 import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.units.measure.MutAngle;
+import edu.wpi.first.units.measure.MutAngularVelocity;
+import edu.wpi.first.units.measure.MutDistance;
+import edu.wpi.first.units.measure.MutLinearVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Threads;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -68,246 +76,125 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.DeferredCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.Controls;
-import frc.robot.subsystems.Drivetrain.Constants.BackLeft;
-import frc.robot.subsystems.Drivetrain.Constants.BackRight;
-import frc.robot.subsystems.Drivetrain.Constants.FrontLeft;
-import frc.robot.subsystems.Drivetrain.Constants.FrontRight;
+import frc.robot.Utils;
+import frc.robot.FieldConstants;
+import frc.robot.FieldConstants.Reef.BranchSide;
+import frc.robot.FieldConstants.Reef.ReefBranch;
+import frc.robot.FieldConstants.Reef.ReefLevel;
+import frc.robot.FieldConstants.Reef.ReefSide;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
-import static edu.wpi.first.units.Units.Degrees;
+import static frc.robot.Constants.Drivetrain.*;
+import static frc.robot.Constants.Controls.*;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
-import static frc.robot.subsystems.Drivetrain.Constants.*;
-
-/** Subsystem which drives robot using a swerve drivetrain. */
+/**
+ * The drivetrain subsystem. Manages swerve modules and pose estimation.
+ */
 @LoggedObject
 public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
-    public static final class Constants {
-        public static final String CAN_BUS = "canivore";
-
-        public static final int PIGEON_ID = 0;
-
-        public static final class FrontLeft {
-            public static final int DRIVE_MOTOR_ID = 1;
-            public static final int STEER_MOTOR_ID = 2;
-            public static final int STEER_ENCODER_ID = 0;
-            public static final double STEER_ENCODER_OFFSET = -0.386474609375; // TODO
-        }
-
-        public static final class FrontRight {
-            public static final int DRIVE_MOTOR_ID = 3;
-            public static final int STEER_MOTOR_ID = 4;
-            public static final int STEER_ENCODER_ID = 1;
-            public static final double STEER_ENCODER_OFFSET = -0.1181640625; // TODO
-        }
-
-        public static final class BackLeft {
-            public static final int DRIVE_MOTOR_ID = 5;
-            public static final int STEER_MOTOR_ID = 6;
-            public static final int STEER_ENCODER_ID = 2;
-            public static final double STEER_ENCODER_OFFSET = 0.475830078125; // TODO
-        }
-
-        public static final class BackRight {
-            public static final int DRIVE_MOTOR_ID = 7;
-            public static final int STEER_MOTOR_ID = 8;
-            public static final int STEER_ENCODER_ID = 3;
-            public static final double STEER_ENCODER_OFFSET = 0.23828125; // TODO
-        }
-
-        public static final boolean DRIVE_MOTORS_INVERTED = true; // TODO
-        public static final boolean STEER_MOTORS_INVERTED = true; // TODO
-        public static final boolean STEER_CANCODERS_INVERTED = RobotBase.isReal() ? false : true;
-
-        public static final SwerveConstants SWERVE_CONSTANTS = new SwerveConstants();
-        static {
-            SWERVE_CONSTANTS.DRIVE_kP = 0.84992; // TODO
-            SWERVE_CONSTANTS.DRIVE_kI = 0.0; // TODO
-            SWERVE_CONSTANTS.DRIVE_kD = 0.0; // TODO
-            SWERVE_CONSTANTS.DRIVE_kS = 0.2368; // TODO
-            SWERVE_CONSTANTS.DRIVE_kV = 0.67229; // TODO
-            SWERVE_CONSTANTS.DRIVE_kA = 0.080151; // TODO
-            SWERVE_CONSTANTS.STEER_kP = 100.0; // TODO
-            SWERVE_CONSTANTS.STEER_kI = 0.0; // TODO
-            SWERVE_CONSTANTS.STEER_kD = 1.0; // TODO
-            SWERVE_CONSTANTS.STEER_kS = 0; // TODO
-            SWERVE_CONSTANTS.STEER_kV = 0; // TODO
-            SWERVE_CONSTANTS.STEER_kA = 0; // TODO
-
-            SWERVE_CONSTANTS.DRIVE_GEARING = 5.9; // Swerve Drive Specialties MK4n L2 ratio.
-            SWERVE_CONSTANTS.STEER_GEARING = 18.75; // Swerve Drive Specialties MK4n ratio.
-            SWERVE_CONSTANTS.COUPLING_RATIO = 50.0 / 16.0; // Inverse of swerve module first stage gear ratio.
-            SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE = 2.0 * Math.PI * Units.inchesToMeters(4.05);
-            SWERVE_CONSTANTS.DRIVE_ENCODER_ROTATIONS_TO_METERS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE
-                    / SWERVE_CONSTANTS.DRIVE_GEARING;
-            SWERVE_CONSTANTS.STEER_ENCODER_ROTATIONS_TO_RADIANS = 2 * Math.PI
-                    / SWERVE_CONSTANTS.STEER_GEARING;
-
-            SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND = 4.54; // TODO
-            SWERVE_CONSTANTS.MAX_DRIVING_ACCELERATION_METERS_PER_SECOND_SQUARED = 8; // TODO
-            SWERVE_CONSTANTS.MAX_STEER_VELOCITY_RADIANS_PER_SECOND = 100 * 2 * Math.PI; // TODO
-            // max velocity in 1/3 sec
-            SWERVE_CONSTANTS.MAX_STEER_ACCELERATION_RADIANS_PER_SECOND_SQUARED = 10 * 100 * 2 * Math.PI; // TODO
-
-            SWERVE_CONSTANTS.DRIVE_CURRENT_LIMIT = 100; // TODO
-            SWERVE_CONSTANTS.STEER_CURRENT_LIMIT = 30; // TODO
-            SWERVE_CONSTANTS.DRIVE_GEARBOX_REPR = DCMotor.getKrakenX60(1);
-            SWERVE_CONSTANTS.STEER_GEARBOX_REPR = DCMotor.getKrakenX60(1);
-            SWERVE_CONSTANTS.DRIVE_MOI = 0.01; // TODO
-            SWERVE_CONSTANTS.STEER_MOI = 0.025; // TODO
-        }
-
-        /** Distance between left and right wheels. */
-        public static final double TRACK_WIDTH_METERS = Units.inchesToMeters(24);
-        /** Distance between front and back wheels. */
-        public static final double WHEEL_BASE_METERS = Units.inchesToMeters(24);
-        public static final double MASS = 55.0; // KG, TODO
-        public static final double MOMENT_OF_INERTIA = 4.9; // KG m^2, TODO
-        public static final double SWERVE_WHEEL_RADIUS = SWERVE_CONSTANTS.WHEEL_CIRCUMFERENCE / (Math.PI * 2.0); // meters
-
-        public static final Translation2d[] SWERVE_MODULE_LOCATIONS = new Translation2d[] {
-                new Translation2d(WHEEL_BASE_METERS / 2, TRACK_WIDTH_METERS / 2),
-                new Translation2d(WHEEL_BASE_METERS / 2, -TRACK_WIDTH_METERS / 2),
-                new Translation2d(-WHEEL_BASE_METERS / 2, TRACK_WIDTH_METERS / 2),
-                new Translation2d(-WHEEL_BASE_METERS / 2, -TRACK_WIDTH_METERS / 2) };
-
-        public static final SwerveDriveKinematics KINEMATICS = new SwerveDriveKinematics(
-                SWERVE_MODULE_LOCATIONS[0],
-                SWERVE_MODULE_LOCATIONS[1],
-                SWERVE_MODULE_LOCATIONS[2],
-                SWERVE_MODULE_LOCATIONS[3]);
-
-        public static final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND = 10; // TODO
-        public static final double MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED = 30; // TODO
-
-        public static final double TRANSLATION_kP = 1.4; // TODO
-        public static final double TRANSLATION_kI = 0; // TODO
-        public static final double TRANSLATION_kD = 0.05; // TODO
-        public static final TrapezoidProfile.Constraints TRANSLATION_CONSTRAINTS = new TrapezoidProfile.Constraints(
-                SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND,
-                SWERVE_CONSTANTS.MAX_DRIVING_ACCELERATION_METERS_PER_SECOND_SQUARED);
-
-        public static final double ROTATION_kP = 1.3; // TODO
-        public static final double ROTATION_kI = 0; // TODO
-        public static final double ROTATION_kD = 0.05; // TODO
-        public static final TrapezoidProfile.Constraints ROTATION_CONSTRAINTS = new TrapezoidProfile.Constraints(
-                MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND,
-                MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED);
-
-        public static final double PATH_FOLLOWING_TRANSLATION_kP = 8.0; // TODO
-        public static final double PATH_FOLLOWING_ROTATION_kP = 8.0; // TODO
-
-        public static final ModuleConfig MODULE_CONFIG = new ModuleConfig(SWERVE_WHEEL_RADIUS,
-                SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND, 1.0, SWERVE_CONSTANTS.DRIVE_GEARBOX_REPR,
-                SWERVE_CONSTANTS.DRIVE_CURRENT_LIMIT, 1);
-        public static final RobotConfig ROBOT_CONFIG = new RobotConfig(MASS, MOMENT_OF_INERTIA, MODULE_CONFIG,
-                SWERVE_MODULE_LOCATIONS[0], SWERVE_MODULE_LOCATIONS[1], SWERVE_MODULE_LOCATIONS[2],
-                SWERVE_MODULE_LOCATIONS[3]);
-    }
-
     @Log(groups = "modules")
     private final KrakenCoaxialSwerveModule frontLeft = new KrakenCoaxialSwerveModule(
-            FrontLeft.DRIVE_MOTOR_ID,
-            FrontLeft.STEER_MOTOR_ID,
-            FrontLeft.STEER_ENCODER_ID,
-            CAN_BUS,
+            FRONT_LEFT_DRIVE_MOTOR_ID,
+            FRONT_LEFT_STEER_MOTOR_ID,
+            FRONT_LEFT_STEER_ENCODER_ID,
+            CAN_BUS_NAME,
             DRIVE_MOTORS_INVERTED,
             STEER_MOTORS_INVERTED,
             STEER_CANCODERS_INVERTED,
-            FrontLeft.STEER_ENCODER_OFFSET,
+            FRONT_LEFT_OFFSET,
             SWERVE_CONSTANTS);
 
     @Log(groups = "modules")
     private final KrakenCoaxialSwerveModule frontRight = new KrakenCoaxialSwerveModule(
-            FrontRight.DRIVE_MOTOR_ID,
-            FrontRight.STEER_MOTOR_ID,
-            FrontRight.STEER_ENCODER_ID,
-            CAN_BUS,
+            FRONT_RIGHT_DRIVE_MOTOR_ID,
+            FRONT_RIGHT_STEER_MOTOR_ID,
+            FRONT_RIGHT_STEER_ENCODER_ID,
+            CAN_BUS_NAME,
             DRIVE_MOTORS_INVERTED,
             STEER_MOTORS_INVERTED,
             STEER_CANCODERS_INVERTED,
-            FrontRight.STEER_ENCODER_OFFSET,
+            FRONT_RIGHT_OFFSET,
             SWERVE_CONSTANTS);
 
     @Log(groups = "modules")
     private final KrakenCoaxialSwerveModule backLeft = new KrakenCoaxialSwerveModule(
-            BackLeft.DRIVE_MOTOR_ID,
-            BackLeft.STEER_MOTOR_ID,
-            BackLeft.STEER_ENCODER_ID,
-            CAN_BUS,
+            BACK_LEFT_DRIVE_MOTOR_ID,
+            BACK_LEFT_STEER_MOTOR_ID,
+            BACK_LEFT_STEER_ENCODER_ID,
+            CAN_BUS_NAME,
             DRIVE_MOTORS_INVERTED,
             STEER_MOTORS_INVERTED,
             STEER_CANCODERS_INVERTED,
-            BackLeft.STEER_ENCODER_OFFSET,
+            BACK_LEFT_OFFSET,
             SWERVE_CONSTANTS);
 
     @Log(groups = "modules")
     private final KrakenCoaxialSwerveModule backRight = new KrakenCoaxialSwerveModule(
-            BackRight.DRIVE_MOTOR_ID,
-            BackRight.STEER_MOTOR_ID,
-            BackRight.STEER_ENCODER_ID,
-            CAN_BUS,
+            BACK_RIGHT_DRIVE_MOTOR_ID,
+            BACK_RIGHT_STEER_MOTOR_ID,
+            BACK_RIGHT_STEER_ENCODER_ID,
+            CAN_BUS_NAME,
             DRIVE_MOTORS_INVERTED,
             STEER_MOTORS_INVERTED,
             STEER_CANCODERS_INVERTED,
-            BackRight.STEER_ENCODER_OFFSET,
+            BACK_RIGHT_OFFSET,
             SWERVE_CONSTANTS);
 
     @Log
     @SendableLog(name = "pigeonSendable")
-    private final Pigeon2 pigeon = new Pigeon2(0, CAN_BUS);
+    private final Pigeon2 pigeon = new Pigeon2(0, CAN_BUS_NAME);
 
     private SwerveDriveOdometry simOdometry;
     private SwerveModulePosition[] lastModulePositions = getModulePositions();
 
-    // private final MutableMeasure sysidDriveAppliedVoltageMeasure =
-    // Volts.mutable(0);
-    // private final MutableMeasure sysidDrivePositionMeasure = Meters.mutable(0);
-    // private final MutableMeasure sysidDriveVelocityMeasure =
-    // MetersPerSecond.mutable(0);
-
-    private Voltage sysidDriveAppliedVoltageMeasure = Volts.of(0);
-    private Distance sysidDrivePositionMeasure = Meters.of(0);
-    private LinearVelocity sysidDriveVelocityMeasure = MetersPerSecond.of(0);
+    private final MutVoltage sysidDriveAppliedVoltageMeasure = Volts.mutable(0);
+    private final MutDistance sysidDrivePositionMeasure = Meters.mutable(0);
+    private final MutLinearVelocity sysidDriveVelocityMeasure = MetersPerSecond.mutable(0);
 
     private final SysIdRoutine sysIdDrive;
 
-    private Voltage sysidSteerAppliedVoltageMeasure = Volts.of(0);
-    private Angle sysidSteerPositionMeasure = Rotations.of(0);
-    private AngularVelocity sysidSteerVelocityMeasure = RotationsPerSecond.of(0);
-
-    // private final MutableMeasure sysidSteerAppliedVoltageMeasure =
-    // Volts.mutable(0);
-    // private final MutableMeasure sysidSteerPositionMeasure =
-    // Rotations.mutable(0);
-    // private final MutableMeasure sysidSteerVelocityMeasure =
-    // RotationsPerSecond.mutable(0);
+    private final MutVoltage sysidSteerAppliedVoltageMeasure = Volts.mutable(0);
+    private final MutAngle sysidSteerPositionMeasure = Rotations.mutable(0);
+    private final MutAngularVelocity sysidSteerVelocityMeasure = RotationsPerSecond.mutable(0);
 
     private final SysIdRoutine sysIdSteer;
 
     private final Orchestra orchestra = new Orchestra();
 
     private final SwerveDrivePoseEstimator poseEstimator;
+    private final SwerveDrivePoseEstimator precisePoseEstimator;
 
+    /** Lock used for odometry thread. */
     private final ReadWriteLock stateLock = new ReentrantReadWriteLock();
 
     private final OdometryThread odometryThread;
 
     @Log(groups = "control")
     private final ProfiledPIDController driveController = new ProfiledPIDController(
-            TRANSLATION_kP, TRANSLATION_kI, TRANSLATION_kD, TRANSLATION_CONSTRAINTS);
+            XY_kP, XY_kI, XY_kD, XY_CONSTRAINTS);
 
     @Log(groups = "control")
     private double driveToPoseDistance = 0.0;
+    @Log(groups = "control")
+    private double driveToPoseScalar = 0.0;
 
     @Log(groups = "control")
     private final ProfiledPIDController rotationController = new ProfiledPIDController(
-            ROTATION_kP, ROTATION_kI, ROTATION_kD, ROTATION_CONSTRAINTS);
+            THETA_kP, THETA_kI, THETA_kD, THETA_CONSTRAINTS);
+
+    @Log(groups = "control")
+    private final ProfiledPIDController algaeDriveController = new ProfiledPIDController(
+            ALGAE_DRIVE_kP, ALGAE_DRIVE_kI, ALGAE_DRIVE_kD, ALGAE_DRIVE_CONSTRAINTS);
+
+    @Log(groups = "control")
+    private final ProfiledPIDController algaeRotationController = new ProfiledPIDController(
+            ALGAE_THETA_kP, ALGAE_THETA_kI, ALGAE_THETA_kD, ALGAE_THETA_CONSTRAINTS);
 
     @Log(groups = "control")
     private SwerveModuleState[] commandedModuleStates = new SwerveModuleState[] { new SwerveModuleState(),
@@ -315,40 +202,71 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
     @Log(groups = "control")
     private ChassisSpeeds commandedChassisSpeeds = new ChassisSpeeds();
+    @Log(groups = "control")
+    private ChassisSpeeds adjustedChassisSpeeds = new ChassisSpeeds();
 
     private DriveMode driveMode = DriveMode.FIELD_ORIENTED;
+
+    private final PhotonCamera algaeCamera = new PhotonCamera("Algae");
 
     /**
      * Whether to override the inputs of the driver for maintaining or turning to a
      * specific angle.
      */
-    @Log
+    @Log(groups = "control")
     private boolean isControlledRotationEnabled = false;
 
-    @Log
-    private Pose2d targettedStagePose = new Pose2d();
-
+    /**
+     * Local variable to track the field relative velocities from the previous loop.
+     * Used to calculate the acceleration of the robot.
+     */
     private ChassisSpeeds prevFieldRelVelocities = new ChassisSpeeds();
 
-    @Log
     private double averageOdometryLoopTime = 0;
-    @Log
+    @Log(groups = "odometry")
+    // DAQ = data acquisition, from CTRE's odometry thread
     private int successfulDaqs = 0;
-    @Log
+    @Log(groups = "odometry")
     private int failedDaqs = 0;
 
     @Log
-    private boolean initialized = false;
+    private boolean initialized = RobotBase.isSimulation();
 
-    public Drivetrain() {
+    @Log(groups = "reefAlignment")
+    private BranchSide targettedBranchSide = BranchSide.LEFT;
+    @Log(groups = "reefAlignment")
+    private ReefSide targettedReefSide = ReefSide.ONE;
+
+    @Log(groups = "algaeDetector")
+    private double targetYaw = 0;
+    @Log(groups = "algaeDetector")
+    private double targetPitch = 0;
+    // @Log(groups = "algaeDetector")
+    private double targetArea = 0;
+    @Log(groups = "algaeDetector")
+    private double targetAreaLog = 0;
+    @Log(groups = "algaeDetector")
+    private boolean hasAlgaeTarget = false;
+    // @Log(groups = "algaeDetector")
+    private double driveVelocity = 0;
+
+    private final PositionTracker positionTracker;
+
+    /** Initializes the drivetrain. */
+    public Drivetrain(PositionTracker positionTracker) {
         poseEstimator = new SwerveDrivePoseEstimator(
                 KINEMATICS,
                 getRotation(),
                 getModulePositions(),
-                new Pose2d(0, 0, new Rotation2d()));
+                new Pose2d(0, 0, Rotation2d.kZero));
+        precisePoseEstimator = new SwerveDrivePoseEstimator(
+                KINEMATICS,
+                getRotation(),
+                getModulePositions(),
+                new Pose2d(0, 0, Rotation2d.kZero));
 
-        driveController.setTolerance(0.05);
-        rotationController.setTolerance(0.05);
+        driveController.setTolerance(0.05, 0.05);
+        rotationController.setTolerance(0.05, 0.05);
         rotationController.enableContinuousInput(0, 2 * Math.PI);
 
         AutoManager.getInstance().setResetOdometryConsumer(this::resetPoseEstimator);
@@ -358,8 +276,7 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         }
 
         sysIdDrive = new SysIdRoutine(
-                new SysIdRoutine.Config(null, Volts.of(3), null,
-                        (state) -> SignalLogger.writeString("sysid_state", state.toString())),
+                new SysIdRoutine.Config(null, Volts.of(3), null, null),
                 new SysIdRoutine.Mechanism(
                         (Voltage volts) -> {
                             drive(new ChassisSpeeds(
@@ -369,35 +286,36 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                         },
                         log -> {
                             log.motor("frontLeft")
-                                    .voltage(sysidDriveAppliedVoltageMeasure = Volts
-                                            .of(frontLeft.getDriveMotorVoltage()))
-                                    .linearPosition(
-                                            sysidDrivePositionMeasure = Meters.of(frontLeft.getDriveMotorPosition()))
-                                    .linearVelocity(sysidDriveVelocityMeasure = MetersPerSecond
-                                            .of(frontLeft.getDriveMotorVelocity()));
+                                    .voltage(sysidDriveAppliedVoltageMeasure
+                                            .mut_replace(frontLeft.getDriveMotorVoltage(), Volts))
+                                    .linearPosition(sysidDrivePositionMeasure
+                                            .mut_replace(frontLeft.getDriveMotorPosition(), Meters))
+                                    .linearVelocity(sysidDriveVelocityMeasure
+                                            .mut_replace(frontLeft.getDriveMotorVelocity(), MetersPerSecond));
                             log.motor("frontRight")
-                                    .voltage(sysidDriveAppliedVoltageMeasure = Volts
-                                            .of(frontRight.getDriveMotorVoltage()))
-                                    .linearPosition(
-                                            sysidDrivePositionMeasure = Meters.of(frontRight.getDriveMotorPosition()))
-                                    .linearVelocity(sysidDriveVelocityMeasure = MetersPerSecond
-                                            .of(frontRight.getDriveMotorVelocity()));
+                                    .voltage(sysidDriveAppliedVoltageMeasure
+                                            .mut_replace(frontRight.getDriveMotorVoltage(), Volts))
+                                    .linearPosition(sysidDrivePositionMeasure
+                                            .mut_replace(frontRight.getDriveMotorPosition(), Meters))
+                                    .linearVelocity(sysidDriveVelocityMeasure
+                                            .mut_replace(frontRight.getDriveMotorVelocity(), MetersPerSecond));
                             log.motor("backLeft")
-                                    .voltage(sysidDriveAppliedVoltageMeasure = Volts
-                                            .of(backLeft.getDriveMotorVoltage()))
-                                    .linearPosition(
-                                            sysidDrivePositionMeasure = Meters.of(backLeft.getDriveMotorPosition()))
-                                    .linearVelocity(sysidDriveVelocityMeasure = MetersPerSecond
-                                            .of(backLeft.getDriveMotorVelocity()));
+                                    .voltage(sysidDriveAppliedVoltageMeasure
+                                            .mut_replace(backLeft.getDriveMotorVoltage(), Volts))
+                                    .linearPosition(sysidDrivePositionMeasure
+                                            .mut_replace(backLeft.getDriveMotorPosition(), Meters))
+                                    .linearVelocity(sysidDriveVelocityMeasure
+                                            .mut_replace(backLeft.getDriveMotorVelocity(), MetersPerSecond));
                             log.motor("backRight")
-                                    .voltage(sysidDriveAppliedVoltageMeasure = Volts
-                                            .of(backRight.getDriveMotorVoltage()))
-                                    .linearPosition(
-                                            sysidDrivePositionMeasure = Meters.of(backRight.getDriveMotorPosition()))
-                                    .linearVelocity(sysidDriveVelocityMeasure = MetersPerSecond
-                                            .of(backRight.getDriveMotorVelocity()));
+                                    .voltage(sysidDriveAppliedVoltageMeasure
+                                            .mut_replace(backRight.getDriveMotorVoltage(), Volts))
+                                    .linearPosition(sysidDrivePositionMeasure
+                                            .mut_replace(backRight.getDriveMotorPosition(), Meters))
+                                    .linearVelocity(sysidDriveVelocityMeasure
+                                            .mut_replace(backRight.getDriveMotorVelocity(), MetersPerSecond));
                         },
                         this));
+
         sysIdSteer = new SysIdRoutine(
                 new SysIdRoutine.Config(),
                 new SysIdRoutine.Mechanism(
@@ -410,33 +328,33 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                         },
                         log -> {
                             log.motor("frontLeft")
-                                    .voltage(sysidSteerAppliedVoltageMeasure = Volts
-                                            .of(frontLeft.getSteerMotorVoltage()))
-                                    .angularPosition(sysidSteerPositionMeasure = Rotations
-                                            .of(frontLeft.getSteerMotorPosition()))
-                                    .angularVelocity(sysidSteerVelocityMeasure = RotationsPerSecond
-                                            .of(frontLeft.getSteerMotorVelocity()));
+                                    .voltage(sysidSteerAppliedVoltageMeasure
+                                            .mut_replace(frontLeft.getSteerMotorVoltage(), Volts))
+                                    .angularPosition(sysidSteerPositionMeasure
+                                            .mut_replace(frontLeft.getSteerMotorPosition(), Rotations))
+                                    .angularVelocity(sysidSteerVelocityMeasure
+                                            .mut_replace(frontLeft.getSteerMotorVelocity(), RotationsPerSecond));
                             log.motor("frontRight")
-                                    .voltage(sysidSteerAppliedVoltageMeasure = Volts
-                                            .of(frontRight.getSteerMotorVoltage()))
-                                    .angularPosition(sysidSteerPositionMeasure = Rotations
-                                            .of(frontRight.getSteerMotorPosition()))
-                                    .angularVelocity(sysidSteerVelocityMeasure = RotationsPerSecond
-                                            .of(frontRight.getSteerMotorVelocity()));
+                                    .voltage(sysidSteerAppliedVoltageMeasure
+                                            .mut_replace(frontRight.getSteerMotorVoltage(), Volts))
+                                    .angularPosition(sysidSteerPositionMeasure
+                                            .mut_replace(frontRight.getSteerMotorPosition(), Rotations))
+                                    .angularVelocity(sysidSteerVelocityMeasure
+                                            .mut_replace(frontRight.getSteerMotorVelocity(), RotationsPerSecond));
                             log.motor("backLeft")
-                                    .voltage(sysidSteerAppliedVoltageMeasure = Volts
-                                            .of(backLeft.getSteerMotorVoltage()))
-                                    .angularPosition(sysidSteerPositionMeasure = Rotations
-                                            .of(backLeft.getSteerMotorPosition()))
-                                    .angularVelocity(sysidSteerVelocityMeasure = RotationsPerSecond
-                                            .of(backLeft.getSteerMotorVelocity()));
+                                    .voltage(sysidSteerAppliedVoltageMeasure
+                                            .mut_replace(backLeft.getSteerMotorVoltage(), Volts))
+                                    .angularPosition(sysidSteerPositionMeasure
+                                            .mut_replace(backLeft.getSteerMotorPosition(), Rotations))
+                                    .angularVelocity(sysidSteerVelocityMeasure
+                                            .mut_replace(backLeft.getSteerMotorVelocity(), RotationsPerSecond));
                             log.motor("backRight")
-                                    .voltage(sysidSteerAppliedVoltageMeasure = Volts
-                                            .of(backRight.getSteerMotorVoltage()))
-                                    .angularPosition(sysidSteerPositionMeasure = Rotations
-                                            .of(backRight.getSteerMotorPosition()))
-                                    .angularVelocity(sysidSteerVelocityMeasure = RotationsPerSecond
-                                            .of(backRight.getSteerMotorVelocity()));
+                                    .voltage(sysidSteerAppliedVoltageMeasure
+                                            .mut_replace(backRight.getSteerMotorVoltage(), Volts))
+                                    .angularPosition(sysidSteerPositionMeasure
+                                            .mut_replace(backRight.getSteerMotorPosition(), Rotations))
+                                    .angularVelocity(sysidSteerVelocityMeasure
+                                            .mut_replace(backRight.getSteerMotorVelocity(), RotationsPerSecond));
                         },
                         this));
 
@@ -452,8 +370,15 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         odometryThread = new OdometryThread();
         odometryThread.start();
 
+        this.positionTracker = positionTracker;
+
     }
 
+    /**
+     * Thread enabling 250Hz odometry. Optimized from CTRE's internal swerve code.
+     * 250Hz odometry reduces discretization error in the odometry loop, and
+     * significantly improves odometry during high speed maneuvers.
+     */
     public class OdometryThread {
         // Testing shows 1 (minimum realtime) is sufficient for tighter odometry loops.
         // If the odometry period is far away from the desired frequency, increasing
@@ -529,9 +454,6 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             }
         }
 
-        /**
-         * Runs the odometry thread.
-         */
         public void run() {
             /* Make sure all signals update at the correct update frequency */
             BaseStatusSignal.setUpdateFrequencyForAll(UPDATE_FREQUENCY, allSignals);
@@ -548,12 +470,12 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                     stateLock.writeLock().lock();
 
                     lastTime = currentTime;
-                    currentTime = Timer.getFPGATimestamp();
+                    currentTime = RobotController.getFPGATime();
                     /*
                      * We don't care about the peaks, as they correspond to GC events, and we want
                      * the period generally low passed
                      */
-                    averageOdometryLoopTime = lowPass.calculate(peakRemover.calculate(currentTime - lastTime));
+                    averageOdometryLoopTime = lowPass.calculate(peakRemover.calculate((currentTime - lastTime) / 1000));
 
                     /* Get status of first element */
                     if (status.isOK()) {
@@ -568,12 +490,14 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                         modulePositions[i] = modules[i].getPosition();
                     }
                     double yawDegrees = BaseStatusSignal.getLatencyCompensatedValue(
-                            pigeon.getYaw(), pigeon.getAngularVelocityZWorld()).in(Degrees);
+                            pigeon.getYaw(), pigeon.getAngularVelocityZWorld()).magnitude();
 
                     /* Keep track of previous and current pose to account for the carpet vector */
                     poseEstimator.update(Rotation2d.fromDegrees(yawDegrees), modulePositions);
+                    precisePoseEstimator.update(Rotation2d.fromDegrees(yawDegrees),
+                            modulePositions);
                     if (RobotBase.isSimulation()) {
-                        simOdometry.update(getRotation(), getModulePositions());
+                        simOdometry.update(Rotation2d.fromDegrees(yawDegrees), modulePositions);
                     }
                 } finally {
                     stateLock.writeLock().unlock();
@@ -601,6 +525,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         public void setThreadPriority(int priority) {
             threadPriorityToSet = priority;
         }
+    }
+
+    public double getOdometryLoopTime() {
+        return averageOdometryLoopTime;
     }
 
     @Override
@@ -641,6 +569,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     }
 
     @Log
+    public Pose2d getPrecisePose() {
+        return precisePoseEstimator.getEstimatedPosition();
+    }
+
     public Pose2d getSimPose() {
         if (simOdometry != null)
             return simOdometry.getPoseMeters();
@@ -651,6 +583,10 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     @Override
     public Rotation2d getRotation() {
         return Rotation2d.fromDegrees(pigeon.getYaw().getValueAsDouble());
+    }
+
+    public Angle getRawYaw() {
+        return pigeon.getYaw().getValue();
     }
 
     @Override
@@ -697,19 +633,42 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     }
 
     /**
-     * Adds a vision measurement to the pose estimator.
-     *
-     * @param visionRobotPoseMeters    The pose of the robot from vision.
-     * @param timestampSeconds         The timestamp of the vision measurement.
-     * @param visionMeasurementStdDevs The standard deviations of the vision
-     *                                 measurement.
+     * Adds a vision measurement to the pose estimator. Used by the vision
+     * subsystem.
+     * 
+     * @param visionRobotPoseMeters    the estimated robot pose from vision
+     * @param timestampSeconds         the timestamp of the vision measurement
+     * @param visionMeasurementStdDevs the standard deviations of the measurement
      */
-    public void addVisionMeasurement(Pose2d visionRobotPoseMeters,
-            double timestampSeconds,
+    public void addVisionMeasurement(Pose2d visionRobotPoseMeters, double timestampSeconds,
             Matrix<N3, N1> visionMeasurementStdDevs) {
         try {
+            // since the pose estimator is used by another thread, we need to lock it to be
+            // able to add a vision measurement
             stateLock.writeLock().lock();
             poseEstimator.addVisionMeasurement(visionRobotPoseMeters, timestampSeconds, visionMeasurementStdDevs);
+        } finally {
+            stateLock.writeLock().unlock();
+        }
+
+    }
+
+    /**
+     * Adds a precise vision measurement to the pose estimator. Used by the vision
+     * subsystem.
+     * 
+     * @param visionRobotPoseMeters    the estimated robot pose from vision
+     * @param timestampSeconds         the timestamp of the vision measurement
+     * @param visionMeasurementStdDevs the standard deviations of the measurement
+     */
+    public void addPreciseVisionMeasurement(Pose2d visionRobotPoseMeters, double timestampSeconds,
+            Matrix<N3, N1> visionMeasurementStdDevs) {
+        try {
+            // since the pose estimator is used by another thread, we need to lock it to be
+            // able to add a vision measurement
+            stateLock.writeLock().lock();
+            precisePoseEstimator.addVisionMeasurement(visionRobotPoseMeters, timestampSeconds,
+                    visionMeasurementStdDevs);
         } finally {
             stateLock.writeLock().unlock();
         }
@@ -717,17 +676,26 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
     @Override
     public void updatePoseEstimator() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updatePoseEstimator'");
+        // unused due to multi-threaded odometry
     }
 
     @Override
     public void resetPoseEstimator(Pose2d pose) {
-        poseEstimator.resetPosition(getRotation(), getModulePositions(),
-                new Pose2d(pose.getTranslation(), getRotation()));
-        if (RobotBase.isSimulation())
-            simOdometry.resetPosition(getRotation(), getModulePositions(),
+        try {
+            // since the pose estimator is used by another thread, we need to lock it to be
+            // able to reset it
+            stateLock.writeLock().lock();
+
+            poseEstimator.resetPosition(getRotation(), getModulePositions(),
                     new Pose2d(pose.getTranslation(), getRotation()));
+            precisePoseEstimator.resetPosition(getRotation(), getModulePositions(),
+                    new Pose2d(pose.getTranslation(), getRotation()));
+            if (RobotBase.isSimulation())
+                simOdometry.resetPosition(getRotation(), getModulePositions(),
+                        new Pose2d(pose.getTranslation(), getRotation()));
+        } finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -776,18 +744,13 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         backRight.setStateClosedLoop(states[3]);
     }
 
-    /**
-     * Drives the robot with the given chassis speeds.
-     *
-     * @param speeds The desired chassis speeds.
-     */
     public void drive(ChassisSpeeds speeds) {
         drive(speeds, this.driveMode);
     }
 
     @Override
     public void drive(ChassisSpeeds speeds, DriveMode driveMode) {
-        if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red
+        if (Utils.shouldFlipValueToRed()
                 && driveMode == DriveMode.FIELD_ORIENTED) {
             speeds.vxMetersPerSecond *= -1;
             speeds.vyMetersPerSecond *= -1;
@@ -806,18 +769,16 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 break;
         }
 
-        // compensates for swerve skew
+        // compensates for swerve skew when translating and rotating simultaneously
         adjustedChassisSpeeds = ChassisSpeeds.discretize(adjustedChassisSpeeds, 0.02);
         SwerveModuleState[] states = KINEMATICS.toSwerveModuleStates(adjustedChassisSpeeds);
         SwerveDriveKinematics.desaturateWheelSpeeds(states,
                 SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND);
 
-        states = new SwerveModuleState[] {
-                SwerveModuleState.optimize(states[0], frontLeft.getWheelAngle()),
-                SwerveModuleState.optimize(states[1], frontRight.getWheelAngle()),
-                SwerveModuleState.optimize(states[2], backLeft.getWheelAngle()),
-                SwerveModuleState.optimize(states[3], backRight.getWheelAngle()),
-        };
+        states[0].optimize(frontLeft.getWheelAngle());
+        states[1].optimize(frontRight.getWheelAngle());
+        states[2].optimize(backLeft.getWheelAngle());
+        states[3].optimize(backRight.getWheelAngle());
 
         commandedModuleStates = states;
         setStates(states);
@@ -825,14 +786,14 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
 
     @Override
     public void driveClosedLoop(ChassisSpeeds speeds, DriveMode driveMode) {
-        if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red
+        if (Utils.shouldFlipValueToRed()
                 && driveMode == DriveMode.FIELD_ORIENTED) {
             speeds.vxMetersPerSecond *= -1;
             speeds.vyMetersPerSecond *= -1;
         }
 
         commandedChassisSpeeds = speeds;
-        ChassisSpeeds adjustedChassisSpeeds = null;
+        adjustedChassisSpeeds = null;
         switch (driveMode) {
             case ROBOT_RELATIVE:
                 adjustedChassisSpeeds = speeds;
@@ -844,60 +805,75 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 break;
         }
 
+        adjustedChassisSpeeds = ChassisSpeeds.discretize(adjustedChassisSpeeds, 0.02);
         SwerveModuleState[] states = KINEMATICS.toSwerveModuleStates(adjustedChassisSpeeds);
         SwerveDriveKinematics.desaturateWheelSpeeds(states,
                 SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND);
 
-        states = new SwerveModuleState[] {
-                SwerveModuleState.optimize(states[0], frontLeft.getWheelAngle()),
-                SwerveModuleState.optimize(states[1], frontRight.getWheelAngle()),
-                SwerveModuleState.optimize(states[2], backLeft.getWheelAngle()),
-                SwerveModuleState.optimize(states[3], backRight.getWheelAngle()),
-        };
+        states[0].optimize(frontLeft.getWheelAngle());
+        states[1].optimize(frontRight.getWheelAngle());
+        states[2].optimize(backLeft.getWheelAngle());
+        states[3].optimize(backRight.getWheelAngle());
 
         commandedModuleStates = states;
         setStatesClosedLoop(states);
     }
 
+    public void driveClosedLoop(ChassisSpeeds speeds, DriveFeedforwards feedforwards) {
+        // TODO implement
+        driveClosedLoop(speeds, DriveMode.ROBOT_RELATIVE);
+    }
+
     @Override
     public Command teleopDriveCommand(DoubleSupplier xSpeedSupplier, DoubleSupplier ySpeedSupplier,
             DoubleSupplier thetaSpeedSupplier) {
-        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
-        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
-        SlewRateLimiter thetaSpeedLimiter = new SlewRateLimiter(Controls.Constants.Teleop.JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter thetaSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
 
         return run(() -> {
             double xSpeed = xSpeedSupplier.getAsDouble();
             double ySpeed = ySpeedSupplier.getAsDouble();
             double thetaSpeed = thetaSpeedSupplier.getAsDouble();
 
-            xSpeed = MathUtil.applyDeadband(xSpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
-            ySpeed = MathUtil.applyDeadband(ySpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
-            thetaSpeed = MathUtil.applyDeadband(thetaSpeed, Controls.Constants.Teleop.JOYSTICK_INPUT_DEADBAND);
+            xSpeed = MathUtil.applyDeadband(xSpeed, JOYSTICK_INPUT_DEADBAND);
+            ySpeed = MathUtil.applyDeadband(ySpeed, JOYSTICK_INPUT_DEADBAND);
+            thetaSpeed = MathUtil.applyDeadband(thetaSpeed, JOYSTICK_INPUT_DEADBAND);
 
-            xSpeed = Math.copySign(Math.pow(xSpeed, Controls.Constants.Teleop.JOYSTICK_CURVE_EXP), xSpeed);
-            ySpeed = Math.copySign(Math.pow(ySpeed, Controls.Constants.Teleop.JOYSTICK_CURVE_EXP), ySpeed);
-            thetaSpeed = Math.copySign(Math.pow(thetaSpeed, Controls.Constants.Teleop.JOYSTICK_ROT_CURVE_EXP),
-                    thetaSpeed);
+            xSpeed = Math.copySign(Math.pow(xSpeed, JOYSTICK_CURVE_EXP), xSpeed);
+            ySpeed = Math.copySign(Math.pow(ySpeed, JOYSTICK_CURVE_EXP), ySpeed);
+            thetaSpeed = Math.copySign(Math.pow(thetaSpeed, JOYSTICK_ROT_CURVE_EXP), thetaSpeed);
 
             xSpeed = xSpeedLimiter.calculate(xSpeed);
             ySpeed = ySpeedLimiter.calculate(ySpeed);
             thetaSpeed = thetaSpeedLimiter.calculate(thetaSpeed);
-
-            if (isControlledRotationEnabled) {
-                thetaSpeed = rotationController.calculate(getRotation().getRadians());
-            }
-
             // the speeds are initially values from -1.0 to 1.0, so we multiply by the max
             // physical velocity to output in m/s.
             xSpeed *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
             ySpeed *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
             thetaSpeed *= MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND * 0.5;
 
-            drive(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), driveMode);
+            if (isControlledRotationEnabled) {
+                thetaSpeed = rotationController.calculate(getRotation().getRadians());
+            }
+
+            drive(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), DriveMode.FIELD_ORIENTED);
         }).withName("drivetrain.teleopDrive");
     }
 
+    public Command spinFastCommand() {
+        return run(() -> {
+            drive(new ChassisSpeeds(0, 0, MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND), DriveMode.FIELD_ORIENTED);
+        }).withName("drivetrain.teleopDrive");
+    }
+
+    /**
+     * Command to enable rotation to a specific angle while driving (controller used
+     * in {@link #drive}).
+     * 
+     * @param angle the angle to rotate to
+     * @return the command
+     */
     @Override
     public Command controlledRotateCommand(DoubleSupplier angle) {
         return Commands.run(() -> {
@@ -905,7 +881,7 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 rotationController.reset(getRotation().getRadians());
             }
             isControlledRotationEnabled = true;
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utils.shouldFlipValueToRed())
                 rotationController.setGoal(angle.getAsDouble() + Math.PI);
             else
                 rotationController.setGoal(angle.getAsDouble());
@@ -913,19 +889,18 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     }
 
     /**
-     * Same as controlledRotateCommand but includes the run command to actually
-     * execute the rotation
-     *
-     * @param angle The desired angle to rotate to.
-     * @return The command to rotate the robot.
+     * Command to take over drivetrain control and rotate the chassis to a specific
+     * angle.
+     * 
+     * @param angle the angle to rotate to
+     * @return the command
      */
     public Command standaloneControlledRotateCommand(DoubleSupplier angle) {
         return runOnce(() -> {
             if (!isControlledRotationEnabled) {
                 rotationController.reset(getRotation().getRadians());
             }
-            // isControlledRotationEnabled = true;
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utils.shouldFlipValueToRed())
                 rotationController.setGoal(angle.getAsDouble() + Math.PI);
             else
                 rotationController.setGoal(angle.getAsDouble());
@@ -942,6 +917,13 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
                 () -> {
                     isControlledRotationEnabled = false;
                 }).withName("drivetrain.disableControlledRotate");
+    }
+
+    public Command enableControlledRotateCommand() {
+        return Commands.runOnce(
+                () -> {
+                    isControlledRotationEnabled = true;
+                }).withName("drivetrain.enableControlledRotate");
     }
 
     @Override
@@ -970,58 +952,34 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
     }
 
     @Override
-    public Command driveToPoseCommand(Supplier<Pose2d> poseSupplier) {
-        return runOnce(() -> {
-            driveController.reset(getPose().getTranslation().getDistance(poseSupplier.get().getTranslation()));
-            rotationController.reset(getPose().getRotation().getRadians());
-        }).andThen(run(() -> {
-            driveToPoseDistance = getPose().getTranslation().getDistance(poseSupplier.get().getTranslation());
-            double driveVelocityScalar = driveController.getSetpoint().velocity + driveController.calculate(
-                    driveToPoseDistance, 0.0);
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red) {
-                driveVelocityScalar *= -1;
-            }
-            if (driveController.atGoal())
-                driveVelocityScalar = 0.0;
-
-            Translation2d driveVelocity = new Pose2d(
-                    new Translation2d(),
-                    getPose().getTranslation().minus(poseSupplier.get().getTranslation()).getAngle())
-                    .transformBy(new Transform2d(driveVelocityScalar, 0, new Rotation2d()))
-                    .getTranslation();
-
-            drive(
-                    new ChassisSpeeds(
-                            driveVelocity.getX(),
-                            driveVelocity.getY(),
-                            rotationController.calculate(getPose().getRotation().getRadians(),
-                                    poseSupplier.get().getRotation().getRadians())),
-                    DriveMode.FIELD_ORIENTED);
-        })).withName("drivetrain.driveToPose");
-    }
-
-    @Override
     public Command followPathCommand(PathPlannerPath path) {
         return new FollowPathCommand(
                 path,
-                this::getPose,
+                this::getPrecisePose,
                 this::getChassisSpeeds,
-                (speeds, feedforwards) -> driveClosedLoop(speeds, DriveMode.ROBOT_RELATIVE),
+                this::driveClosedLoop,
                 new PPHolonomicDriveController(
                         new PIDConstants(PATH_FOLLOWING_TRANSLATION_kP, 0, 0),
                         new PIDConstants(PATH_FOLLOWING_ROTATION_kP, 0, 0)),
                 ROBOT_CONFIG,
-                () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
-                this).finallyDo(this::stop).withName("drivetrain.followPath");
+                () -> {
+                    var alliance = DriverStation.getAlliance();
+                    if (alliance.isPresent()) {
+                        return alliance.get() == DriverStation.Alliance.Red;
+                    }
+                    return false;
+                },
+                this).andThen(runOnce(this::stop)).withName("drivetrain.followPath");
     }
 
     @Override
     public Command driveDeltaCommand(Transform2d delta, PathConstraints constraints) {
         return new DeferredCommand(() -> followPathCommand(
                 new PathPlannerPath(
-                        PathPlannerPath.bezierFromPoses(
+                        PathPlannerPath.waypointsFromPoses(
                                 getPose(), getPose().plus(delta)),
-                        constraints, new IdealStartingState(0, delta.getRotation().plus(getRotation())),
+                        constraints,
+                        new IdealStartingState(0, getRotation()),
                         new GoalEndState(0, delta.getRotation().plus(getRotation())))),
                 Set.of()).withName("drivetrain.driveDelta");
     }
@@ -1066,87 +1024,847 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
         field.setRobotPose(getPose());
         if (RobotBase.isSimulation())
             field.getObject("simPose").setPose(simOdometry.getPoseMeters());
+        field.getObject("precisePose").setPose(precisePoseEstimator.getEstimatedPosition());
+        field.getObject("lockToLinePose")
+                .setPose(getCurrentBranchTargetPose());
 
-        // Draw a pose that is based on the robot pose, but shifted by the
-        // translation of the module relative to robot center,
-        // then rotated around its own center by the angle of the module.
-        // field.getObject("modules").setPoses(
-        // getPose().transformBy(
-        // new Transform2d(SWERVE_MODULE_LOCATIONS[0],
-        // getModulePositions()[0].angle)),
-        // getPose().transformBy(
-        // new Transform2d(SWERVE_MODULE_LOCATIONS[1],
-        // getModulePositions()[1].angle)),
-        // getPose().transformBy(
-        // new Transform2d(SWERVE_MODULE_LOCATIONS[2],
-        // getModulePositions()[2].angle)),
-        // getPose().transformBy(
-        // new Transform2d(SWERVE_MODULE_LOCATIONS[3],
-        // getModulePositions()[3].angle)));
+        // omitting old drawing of modules because some dashboards do not handle them
+        // well
     }
 
-    /**
-     * Creates a command to perform a quasistatic system identification on the drive
-     * motors.
-     *
-     * @param direction The direction to perform the identification in.
-     * @return The command to perform the identification.
-     */
     public Command sysIdDriveQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdDrive.quasistatic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
-    /**
-     * Creates a command to perform a dynamic system identification on the drive
-     * motors.
-     *
-     * @param direction The direction to perform the identification in.
-     * @return The command to perform the identification.
-     */
     public Command sysIdDriveDynamic(SysIdRoutine.Direction direction) {
         return sysIdDrive.dynamic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
-    /**
-     * Creates a command to perform a quasistatic system identification on the steer
-     * motors.
-     *
-     * @param direction The direction to perform the identification in.
-     * @return The command to perform the identification.
-     */
     public Command sysIdSteerQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdSteer.quasistatic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
-    /**
-     * Creates a command to perform a dynamic system identification on the steer
-     * motors.
-     *
-     * @param direction The direction to perform the identification in.
-     * @return The command to perform the identification.
-     */
     public Command sysIdSteerDynamic(SysIdRoutine.Direction direction) {
         return sysIdSteer.dynamic(direction).withName("drivetrain.sysIdDriveQuasistatic");
     }
 
-    /**
-     * Returns whether the drivetrain has been initialized.
-     *
-     * @return True if the drivetrain has been initialized, false otherwise.
-     */
+    public Command manualInitializeCommand() {
+        return Commands.runOnce(() -> this.initialized = true).ignoringDisable(true)
+                .withName("drivetrain.manualInitialize");
+    }
+
+    @Log
     public boolean getInitialized() {
         return initialized;
     }
 
+    @Log
+    public Pose2d getBluePrecisePose() {
+        return Utils.rotateBluePoseIfNecessary(getPrecisePose());
+    }
+
+    private Pose2d getTransformedBlueBranchTargetPoseByAlliance(ReefBranch branch) {
+        Pose2d chassisPose = branch.chassisPose.transformBy(scoringTransformsBlue.get(branch));
+
+        if (Utils.shouldFlipValueToRed()) {
+            chassisPose = branch.chassisPose.transformBy(scoringTransformsRed.get(branch));
+        }
+
+        return chassisPose;
+    }
+
+    private Pose2d getTransformedBlueTroughTargetPoseByAlliance(ReefBranch branch) {
+        Pose2d troughPose = branch.troughPose.transformBy(troughScoringTransformsBlue.get(branch));
+
+        if (Utils.shouldFlipValueToRed()) {
+            troughPose = branch.troughPose.transformBy(troughScoringTransformsRed.get(branch));
+        }
+
+        return troughPose;
+    }
+
+    // Updated 3/10
+    @Log(groups = "reefAlignment")
+    public ReefBranch getClosestBranch() {
+        return Collections.min(
+                List.of(ReefBranch.allBranches()),
+                Comparator.comparing((ReefBranch other) -> {
+                    Pose2d chassisPose = getTransformedBlueBranchTargetPoseByAlliance(other);
+                    return getBluePrecisePose()
+                            .getTranslation()
+                            .getDistance(chassisPose.getTranslation());
+                }));
+    }
+
+    public ReefBranch getClosestBranchAllSides() {
+        return Collections.min(
+                List.of(ReefBranch.allBranches()),
+                Comparator.comparing((ReefBranch other) -> {
+                    Pose2d chassisPose = getTransformedBlueBranchTargetPoseByAlliance(other);
+
+                    return Math.min(
+                            getPrecisePose()
+                                    .getTranslation()
+                                    .getDistance(chassisPose.getTranslation()),
+                            Reflector.rotatePoseAcrossField(getPrecisePose(), FieldConstants.fieldLength,
+                                    FieldConstants.fieldWidth)
+                                    .getTranslation()
+                                    .getDistance(chassisPose.getTranslation()));
+                }));
+    }
+
+    @Log(groups = "reefAlignment")
+    public ReefBranch getClosestTroughBranch() {
+        return Collections.min(
+                List.of(ReefBranch.troughBranches()),
+                Comparator.comparing((ReefBranch other) -> {
+                    Pose2d troughPose = getTransformedBlueTroughTargetPoseByAlliance(other);
+                    return getBluePrecisePose()
+                            .getTranslation()
+                            .getDistance(troughPose.getTranslation());
+                }));
+    }
+
+    @Log(groups = "bargeAlignment")
+    public Pose2d getClosestNetScorePose() {
+        return getPrecisePose().nearest(List.of(
+                Utils.getClosestPoseOnLine(getPrecisePose(), NET_SCORE_LINE),
+                Utils.getClosestPoseOnLine(
+                        getPrecisePose(),
+                        Reflector.rotatePoseAcrossField(NET_SCORE_LINE, FieldConstants.fieldLength,
+                                FieldConstants.fieldWidth))));
+    }
+
+    @Log(groups = "reefAlignment")
+    public Transform2d getScoringOffset() {
+        ReefBranch branch = getClosestBranch();
+        return getPrecisePose().minus(Utils.rotateBluePoseIfNecessary(branch.chassisPose));
+    }
+
+    @Log(groups = "reefAlignment")
+    public boolean isInL4ScoringPosition() {
+        return getCurrentBranchTargetPose().minus(getPrecisePose()).getTranslation().getNorm() < 0.04;
+    }
+
+    @Log(groups = "reefAlignment")
+    public boolean isInAlgaeReefPickupPosition() {
+        return getCurrentReefAlgaeTargetPose().minus(getPrecisePose()).getTranslation().getNorm() < 0.04;
+    }
+
+    @Log(groups = "bargeAlignment")
+    public boolean isInNetScorePosition() {
+        return getClosestNetScorePose().minus(getPrecisePose()).getTranslation().getNorm() < 0.04;
+    }
+
+    public boolean isCloseToNetScorePosition() {
+        return getClosestNetScorePose().minus(getPrecisePose()).getTranslation().getNorm() < 1.0;
+    }
+
+    // @Log(groups = "reefAlignment")
+    public boolean isInL2L3ScoringPosition() {
+        return getCurrentBranchTargetPose().transformBy(L2_L3_SCORING_TRANSFORM).minus(getPrecisePose())
+                .getTranslation().getNorm() < 0.04;
+    }
+
+    // @Log(groups = "reefAlignment")
+    public boolean isInTroughPosition() {
+        return getCurrentTroughTargetPose().minus(getPrecisePose()).getTranslation().getNorm() < 0.04;
+    }
+
+    public boolean isInGoalPosition(Pose2d goalPosition) {
+        return goalPosition.minus(getPrecisePose()).getTranslation().getNorm() < 0.04;
+    }
+
+    @Log(groups = "reefAlignment")
+    public Pose2d getCurrentBranchTargetPose() {
+        ReefBranch branch = ReefBranch.getBranch(targettedReefSide, targettedBranchSide);
+        Pose2d chassisPose = getTransformedBlueBranchTargetPoseByAlliance(branch);
+        return Utils.rotateBluePoseIfNecessary(chassisPose);
+    }
+
+    public Pose2d getCurrentReefAlgaeTargetPose() {
+        return Utils.rotateBluePoseIfNecessary(targettedReefSide.algaeDescorePose);
+    }
+
+    // @Log(groups = "reefAlignment")
+    public Pose2d getCurrentTroughTargetPose() {
+        Pose2d troughPose = getTransformedBlueTroughTargetPoseByAlliance(getClosestTroughBranch());
+        return Utils.rotateBluePoseIfNecessary(troughPose);
+    }
+
+    // @Log(groups = "reefAlignment")
+    public double getCurrentBranchDistance() {
+        return getCurrentBranchTargetPose().minus(getPrecisePose()).getTranslation().getNorm();
+    }
+
+    // @Log(groups = "reefAlignment")
+    public Pose2d getIntermediateReefAlignmentPose() {
+        ReefBranch branch = ReefBranch.getBranch(targettedReefSide, targettedBranchSide);
+        Pose2d reefPose = getTransformedBlueBranchTargetPoseByAlliance(branch);
+        Pose2d linePose = Utils.getClosestPoseOnLine(getBluePrecisePose(), reefPose);
+
+        Pose2d trackedPose;
+        if (getBluePrecisePose().getTranslation().getDistance(linePose.getTranslation()) < 0.5) {
+            trackedPose = reefPose;
+        } else {
+            trackedPose = linePose;
+        }
+        return Utils.rotateBluePoseIfNecessary(trackedPose);
+    }
+
+    public Pose2d getIntermediateL2L3ReefAlignmentPose() {
+        ReefBranch branch = ReefBranch.getBranch(targettedReefSide, targettedBranchSide);
+        Pose2d reefPose = getTransformedBlueBranchTargetPoseByAlliance(branch);
+        Pose2d linePose = Utils.getClosestPoseOnLine(getBluePrecisePose(), reefPose);
+
+        Pose2d trackedPose;
+        if (getBluePrecisePose().getTranslation().getDistance(linePose.getTranslation()) < 0.3) {
+            trackedPose = reefPose.transformBy(L2_L3_SCORING_TRANSFORM);
+        } else {
+            trackedPose = linePose;
+        }
+        return Utils.rotateBluePoseIfNecessary(trackedPose);
+    }
+
+    // @Log
+    public Pose2d getIntermediateAlgaeReefAlignmentPose() {
+        Pose2d reefPose = getPrecisePose().nearest(List.of(targettedReefSide.algaeDescorePose,
+                Reflector.rotatePoseAcrossField(targettedReefSide.algaeDescorePose, FieldConstants.fieldLength,
+                        FieldConstants.fieldWidth)));
+
+        Pose2d linePose = Utils.getClosestPoseOnLine(getPrecisePose(), reefPose);
+
+        Pose2d trackedPose;
+        if (getPrecisePose().getTranslation().getDistance(linePose.getTranslation()) < 0.3) {
+            trackedPose = reefPose;
+        } else {
+            trackedPose = linePose;
+        }
+        return trackedPose;
+    }
+
+    @Override
+    public Command driveToPoseCommand(Supplier<Pose2d> poseSupplier) {
+        return runOnce(() -> {
+            Translation2d currentPosition = getPrecisePose().getTranslation();
+            Translation2d targetPosition = poseSupplier.get().getTranslation();
+
+            Translation2d toTarget = targetPosition.minus(currentPosition);
+            Rotation2d directionToTarget = toTarget.getAngle();
+
+            ChassisSpeeds currentSpeeds = getFieldRelativeSpeeds();
+            Translation2d currentVelocity = new Translation2d(currentSpeeds.vxMetersPerSecond,
+                    currentSpeeds.vyMetersPerSecond);
+
+            double velocityTarget = -currentVelocity.getNorm() * Math.cos(
+                    currentVelocity.getAngle().minus(directionToTarget).getRadians());
+
+            driveController.reset(toTarget.getNorm(), velocityTarget < 0 ? velocityTarget : 0);
+            rotationController.reset(getPrecisePose().getRotation().getRadians());
+        }).andThen(run(() -> {
+            driveController.reset(getPrecisePose().getTranslation().getDistance(poseSupplier.get().getTranslation()),
+                    driveController.getSetpoint().velocity);
+            // using one controller (distance from pose) compared to two (x and y distance)
+            // so that we move in a straight line and not a curve
+            driveToPoseDistance = getPrecisePose().getTranslation().getDistance(poseSupplier.get().getTranslation());
+
+            // prevents fast swapping of feedforward back and forth around setpoint
+            double ffScaler = MathUtil.clamp(
+                    (driveToPoseDistance - XY_FF_MIN_RANGE) / (XY_FF_MAX_RANGE - XY_FF_MIN_RANGE),
+                    0.0,
+                    1.0);
+
+            driveToPoseScalar = driveController.getSetpoint().velocity * ffScaler + driveController.calculate(
+                    driveToPoseDistance, 0.0);
+            if (Utils.shouldFlipValueToRed()) {
+                driveToPoseScalar *= -1;
+            }
+            if (driveController.atGoal())
+                driveToPoseScalar = 0.0;
+
+            double thetaVelocity = rotationController.getSetpoint().velocity * ffScaler
+                    + rotationController.calculate(getPrecisePose().getRotation().getRadians(),
+                            poseSupplier.get().getRotation().getRadians());
+
+            Translation2d driveVelocity = new Pose2d(
+                    new Translation2d(),
+                    getPrecisePose().getTranslation().minus(poseSupplier.get().getTranslation()).getAngle())
+                    .transformBy(new Transform2d(driveToPoseScalar, 0, Rotation2d.kZero))
+                    .getTranslation();
+
+            driveClosedLoop(
+                    new ChassisSpeeds(
+                            driveVelocity.getX(),
+                            driveVelocity.getY(),
+                            thetaVelocity),
+                    DriveMode.FIELD_ORIENTED);
+        })).withName("drivetrain.driveToPose");
+    }
+
+    public Command driveToPoseCommand(Supplier<Pose2d> poseSupplier,
+            Supplier<TrapezoidProfile.Constraints> constraintsSupplier) {
+        return Commands.runOnce(() -> driveController.setConstraints(constraintsSupplier.get()))
+                .andThen(driveToPoseCommand(poseSupplier));
+    }
+
+    public Command driveToPoseAdaptiveCommand(Supplier<Pose2d> poseSupplier, DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier, DoubleSupplier thetaJoystickSupplier) {
+        return runOnce(() -> {
+            Translation2d currentPosition = getPrecisePose().getTranslation();
+            Translation2d targetPosition = poseSupplier.get().getTranslation();
+
+            Translation2d toTarget = targetPosition.minus(currentPosition);
+            Rotation2d directionToTarget = toTarget.getAngle();
+
+            ChassisSpeeds currentSpeeds = getFieldRelativeSpeeds();
+            Translation2d currentVelocity = new Translation2d(currentSpeeds.vxMetersPerSecond,
+                    currentSpeeds.vyMetersPerSecond);
+
+            double velocityTarget = -currentVelocity.getNorm() * Math.cos(
+                    currentVelocity.getAngle().minus(directionToTarget).getRadians());
+
+            driveController.reset(toTarget.getNorm(), velocityTarget < 0 ? velocityTarget : 0);
+            rotationController.reset(getPrecisePose().getRotation().getRadians());
+        }).andThen(run(() -> {
+            driveController.reset(getPrecisePose().getTranslation().getDistance(poseSupplier.get().getTranslation()),
+                    driveController.getSetpoint().velocity);
+            // using one controller (distance from pose) compared to two (x and y distance)
+            // so that we move in a straight line and not a curve
+            driveToPoseDistance = getPrecisePose().getTranslation().getDistance(poseSupplier.get().getTranslation());
+
+            // prevents fast swapping of feedforward back and forth around setpoint
+            double ffScaler = MathUtil.clamp(
+                    (driveToPoseDistance - XY_FF_MIN_RANGE) / (XY_FF_MAX_RANGE - XY_FF_MIN_RANGE),
+                    0.0,
+                    1.0);
+
+            driveToPoseScalar = driveController.getSetpoint().velocity * ffScaler + driveController.calculate(
+                    driveToPoseDistance, 0.0);
+            if (Utils.shouldFlipValueToRed()) {
+                driveToPoseScalar *= -1;
+            }
+            if (driveController.atGoal())
+                driveToPoseScalar = 0.0;
+
+            double thetaVelocity = rotationController.getSetpoint().velocity * ffScaler
+                    + rotationController.calculate(getPrecisePose().getRotation().getRadians(),
+                            poseSupplier.get().getRotation().getRadians());
+
+            Translation2d driveVelocity = new Pose2d(
+                    new Translation2d(),
+                    getPrecisePose().getTranslation().minus(poseSupplier.get().getTranslation()).getAngle())
+                    .transformBy(new Transform2d(driveToPoseScalar, 0, Rotation2d.kZero))
+                    .getTranslation();
+
+            Translation2d linearFF = new Translation2d(xJoystickSupplier.getAsDouble(),
+                    yJoystickSupplier.getAsDouble());
+            final double linearS = linearFF.getNorm() * AUTO_DRIVE_ADAPTIVE_SCALE_FACTOR;
+            final double thetaS = Math.abs(thetaJoystickSupplier.getAsDouble()); // [0-1]
+            driveVelocity = driveVelocity
+                    .interpolate(linearFF.times(1.5), linearS);
+            thetaVelocity = MathUtil.interpolate(
+                    thetaVelocity, thetaJoystickSupplier.getAsDouble() * MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND,
+                    thetaS);
+
+            driveClosedLoop(
+                    new ChassisSpeeds(
+                            driveVelocity.getX(),
+                            driveVelocity.getY(),
+                            thetaVelocity),
+                    DriveMode.FIELD_ORIENTED);
+        })).withName("drivetrain.driveToPoseAdaptive");
+    }
+
+    public Command lockToLineCommand(Supplier<Pose2d> poseSupplier, Supplier<Rotation2d> rotationTransformSupplier,
+            DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier) {
+        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+
+        return runOnce(() -> {
+            Translation2d currentPos = getPrecisePose().getTranslation();
+            Pose2d closestPoseOnLine = Utils.getClosestPoseOnLine(getPrecisePose(), poseSupplier.get());
+            Translation2d closestPos = closestPoseOnLine.getTranslation();
+
+            Rotation2d lineDirection = poseSupplier.get().getRotation();
+
+            Translation2d toLine = closestPos.minus(currentPos);
+
+            Translation2d perpToLine = new Translation2d(-lineDirection.getSin(), lineDirection.getCos());
+
+            double signedPerpendicularDistance = toLine.getX() * perpToLine.getX() + toLine.getY() * perpToLine.getY();
+
+            Translation2d fieldRelativeVelocity = new Translation2d(
+                    getFieldRelativeSpeeds().vxMetersPerSecond,
+                    getFieldRelativeSpeeds().vyMetersPerSecond);
+
+            double signedPerpendicularVelocity = fieldRelativeVelocity.getX() * perpToLine.getX() +
+                    fieldRelativeVelocity.getY() * perpToLine.getY();
+
+            driveController.reset(-signedPerpendicularDistance,
+                    signedPerpendicularDistance < 0 ? signedPerpendicularVelocity : 0);
+            rotationController.reset(getPrecisePose().getRotation().getRadians());
+        }).andThen(run(() -> {
+            Pose2d pose = poseSupplier.get();
+            double cosTheta = pose.getRotation().getCos();
+            double sinTheta = pose.getRotation().getSin();
+
+            // formula for distance between point and line given Ax + By + C = 0
+            driveToPoseDistance = Utils.getLineDistance(getPrecisePose(), pose);
+
+            double ySpeedRelStage = driveController.calculate(driveToPoseDistance, 0.0)
+                    + driveController.getSetpoint().velocity;
+
+            double xJoystick = xJoystickSupplier.getAsDouble();
+            xJoystick = MathUtil.applyDeadband(xJoystick, JOYSTICK_INPUT_DEADBAND);
+            xJoystick = Math.copySign(Math.pow(xJoystick, JOYSTICK_CURVE_EXP), xJoystick);
+            xJoystick = xSpeedLimiter.calculate(xJoystick);
+            xJoystick *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
+            if (DriverStation.getAlliance().isPresent() &&
+                    DriverStation.getAlliance().get() == Alliance.Red) {
+                xJoystick *= -1;
+            }
+
+            double yJoystick = yJoystickSupplier.getAsDouble();
+            yJoystick = MathUtil.applyDeadband(yJoystick, JOYSTICK_INPUT_DEADBAND);
+            yJoystick = Math.copySign(Math.pow(yJoystick, JOYSTICK_CURVE_EXP), yJoystick);
+            yJoystick = ySpeedLimiter.calculate(yJoystick);
+            yJoystick *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
+            if (DriverStation.getAlliance().isPresent() &&
+                    DriverStation.getAlliance().get() == Alliance.Red) {
+                yJoystick *= -1;
+            }
+
+            // transforms the vector created by the joystick input to the line created by
+            // extending the ray from the trap to the edge of the field
+            double lineDirX = Math.cos(pose.getRotation().getRadians());
+            double lineDirY = Math.sin(pose.getRotation().getRadians());
+
+            double xJoystickSpeedRelStage = xJoystick * lineDirX + yJoystick * lineDirY;
+
+            double xSpeed = xJoystickSpeedRelStage * cosTheta - ySpeedRelStage * sinTheta;
+            double ySpeed = xJoystickSpeedRelStage * sinTheta + ySpeedRelStage * cosTheta;
+
+            if (Utils.shouldFlipValueToRed()) {
+                xSpeed *= -1;
+                ySpeed *= -1;
+            }
+
+            double thetaSpeed = rotationController.calculate(getRotation().getRadians(),
+                    pose.getRotation().plus(rotationTransformSupplier.get()).getRadians());
+
+            driveClosedLoop(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), DriveMode.FIELD_ORIENTED);
+        })).withName("drivetrain.lockToLine");
+    }
+
+    public Command lockToLineAdaptiveCommand(Supplier<Pose2d> poseSupplier,
+            Supplier<Rotation2d> rotationTransformSupplier,
+            DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier,
+            DoubleSupplier thetaJoystickSupplier) {
+
+        SlewRateLimiter xSpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+        SlewRateLimiter ySpeedLimiter = new SlewRateLimiter(JOYSTICK_INPUT_RATE_LIMIT);
+
+        return runOnce(() -> {
+            Translation2d currentPos = getPrecisePose().getTranslation();
+            Pose2d closestPoseOnLine = Utils.getClosestPoseOnLine(getPrecisePose(), poseSupplier.get());
+            Translation2d closestPos = closestPoseOnLine.getTranslation();
+
+            Rotation2d lineDirection = poseSupplier.get().getRotation();
+
+            Translation2d toLine = closestPos.minus(currentPos);
+
+            Translation2d perpToLine = new Translation2d(-lineDirection.getSin(), lineDirection.getCos());
+
+            double signedPerpendicularDistance = toLine.getX() * perpToLine.getX() + toLine.getY() * perpToLine.getY();
+
+            Translation2d fieldRelativeVelocity = new Translation2d(
+                    getFieldRelativeSpeeds().vxMetersPerSecond,
+                    getFieldRelativeSpeeds().vyMetersPerSecond);
+
+            double signedPerpendicularVelocity = fieldRelativeVelocity.getX() * perpToLine.getX() +
+                    fieldRelativeVelocity.getY() * perpToLine.getY();
+
+            driveController.reset(-signedPerpendicularDistance,
+                    signedPerpendicularVelocity > 0 ? signedPerpendicularVelocity : 0);
+            rotationController.reset(getPrecisePose().getRotation().getRadians());
+        }).andThen(run(() -> {
+            Pose2d pose = poseSupplier.get();
+            Rotation2d rotation = pose.getRotation();
+            double cosTheta = rotation.getCos();
+            double sinTheta = rotation.getSin();
+
+            driveToPoseDistance = Utils.getLineDistance(getPrecisePose(), pose);
+
+            // Process joystick input
+            double xJoystick = xJoystickSupplier.getAsDouble();
+            xJoystick = MathUtil.applyDeadband(xJoystick, JOYSTICK_INPUT_DEADBAND);
+            xJoystick = Math.copySign(Math.pow(xJoystick, JOYSTICK_CURVE_EXP), xJoystick);
+            xJoystick = xSpeedLimiter.calculate(xJoystick);
+            xJoystick *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
+
+            double yJoystick = yJoystickSupplier.getAsDouble();
+            yJoystick = MathUtil.applyDeadband(yJoystick, JOYSTICK_INPUT_DEADBAND);
+            yJoystick = Math.copySign(Math.pow(yJoystick, JOYSTICK_CURVE_EXP), yJoystick);
+            yJoystick = ySpeedLimiter.calculate(yJoystick);
+            yJoystick *= SWERVE_CONSTANTS.MAX_DRIVING_VELOCITY_METERS_PER_SECOND;
+
+            if (DriverStation.getAlliance().isPresent() &&
+                    DriverStation.getAlliance().get() == Alliance.Red) {
+                xJoystick *= -1;
+                yJoystick *= -1;
+            }
+
+            // Joystick influence in direction perpendicular to the line
+            // Perpendicular to (cosTheta, sinTheta) is (-sinTheta, cosTheta)
+            double joystickPerpendicularInfluence = xJoystick * -sinTheta + yJoystick * cosTheta;
+            double yJoystickControlledAxisOffset = joystickPerpendicularInfluence * 0.2;
+
+            // PID controller + small driver override
+            double ySpeedRelStage = driveController.calculate(driveToPoseDistance, 0.0)
+                    + driveController.getSetpoint().velocity
+                    + yJoystickControlledAxisOffset;
+
+            // Joystick input projected onto direction of the line (tangent)
+            double joystickAlongLine = xJoystick * cosTheta + yJoystick * sinTheta;
+
+            // Transform stage-relative speeds into field-relative
+            double xSpeed = joystickAlongLine * cosTheta - ySpeedRelStage * sinTheta;
+            double ySpeed = joystickAlongLine * sinTheta + ySpeedRelStage * cosTheta;
+
+            if (Utils.shouldFlipValueToRed()) {
+                xSpeed *= -1;
+                ySpeed *= -1;
+            }
+
+            double thetaSpeed = rotationController.calculate(
+                    getRotation().getRadians(),
+                    rotation.plus(rotationTransformSupplier.get()).getRadians());
+
+            driveClosedLoop(new ChassisSpeeds(xSpeed, ySpeed, thetaSpeed), DriveMode.FIELD_ORIENTED);
+        })).withName("drivetrain.lockToLine");
+    }
+
     /**
-     * Creates a command to set the initialized state of the drivetrain.
-     *
-     * @param initialized The desired initialized state.
-     * @return The command to set the initialized state.
+     * Creates a command that controls the chassis rotation to keep it pointed a
+     * specific target location.
+     * 
+     * @param targetPose a supplier for the target pose to point the chassis at
+     * @return the command
      */
-    public Command setInitializedCommand(boolean initialized) {
+    public Command targetPoseCommand(Supplier<Pose3d> targetPose) {
+        return controlledRotateCommand(() -> {
+            Pose2d target = targetPose.get().toPose2d();
+            Transform2d diff = getPose().minus(target);
+            Rotation2d rot = new Rotation2d(diff.getX(), diff.getY());
+            rot = rot.plus(Rotation2d.kPi);
+            return rot.getRadians();
+        }).withName("drivetrain.targetPose");
+    }
+
+    public Command lockToClosestBranchLineCommand(DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier) {
         return Commands.runOnce(() -> {
-            this.initialized = initialized;
-        }).withName("drivetrain.setInitialized");
+            ReefBranch branch = getClosestBranch();
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (positionTracker.getPosition("elevator") > 1.2) {
+                driveController.setConstraints(XY_TALL_CONSTRAINTS);
+            } else {
+                driveController.setConstraints(XY_CONSTRAINTS);
+            }
+        }).andThen(lockToLineCommand(() -> {
+            return getCurrentBranchTargetPose();
+        }, () -> getCurrentBranchTargetPose().getRotation(),
+                xJoystickSupplier, yJoystickSupplier)).withName("drivetrain.lockToReef");
+    }
+
+    public Command lockToClosestBranchLineAdaptiveCommand(DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier, DoubleSupplier thetaJoystickSupplier) {
+        return Commands.run(() -> {
+            ReefBranch branch = getClosestBranch();
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (positionTracker.getPosition("elevator") > 1.2) {
+                driveController.setConstraints(XY_TALL_CONSTRAINTS);
+            } else {
+                driveController.setConstraints(XY_CONSTRAINTS);
+            }
+        }).alongWith(lockToLineAdaptiveCommand(() -> {
+            return getCurrentBranchTargetPose();
+        }, () -> getCurrentBranchTargetPose().getRotation(),
+                xJoystickSupplier, yJoystickSupplier, thetaJoystickSupplier))
+                .withName("drivetrain.lockToReefControlled");
+    }
+
+    public Command lockToClosestBranchAdaptiveCommand(DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier, DoubleSupplier thetaJoystickSupplier, Supplier<ReefLevel> reefLevel) {
+        return Commands.run(() -> {
+            ReefBranch branch = getClosestBranch();
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (reefLevel.get() == ReefLevel.L4) {
+                driveController.setConstraints(XY_TALL_CONSTRAINTS);
+            } else {
+                driveController.setConstraints(XY_CONSTRAINTS);
+            }
+        }).alongWith(driveToPoseAdaptiveCommand(() -> {
+            ReefLevel level = reefLevel.get();
+            if (level == ReefLevel.L1) {
+                return getCurrentTroughTargetPose();
+            }
+            if (level == ReefLevel.L2 || level == ReefLevel.L3) {
+                return getIntermediateL2L3ReefAlignmentPose();
+            }
+            return getIntermediateReefAlignmentPose();
+        }, xJoystickSupplier, yJoystickSupplier, thetaJoystickSupplier)).withName("drivetrain.lockToReefPose");
+    }
+
+    public Command lockToClosestReefAlgaeAdaptiveCommand(DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier, DoubleSupplier thetaJoystickSupplier, Trigger hasAlgae) {
+        return Commands.run(() -> {
+            ReefBranch branch = getClosestBranchAllSides();
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (positionTracker.getPosition("elevator") > 1.2) {
+                driveController.setConstraints(XY_TALL_CONSTRAINTS);
+            } else {
+                driveController.setConstraints(XY_CONSTRAINTS);
+            }
+        }).alongWith(driveToPoseAdaptiveCommand(() -> {
+            if (hasAlgae.getAsBoolean()) {
+                return getIntermediateAlgaeReefAlignmentPose().plus(new Transform2d(-0.6, 0, Rotation2d.kZero));
+            } else {
+
+                return getIntermediateAlgaeReefAlignmentPose();
+            }
+        },
+                xJoystickSupplier, yJoystickSupplier, thetaJoystickSupplier)).withName("drivetrain.lockToReefPose");
+    }
+
+    public Command lockToClosestReefAlgaeAutoCommand(ReefSide side, Trigger hasAlgae) {
+        BooleanContainer hasReachedIntermediate = new BooleanContainer(false);
+
+        return Commands.run(() -> {
+            this.targettedReefSide = side;
+
+            if (positionTracker.getPosition("elevator") > 1.2) {
+                driveController.setConstraints(XY_TALL_CONSTRAINTS);
+            } else {
+                driveController.setConstraints(XY_CONSTRAINTS);
+            }
+        }).alongWith(driveToPoseCommand(() -> {
+            if (hasAlgae.getAsBoolean()) {
+                return getIntermediateAlgaeReefAlignmentPose().plus(new Transform2d(-0.6, 0, Rotation2d.kZero));
+            } else {
+                if (side == ReefSide.THREE) {
+                    Pose2d reefPose = targettedReefSide.algaeDescorePose;
+                    Pose2d intermediatePose = new Pose2d(6.092, 2.467, Rotation2d.fromDegrees(120));
+
+                    Pose2d trackedPose;
+                    if (hasReachedIntermediate.value || getBluePrecisePose().getTranslation()
+                            .getDistance(intermediatePose.getTranslation()) < 0.3) {
+                        hasReachedIntermediate.value = true;
+                        trackedPose = reefPose;
+                    } else {
+                        trackedPose = intermediatePose;
+                    }
+                    return Utils.rotateBluePoseIfNecessary(trackedPose);
+                }
+                return getIntermediateAlgaeReefAlignmentPose();
+            }
+        })).finallyDo(() -> hasReachedIntermediate.value = false).withName("drivetrain.lockToReefPose");
+    }
+
+    public Command lockToClosestNetScorePositionCommand(DoubleSupplier xJoystickSupplier,
+            DoubleSupplier yJoystickSupplier, DoubleSupplier thetaJoystickSupplier) {
+        return Commands.run(() -> {
+            driveController.setConstraints(XY_TALL_CONSTRAINTS);
+        }).alongWith(lockToLineAdaptiveCommand(
+                () -> getClosestNetScorePose(),
+                () -> NET_SCORE_ROTATION_TRANSFORM,
+                xJoystickSupplier, yJoystickSupplier, thetaJoystickSupplier))
+                .withName("drivetrain.lockToClosestNetScorePosition");
+    }
+
+    public Command lockToNetScoreAutoCommand(Transform2d transform) {
+        return Commands.run(() -> {
+            driveController.setConstraints(XY_TALL_CONSTRAINTS);
+        }).alongWith(driveToPoseCommand(() -> Utils.rotateBluePoseIfNecessary(NET_SCORE_AUTO.plus(transform))))
+                .withName("drivetrain.lockToClosestNetScorePosition");
+    }
+
+    public Command lockToNetScoreAutoThirdCommand() {
+        BooleanContainer hasReachedIntermediate = new BooleanContainer(false);
+
+        return Commands.run(() -> {
+            driveController.setConstraints(XY_TALL_CONSTRAINTS);
+        }).alongWith(driveToPoseCommand(
+                () -> {
+                    Pose2d intermediatePose = new Pose2d(6.962, 2.957, Rotation2d.fromDegrees(120));
+
+                    Pose2d trackedPose;
+                    if (hasReachedIntermediate.value || getBluePrecisePose().getTranslation()
+                            .getDistance(intermediatePose.getTranslation()) < 0.3) {
+                        hasReachedIntermediate.value = true;
+                        trackedPose = Utils.rotateBluePoseIfNecessary(NET_SCORE_AUTO);
+                    } else {
+                        trackedPose = intermediatePose;
+                    }
+                    return trackedPose;
+                })).finallyDo(() -> hasReachedIntermediate.value = false)
+                .withName("drivetrain.lockToClosestNetScorePosition");
+    }
+
+    public Command lockToClosestBranchAutoCommand(ReefBranch branch) {
+        return Commands.runOnce(() -> {
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (!driveController.getConstraints().equals(AUTO_STANDARD_CONSTRAINTS)) {
+                driveController.setConstraints(AUTO_STANDARD_CONSTRAINTS);
+            }
+        }).andThen(driveToPoseCommand(() -> {
+            return getCurrentBranchTargetPose();
+        })).withName("drivetrain.lockToReefPoseAuto");
+    }
+
+    public Command lockToClosestBranchAutoPauseCommand(ReefBranch branch, BooleanSupplier readyToScore) {
+        return Commands.runOnce(() -> {
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (!driveController.getConstraints().equals(AUTO_STANDARD_CONSTRAINTS)) {
+                driveController.setConstraints(AUTO_STANDARD_CONSTRAINTS);
+            }
+        }).andThen(driveToPoseCommand(() -> {
+            return readyToScore.getAsBoolean()
+                    ? getCurrentBranchTargetPose()
+                    : getCurrentBranchTargetPose().plus(new Transform2d(-0.8, 0, Rotation2d.kZero));
+        }).until(() -> isInL4ScoringPosition())).withName("drivetrain.lockToReefPoseAuto");
+    }
+
+    public Command lockToClosestBranchAutoPauseTallCommand(ReefBranch branch, BooleanSupplier readyToScore) {
+        return Commands.runOnce(() -> {
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+            if (!driveController.getConstraints().equals(AUTO_TALL_CONSTRAINTS)) {
+                driveController.setConstraints(AUTO_TALL_CONSTRAINTS);
+            }
+        }).andThen(driveToPoseCommand(() -> {
+            return readyToScore.getAsBoolean()
+                    ? getCurrentBranchTargetPose()
+                    : getCurrentBranchTargetPose().plus(new Transform2d(-0.8, 0, Rotation2d.kZero));
+        }).until(() -> isInL4ScoringPosition())).withName("drivetrain.lockToReefPoseAuto");
+    }
+
+    public Command lockToClosestBranchAutoPauseFastCommand(ReefBranch branch, BooleanSupplier readyToScore) {
+        return Commands.runOnce(() -> {
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+
+        }).andThen(
+                driveToPoseCommand(() -> {
+                    return readyToScore.getAsBoolean()
+                            ? getCurrentBranchTargetPose()
+                            : getCurrentBranchTargetPose().plus(new Transform2d(-0.8, 0, Rotation2d.kZero));
+
+                }).until(() -> isInL4ScoringPosition()).deadlineFor(
+                        Commands.run(() -> {
+                            driveController.setConstraints(
+                                    positionTracker.getPosition("elevator") > 0.75
+                                            ? AUTO_TALL_CONSTRAINTS
+                                            : AUTO_FAST_CONSTRAINTS);
+
+                        })))
+                .finallyDo(() -> rotationController.setConstraints(THETA_CONSTRAINTS))
+                .withName("drivetrain.lockToReefPoseAuto");
+    }
+
+    public Command lockToClosestBranchAutoPause4thCommand(ReefBranch branch, BooleanSupplier readyToScore) {
+        return Commands.runOnce(() -> {
+            this.targettedBranchSide = branch.branchSide;
+            this.targettedReefSide = branch.reefSide;
+            rotationController.setConstraints(THETA_SLOW_CONSTRAINTS);
+        }).andThen(
+                driveToPoseCommand(() -> {
+                    Transform2d adjust = switch (branch) {
+                        case A -> new Transform2d(-0.8, 0.2, Rotation2d.kZero);
+                        case B -> new Transform2d(-0.8, -0.2, Rotation2d.kZero);
+                        case E -> new Transform2d(-0.8, 0.2, Rotation2d.kZero);
+                        case J -> new Transform2d(-0.8, -0.2, Rotation2d.kZero);
+                        default -> new Transform2d(-0.8, 0, Rotation2d.kZero);
+                    };
+
+                    return readyToScore.getAsBoolean()
+                            ? getCurrentBranchTargetPose()
+                            : getCurrentBranchTargetPose().plus(adjust);
+                }).until(() -> isInL4ScoringPosition()).deadlineFor(
+                        Commands.run(() -> {
+                            driveController.setConstraints(
+                                    positionTracker.getPosition("elevator") > 0.75
+                                            ? AUTO_STANDARD_CONSTRAINTS
+                                            : AUTO_FAST_CONSTRAINTS);
+
+                        })))
+                .finallyDo(() -> rotationController.setConstraints(THETA_CONSTRAINTS))
+                .withName("drivetrain.lockToReefPoseAuto");
+    }
+
+    public Command setLockedNodeCommand(BranchSide branchSide) {
+        return Commands.runOnce(() -> {
+            // option 1
+            // if (this.targettedReefSide == ReefSide.THREE | this.targettedReefSide ==
+            // ReefSide.FOUR
+            // | this.targettedReefSide == ReefSide.FIVE) {
+            // // swap target for back side of reef
+            // this.targettedBranchSide = branchSide == BranchSide.RIGHT ? BranchSide.LEFT :
+            // BranchSide.RIGHT;
+            // } else {
+            // this.targettedBranchSide = branchSide;
+
+            // }
+
+            // option 2
+            this.targettedBranchSide = branchSide;
+        }).withName("drivetrain.setLockedNode");
+    }
+
+    public void updateAlgaeDetector() {
+        PhotonPipelineResult result = algaeCamera.getLatestResult();
+        hasAlgaeTarget = result.hasTargets();
+        if (hasAlgaeTarget) {
+            var bestTarget = result.getBestTarget();
+
+            targetYaw = bestTarget.getYaw();
+            targetPitch = bestTarget.getPitch();
+            targetArea = bestTarget.getArea();
+            targetAreaLog = Math.log(bestTarget.getArea());
+        }
+    }
+
+    public Command lockToClosestGroundAlgaeCommand() {
+        return run(() -> {
+            updateAlgaeDetector();
+            if (hasAlgaeTarget) {
+                algaeDriveController.reset(targetAreaLog, algaeDriveController.getSetpoint().velocity);
+                driveVelocity = algaeDriveController.calculate(targetAreaLog,
+                        Math.log(ALGAE_AREA_TARGET)) + algaeDriveController.getSetpoint().velocity;
+
+                // System.out.println(driveVelocity);
+
+                double thetaVelocity = algaeRotationController.calculate(targetYaw, 0)
+                        + algaeRotationController.getSetpoint().velocity;
+                drive(new ChassisSpeeds(driveVelocity, 0, thetaVelocity), DriveMode.ROBOT_RELATIVE);
+            } else {
+                drive(new ChassisSpeeds());
+            }
+        }).andThen(this::stop);
     }
 }

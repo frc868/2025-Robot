@@ -2,373 +2,381 @@ package frc.robot.subsystems;
 
 import java.util.function.Supplier;
 
-import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.ControlRequest;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
+import com.ctre.phoenix6.controls.DynamicMotionMagicVoltage;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.signals.StaticFeedforwardSignValue;
+import com.ctre.phoenix6.sim.TalonFXSimState;
+import com.techhounds.houndutil.houndlib.EqualsUtil;
 import com.techhounds.houndutil.houndlib.PositionTracker;
+import com.techhounds.houndutil.houndlib.Utils;
 import com.techhounds.houndutil.houndlib.subsystems.BaseLinearMechanism;
+import com.techhounds.houndutil.houndlog.SignalManager;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.util.Units;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularAcceleration;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.MutDistance;
+import edu.wpi.first.units.measure.MutLinearVelocity;
+import edu.wpi.first.units.measure.MutVoltage;
+import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.simulation.ElevatorSim;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants.Elevator.ElevatorPosition;
+import frc.robot.GlobalStates;
 
+import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Volts;
-import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
+import static frc.robot.Constants.Elevator.*;
 
-import static frc.robot.subsystems.Elevator.Constants.*;
+@LoggedObject
+public class Elevator extends SubsystemBase implements BaseLinearMechanism<ElevatorPosition> {
+    @Log
+    private final TalonFX leftMotor;
+    @Log
+    private final TalonFX rightMotor;
 
-/** Subsystem which lifts manipulator and manipulator pivot. */
-public class Elevator extends SubsystemBase implements BaseLinearMechanism<Position> {
-    /** Constant values of elevator. */
-    public static final class Constants {
-        /**
-         * Direction of motor rotation defined as positive rotation. Defined for
-         * elevator motors to be rotation which pulls elevator up away from zero point.
-         * Left motor direction is opposite of right motor direction.
-         */
-        public static final InvertedValue LEFT_MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        /**
-         * Direction of motor rotation defined as positive rotation. Defined for
-         * elevator motors to be rotation which pulls elevator up away from zero point.
-         * Right motor direction is opposite of left motor direction.
-         */
-        public static final InvertedValue RIGHT_MOTOR_DIRECTION = InvertedValue.CounterClockwise_Positive; // TODO
-        /** Ratio of motor rotations to spool drum rotations. */
-        public static final double GEAR_RATIO = 3 / 1;
-        /** Radius of elevator spool drum. */
-        public static final double DRUM_RADIUS = Units.inchesToMeters(1.05);
-        /** Circumference of elevator spool drum. */
-        public static final double DRUM_CIRCUMFERENCE = 2 * Math.PI * DRUM_RADIUS;
-        /** Ratio of motor rotations to spool drum rotations. */
-        public static final double SENSOR_TO_MECHANISM = GEAR_RATIO;
-        /** Current limit of elevator motors, in amps. */
-        public static final double CURRENT_LIMIT = 80;
+    private ElevatorProfileParams profileParams = ElevatorProfileParams.MID;
 
-        /** CAN information of elevator motors. */
-        public static final class CAN {
-            /** CAN bus elevator motors are on. */
-            public static final String BUS = "canivore";
+    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true).withUseTimesync(true);
+    private final DynamicMotionMagicVoltage positionRequest = new DynamicMotionMagicVoltage(
+            0,
+            profileParams.velocity / DRUM_CIRCUMFERENCE,
+            profileParams.acceleration / DRUM_CIRCUMFERENCE,
+            profileParams.jerk / DRUM_CIRCUMFERENCE)
+            .withEnableFOC(true)
+            .withUseTimesync(true);
+    private final NeutralOut stopRequest = new NeutralOut().withUseTimesync(true);
 
-            /** CAN IDs of elevator motors. */
-            public static final class IDs {
-                /** CAN ID of elevator left motor. */
-                private static final int LEFT_MOTOR = 11;
-                /** CAN ID of elevator right motor. */
-                private static final int RIGHT_MOTOR = 12;
-            }
-        }
+    private final StatusSignal<Angle> positionSignal;
+    private final StatusSignal<AngularVelocity> velocitySignal;
+    private final StatusSignal<AngularAcceleration> accelerationSignal;
+    private final StatusSignal<Voltage> voltageSignal;
 
-        /** Positions elevator can be in, in spool drum rotations */
-        public static enum Position {
-            HARD_STOP(0),
-            PROCESSOR(0.0), // TODO get actual position
-            L1(0.0), // TODO get actual position
-            L2(2.95), // TODO get actual position
-            LOW_ALGAE(3.95),
-            L3(5.25), // TODO get actual position
-            HIGH_ALGAE(6.95),
-            L4_NET(8.8);
+    @Log
+    private boolean safetyTriggered = false;
 
-            public final double position;
+    @Log
+    private final ElevatorSim elevatorSim = new ElevatorSim(
+            MOTOR_GEARBOX_REPR,
+            GEARING,
+            MASS_KG,
+            DRUM_RADIUS_METERS,
+            MIN_HEIGHT_METERS,
+            MAX_HEIGHT_METERS,
+            true,
+            ElevatorPosition.BOTTOM.value);
 
-            private Position(final double position) {
-                this.position = position;
-            }
-        }
+    private final MutVoltage sysidAppliedVoltageMeasure = Volts.mutable(0);
+    private final MutDistance sysidPositionMeasure = Meters.mutable(0);
+    private final MutLinearVelocity sysidVelocityMeasure = MetersPerSecond.mutable(0);
 
-        /**
-         * Constants for feedforward control for moving to position setpoints.
-         */
-        public static final class Feedforward {
-            /** Voltage required to overcome gravity. */
-            public static final double kG = 0.3; // TODO find good value
-            /** Voltage required to overcome motor's static friction. */
-            public static final double kS = 0.2; // TODO find good value
-            /** Voltage required to maintain constant velocity on motor. */
-            public static final double kV = 2.22 * DRUM_CIRCUMFERENCE; // TODO find good value
-            /** Voltage required to induce a given acceleration on motor. */
-            public static final double kA = 0.05 * DRUM_CIRCUMFERENCE; // TODO find good value
-        }
+    private final SysIdRoutine sysIdRoutine;
 
-        /**
-         * Constants for PID feedback control for error correction for moving to
-         * position setpoints.
-         */
-        public static final class Feedback {
-            /** Proportional term constant which drives error to zero proportionally. */
-            public static final double kP = 50; // TODO find good value
-            /**
-             * Integral term constant which overcomes steady-state error. Should be used
-             * with caution due to integral windup.
-             */
-            public static final double kI = 0; // TODO find good value
-            /** Derivative term constant which dampens rate of error correction. */
-            public static final double kD = 0; // TODO find good value
-        }
-
-        /**
-         * Constants for CTRE's Motion Magic motion profiling for moving to position
-         * setpoints with consistent and smooth motion across entire course of motion.
-         */
-        public static final class MotionProfile {
-            /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 2; // 90
-            /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 2; // 80
-            /** Target jerk along course of motion. */
-            public static final double JERK = 0; // TODO
-        }
-    }
-
-    /** Elevator left motor. */
-    private final TalonFX leftMotor = new TalonFX(CAN.IDs.LEFT_MOTOR, CAN.BUS);
-    /** Elevator right motor. */
-    private final TalonFX rightMotor = new TalonFX(CAN.IDs.RIGHT_MOTOR, CAN.BUS);
-    /**
-     * Configuration object for configurations shared across both elevator motors.
-     */
-    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-
-    /**
-     * Request object for motor voltage according to Motion Magic motion profile.
-     */
-    private final MotionMagicVoltage motionMagicVoltageRequest = new MotionMagicVoltage(Position.HARD_STOP.position);
-    /** Request object for setting elevator motors' voltage directly. */
-    private final VoltageOut voltageRequest = new VoltageOut(0);
-    /** Request object for stopping the motors. */
-    private final NeutralOut stopRequest = new NeutralOut();
-
-    /**
-     * Global position tracker object for tracking mechanism positions for
-     * calculating safeties.
-     */
     private final PositionTracker positionTracker;
+    private final MechanismLigament2d ligament;
 
-    /**
-     * Whether elevator position has been reset while the elevator is resting
-     * against its hard stop using. If uninitialized, the mechanism should not be
-     * able to move at all. Initialized to {@code false} until position is reset by
-     * {@link frc.robot.HoundBrian HoundBrian}.
-     */
-    private boolean initalized = false;
+    @Log
+    private boolean initialized = RobotBase.isSimulation();
 
-    /**
-     * SysId routine to run to empirically determine feedforward and feedback
-     * constant values, using CTRE's Phoenix 6 {@link SignalLogger Signal Logger}.
-     */
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
-            new SysIdRoutine.Config(Volts.of(0.5).per(Second), Volts.of(3), null,
-                    state -> SignalLogger.writeString("state", state.toString())),
-            new SysIdRoutine.Mechanism(voltage -> {
-                setVoltage(voltage.magnitude());
-            }, null, this));
+    @Log
+    private double goalPosition = 0;
 
-    /**
-     * Initialize elevator configurations and add pivot position to global position
-     * tracker.
-     * 
-     * @param positionTracker global position tracker object
-     */
-    public Elevator(PositionTracker positionTracker) {
-        motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
+    @Log
+    private double simCurrent = 0;
 
-        motorConfigs.MotorOutput.Inverted = LEFT_MOTOR_DIRECTION;
+    @Log
+    public final Trigger isStowed;
 
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = CURRENT_LIMIT;
+    public Elevator(PositionTracker positionTracker, MechanismLigament2d ligament) {
 
-        motorConfigs.Slot0.kG = Feedforward.kG;
-        motorConfigs.Slot0.kS = Feedforward.kS;
-        motorConfigs.Slot0.kV = Feedforward.kV;
-        motorConfigs.Slot0.kA = Feedforward.kA;
-        motorConfigs.Slot0.kP = Feedback.kP;
-        motorConfigs.Slot0.kI = Feedback.kI;
-        motorConfigs.Slot0.kD = Feedback.kD;
+        leftMotor = new TalonFX(LEFT_MOTOR_ID, MOTOR_CAN_BUS);
+        TalonFXConfigurator leftMotorConfigurator = leftMotor.getConfigurator();
+        TalonFXConfiguration motorConfig = new TalonFXConfiguration();
+        motorConfig.MotorOutput.Inverted = LEFT_MOTOR_INVERSION;
 
-        motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionProfile.CRUISE_VELOCITY;
-        motorConfigs.MotionMagic.MotionMagicAcceleration = MotionProfile.ACCELERATION;
-        motorConfigs.MotionMagic.MotionMagicJerk = MotionProfile.JERK;
+        motorConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        motorConfig.Feedback.SensorToMechanismRatio = GEARING;
 
-        leftMotor.getConfigurator().apply(motorConfigs);
-        rightMotor.getConfigurator().apply(motorConfigs);
+        if (RobotBase.isReal()) {
+            motorConfig.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+            motorConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+        }
 
-        leftMotor.setNeutralMode(NeutralModeValue.Brake);
-        rightMotor.setNeutralMode(NeutralModeValue.Brake);
+        motorConfig.Slot0.kS = kS;
+        motorConfig.Slot0.kG = kG;
+        motorConfig.Slot0.kV = kV;
+        motorConfig.Slot0.kA = kA;
+        motorConfig.Slot0.kP = kP;
+        motorConfig.Slot0.kI = kI;
+        motorConfig.Slot0.kD = kD;
+        motorConfig.Slot0.GravityType = GravityTypeValue.Elevator_Static;
+        motorConfig.Slot0.StaticFeedforwardSign = StaticFeedforwardSignValue.UseVelocitySign;
+
+        motorConfig.Slot1.kS = kS;
+        motorConfig.Slot1.kG = kG_HIGH;
+        motorConfig.Slot1.kV = kV;
+        motorConfig.Slot1.kA = kA;
+        motorConfig.Slot1.kP = kP;
+        motorConfig.Slot1.kI = kI;
+        motorConfig.Slot1.kD = kD;
+        motorConfig.Slot1.GravityType = GravityTypeValue.Elevator_Static;
+        motorConfig.Slot1.StaticFeedforwardSign = StaticFeedforwardSignValue.UseVelocitySign;
+
+        motorConfig.MotionMagic.MotionMagicCruiseVelocity = profileParams.velocity / DRUM_CIRCUMFERENCE;
+        motorConfig.MotionMagic.MotionMagicAcceleration = profileParams.acceleration / DRUM_CIRCUMFERENCE;
+        motorConfig.MotionMagic.MotionMagicJerk = profileParams.jerk / DRUM_CIRCUMFERENCE;
+
+        leftMotorConfigurator.apply(motorConfig);
+
+        rightMotor = new TalonFX(RIGHT_MOTOR_ID, MOTOR_CAN_BUS);
+        TalonFXConfigurator rightMotorConfigurator = rightMotor.getConfigurator();
+        motorConfig.MotorOutput.Inverted = RIGHT_MOTOR_INVERSION;
+        rightMotorConfigurator.apply(motorConfig);
 
         rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
 
+        positionSignal = leftMotor.getPosition();
+        velocitySignal = leftMotor.getVelocity();
+        accelerationSignal = leftMotor.getAcceleration();
+        voltageSignal = leftMotor.getMotorVoltage();
+
+        SignalManager.register(
+                MOTOR_CAN_BUS,
+                positionSignal, velocitySignal, accelerationSignal, voltageSignal);
+
+        sysIdRoutine = new SysIdRoutine(
+                new SysIdRoutine.Config(Volts.of(1).per(Seconds), Volts.of(5), null, null),
+                new SysIdRoutine.Mechanism(
+                        (Voltage volts) -> setVoltage(volts.magnitude()),
+                        log -> {
+                            log.motor("primary")
+                                    .voltage(sysidAppliedVoltageMeasure
+                                            .mut_replace(voltageSignal.getValueAsDouble(), Volts))
+                                    .linearPosition(sysidPositionMeasure.mut_replace(getPosition(), Meters))
+                                    .linearVelocity(sysidVelocityMeasure.mut_replace(getVelocity(), MetersPerSecond));
+                        },
+                        this));
+
         this.positionTracker = positionTracker;
-        positionTracker.addPositionSupplier("Elevator", this::getPosition);
+        this.ligament = ligament;
 
-        // setDefaultCommand(holdCurrentPositionCommand());
-    }
+        positionTracker.addPositionSupplier("elevator", this::getPosition);
 
-    /**
-     * Determines if a desired control request for the motor(s) is safe for the
-     * mechanism or not, and stops the motor(s) if unsafe. Unsafe control requests
-     * include any requests when the mechanism is uninitialized, if the request will
-     * cause the mechanism to exceed its physical limits, or if the request will
-     * interfere with and break another mechanism.
-     * 
-     * @param controlRequest desired control request
-     * @return desired control request if safe, else the control request to stop the
-     *         motor.
-     */
-    public ControlRequest controlRequestWithSafeties(ControlRequest controlRequest) {
-        if (!initalized) {
-            return stopRequest;
-        }
-
-        if (getPosition() > Position.L3.position && getPosition() <= Position.L4_NET.position) {
-            return controlRequest;
-        }
-
-        if (positionTracker.getPosition("Pivot") >= Pivot.Constants.Position.PAST_ELEVATOR.position) {
-            return stopRequest;
-        }
-
-        if (getPosition() > Position.L4_NET.position) {
-            return stopRequest;
-        }
-
-        return controlRequest;
+        isStowed = new Trigger(() -> (positionTracker.getPosition("arm") > 2.5 && getPosition() < 0.1));
+        setDefaultCommand(moveToCurrentGoalCommand());
     }
 
     @Override
+    public void simulationPeriodic() {
+        TalonFXSimState talonFXSim = leftMotor.getSimState();
+        Voltage motorVoltage = talonFXSim.getMotorVoltageMeasure();
+
+        // negative due to inversion state
+        elevatorSim.setInputVoltage(-motorVoltage.in(Volts));
+        elevatorSim.update(0.020);
+
+        // set positions of the rotors by working back through units
+        talonFXSim.setRawRotorPosition(-elevatorSim.getPositionMeters() / DRUM_CIRCUMFERENCE * GEARING);
+        talonFXSim.setRotorVelocity(-elevatorSim.getVelocityMetersPerSecond() / DRUM_CIRCUMFERENCE * GEARING);
+
+        ligament.setLength(getPosition());
+    }
+
+    public boolean getInitialized() {
+        return initialized;
+    }
+
+    @Log(groups = "components")
+    public Pose3d getStageComponentPose() {
+        Transform3d transform = new Transform3d();
+        if (getPosition() > STAGE_MOVEMENT_HEIGHT) {
+            transform = new Transform3d(0, 0, getPosition() - STAGE_MOVEMENT_HEIGHT, new Rotation3d());
+        }
+        return new Pose3d(0.1747, 0, 0.0417, new Rotation3d()).plus(transform);
+    }
+
+    @Log(groups = "components")
+    public Pose3d getCarriageComponentPose() {
+        return new Pose3d(0.1747, 0, 0.0671 + getPosition(), new Rotation3d());
+    }
+
+    @Override
+    @Log
     public double getPosition() {
-        return leftMotor.getPosition().getValueAsDouble();
+        return positionSignal.getValueAsDouble() * DRUM_CIRCUMFERENCE;
+    }
+
+    @Log
+    public double getVelocity() {
+        return velocitySignal.getValueAsDouble() * DRUM_CIRCUMFERENCE;
     }
 
     @Override
     public void resetPosition() {
-        leftMotor.setPosition(Position.HARD_STOP.position);
-        rightMotor.setPosition(Position.HARD_STOP.position);
+        leftMotor.setPosition(0);
+        initialized = true;
     }
 
     @Override
     public void setVoltage(double voltage) {
-        leftMotor.setControl(
-                controlRequestWithSafeties(voltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12))));
+        if (shouldEnforceSafeties(voltage)) {
+            leftMotor.setControl(stopRequest);
+        } else {
+            leftMotor.setControl(voltageRequest.withOutput(voltage));
+        }
+    }
+
+    public boolean shouldEnforceSafeties(double intendedDirection) {
+        if (Utils.applySoftStops(intendedDirection, getPosition(), MIN_HEIGHT_METERS,
+                MAX_HEIGHT_METERS) == 0.0)
+            return true;
+
+        if (intendedDirection < 0
+                && getPosition() < 0.70
+                && getPosition() > 0.3
+                && positionTracker.getPosition("arm") > 1.22) {
+            return true;
+        }
+        if (intendedDirection > 0
+                && getPosition() > 0.08
+                && getPosition() < 0.50
+                && positionTracker.getPosition("arm") > 1.5) {
+            return true;
+        }
+
+        if (!GlobalStates.INITIALIZED.enabled()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public void setElevatorProfileParams(ElevatorProfileParams params) {
+        this.profileParams = params;
+    }
+
+    public Command setElevatorProfileParamsCommand(ElevatorProfileParams params) {
+        return Commands.runOnce(() -> setElevatorProfileParams(params));
     }
 
     @Override
     public Command moveToCurrentGoalCommand() {
         return run(() -> {
-            double currentPosition = getPosition();
-            double targetPosition = motionMagicVoltageRequest.Position;
-            boolean atTarget = Math.abs(currentPosition - targetPosition) <= 0.05;
+            if (shouldEnforceSafeties(goalPosition - getPosition())) {
+                leftMotor.setControl(stopRequest);
+                safetyTriggered = true;
+            } else {
+                safetyTriggered = false;
+                int slot = getPosition() > 0.795 ? 1 : 0;
+                ElevatorProfileParams paramsToUse = profileParams;
 
-            System.out.println("Elevator Current: " + currentPosition + ", Target: " + targetPosition
-                    + ", At Target: " + atTarget);
-
-            if (!atTarget) {
-                leftMotor.setControl(controlRequestWithSafeties(
-                        motionMagicVoltageRequest.withPosition(targetPosition).withEnableFOC(true)));
+                // override if the goal position is not L3
+                if (goalPosition < 0.795 && goalPosition != 0.0) {
+                    paramsToUse = ElevatorProfileParams.FAST;
+                }
+                leftMotor.setControl(positionRequest.withPosition(goalPosition / DRUM_CIRCUMFERENCE)
+                        .withVelocity(paramsToUse.velocity / DRUM_CIRCUMFERENCE)
+                        .withAcceleration(paramsToUse.acceleration / DRUM_CIRCUMFERENCE)
+                        .withJerk(paramsToUse.jerk / DRUM_CIRCUMFERENCE)
+                        .withSlot(slot));
             }
-        }).until(() -> Math.abs(getPosition() - motionMagicVoltageRequest.Position) <= 0.05)
-                .andThen(runOnce(() -> {
-                    System.out.println("Elevator Reached goal position.");
-                }))
-                .withName("elevator.moveToCurrentGoalCommand");
+        }).withName("elevator.moveToCurrentGoal");
     }
 
     @Override
-    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
-                .withName("elevator.moveToPositionCommand");
+    public Command moveToPositionCommand(Supplier<ElevatorPosition> goalPositionSupplier) {
+        return Commands.sequence(
+                runOnce(() -> goalPosition = goalPositionSupplier.get().value),
+                moveToCurrentGoalCommand().until(this::atGoal))
+                .withTimeout(3)
+                .withName("elevator.moveToPosition");
     }
 
     @Override
     public Command moveToArbitraryPositionCommand(Supplier<Double> goalPositionSupplier) {
         return Commands.sequence(
-                runOnce(() -> {
-                    double targetPosition = goalPositionSupplier.get();
-                    System.out.println("Elevator Moving to position: " + targetPosition);
-                    leftMotor.setControl(
-                            controlRequestWithSafeties(motionMagicVoltageRequest.withPosition(targetPosition)
-                                    .withEnableFOC(true)));
-                }),
-                moveToCurrentGoalCommand()
-                        .andThen(runOnce(() -> System.out.println("Elevator Reached goal position."))))
-                .withName("elevator.moveToArbitraryPositionCommand");
+                runOnce(() -> goalPosition = goalPositionSupplier.get()),
+                moveToCurrentGoalCommand().until(this::atGoal)).withName("elevator.moveToArbitraryPosition");
     }
 
     @Override
     public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(
-                () -> (motionMagicVoltageRequest.Position + delta.get()))
-                .withName("elevator.movePositionDeltaCommand");
+        return moveToArbitraryPositionCommand(() -> goalPosition += delta.get())
+                .withName("elevator.movePositionDelta");
     }
 
     @Override
     public Command holdCurrentPositionCommand() {
-        return runOnce(() -> {
-            leftMotor.setControl(controlRequestWithSafeties(motionMagicVoltageRequest.withPosition(getPosition())));
-        }).withName("elevator.holdCurrentPositionCommand");
+        return runOnce(() -> goalPosition = positionSignal.getValueAsDouble()).andThen(moveToCurrentGoalCommand())
+                .withName("elevator.holdCurrentPosition");
     }
 
     @Override
     public Command resetPositionCommand() {
-        return runOnce(() -> {
-            resetPosition();
-            initalized = true;
-        }).withName("elevator.resetPositionCommand");
-
+        return runOnce(this::resetPosition).withName("elevator.resetPosition");
     }
 
     @Override
     public Command setOverridenSpeedCommand(Supplier<Double> speed) {
-        return run(() -> {
-            setVoltage(speed.get() * 12.0);
-        }).withName("elevator.setOverridenSpeedCommand");
-
+        return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
+                .withName("elevator.setOverriddenSpeed");
     }
 
     @Override
     public Command coastMotorsCommand() {
-        return runOnce(() -> {
-            leftMotor.stopMotor();
-            rightMotor.stopMotor();
-        }).andThen(() -> {
-            leftMotor.setNeutralMode(NeutralModeValue.Coast);
-            rightMotor.setNeutralMode(NeutralModeValue.Coast);
-        }).finallyDo(() -> {
-            leftMotor.setNeutralMode(NeutralModeValue.Brake);
-            rightMotor.setNeutralMode(NeutralModeValue.Brake);
-        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("elevator.coastMotorsCommand");
+        return runOnce(() -> setVoltage(0))
+                .andThen(() -> {
+                    leftMotor.setNeutralMode(NeutralModeValue.Coast);
+                    rightMotor.setNeutralMode(NeutralModeValue.Coast);
+                })
+                .finallyDo((d) -> {
+                    leftMotor.setNeutralMode(NeutralModeValue.Brake);
+                    rightMotor.setNeutralMode(NeutralModeValue.Brake);
+                    goalPosition = getPosition();
+                }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming)
+                .withName("elevator.coastMotorsCommand");
     }
 
-    /**
-     * Creates a command to run a SysId quasistatic test in the specified direction,
-     * which gradually ramps up voltage fed to mechanism in such a way as to
-     * eliminate the effect of voltage on the mechanism's acceleration.
-     * 
-     * @param direction direction to run test in
-     * @return the command
-     */
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
+    public Command sysIdQuasistaticCommand(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.quasistatic(direction).withName("elevator.sysIdQuasistatic");
     }
 
-    /**
-     * Creates a command to run a SysId dynamic test in the specified direction,
-     * which steps up voltage fed to mechanism by a constant value to determine
-     * mechanism behavior while accelerating.
-     * 
-     * @param direction direction to run test in
-     * @return the command
-     */
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
+    public Command sysIdDynamicCommand(SysIdRoutine.Direction direction) {
+        return sysIdRoutine.dynamic(direction).withName("elevator.sysIdDynamic");
+    }
+
+    public Command resetControllersCommand() {
+        return Commands.runOnce(() -> goalPosition = getPosition()).withName("elevator.resetControllers");
+    }
+
+    @Log
+    public boolean atGoal() {
+        return EqualsUtil.epsilonEquals(getPosition(), goalPosition, TOLERANCE);
+    }
+
+    public Command manualInitializeCommand() {
+        return Commands.runOnce(() -> initialized = true).ignoringDisable(true).withName("elevator.setInitialized");
     }
 }

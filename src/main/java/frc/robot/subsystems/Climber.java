@@ -1,360 +1,158 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfigurator;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.techhounds.houndutil.houndlib.subsystems.BaseSingleJointedArm;
+import com.techhounds.houndutil.houndlib.PositionTracker;
+import com.techhounds.houndutil.houndlib.Utils;
+import com.techhounds.houndutil.houndlog.SignalManager;
+import com.techhounds.houndutil.houndlog.annotations.Log;
+import com.techhounds.houndutil.houndlog.annotations.LoggedObject;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.MutAngle;
-import edu.wpi.first.units.measure.MutAngularVelocity;
-import edu.wpi.first.units.measure.MutVoltage;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularAcceleration;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.subsystems.Climber.Constants.CAN;
-import frc.robot.subsystems.Climber.Constants.Feedback;
-import frc.robot.subsystems.Climber.Constants.Feedforward;
-import frc.robot.subsystems.Climber.Constants.MotionProfile;
-import frc.robot.subsystems.Climber.Constants.Position;
+import frc.robot.GlobalStates;
+
+import static frc.robot.Constants.Climber.*;
 
 import java.util.function.Supplier;
 
-import static edu.wpi.first.units.Units.Volts;
-import static edu.wpi.first.units.Units.Radian;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.Second;
-import static frc.robot.subsystems.Climber.Constants.*;
+@LoggedObject
+public class Climber extends SubsystemBase {
+    @Log
+    private final TalonFX leftMotor;
+    @Log
+    private final TalonFX rightMotor;
 
-/** Subsystem which hangs robot from deep cage. */
-public class Climber extends SubsystemBase implements BaseSingleJointedArm<Position> {
-    /** Constant values of climber subsystem. */
-    public static final class Constants {
-        /**
-         * Direction of motor rotation defined as positive rotation. Defined for
-         * climber motors to be rotation away from zero point.
-         */
-        public static final InvertedValue MOTOR_DIRECTION = InvertedValue.Clockwise_Positive; // TODO
-        /** Ratio of motor rotations to string contraction. */
-        public static final double SENSOR_TO_MECHANISM = Units.inchesToMeters(7 / (0.75 * Math.PI) * 9);
-        /** Current limit of climber motors. */
-        public static final double CURRENT_LIMIT = 0; // TODO
+    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true).withUseTimesync(true);
+    private final NeutralOut stopRequest = new NeutralOut().withUseTimesync(true);
 
-        /** CAN information of climber motors. */
-        public static final class CAN {
-            /** CAN bus climber motors are on. */
-            public static final String BUS = "canivore";
+    private final StatusSignal<Angle> positionSignal;
+    private final StatusSignal<AngularVelocity> velocitySignal;
+    private final StatusSignal<AngularAcceleration> accelerationSignal;
+    private final StatusSignal<Voltage> voltageSignal;
 
-            /** CAN IDs of climber motors. */
-            public static final class IDs {
-                /** CAN ID of climber motor A. */
-                private static final int MOTOR_A = 9;
-                /** CAN ID of climber motor B. */
-                private static final int MOTOR_B = 10;
-            }
+    @Log
+    private boolean initialized = RobotBase.isSimulation();
+
+    @Log
+    private double goalPosition;
+
+    @SuppressWarnings("unused")
+    private PositionTracker positionTracker;
+
+    public Climber(PositionTracker positionTracker) {
+        leftMotor = new TalonFX(LEFT_MOTOR_ID, MOTOR_CAN_BUS);
+        TalonFXConfigurator leftMotorConfigurator = leftMotor.getConfigurator();
+        TalonFXConfiguration motorConfig = new TalonFXConfiguration();
+        motorConfig.MotorOutput.Inverted = MOTOR_INVERSION;
+
+        motorConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        motorConfig.Feedback.SensorToMechanismRatio = GEARING;
+
+        if (RobotBase.isReal()) {
+            motorConfig.CurrentLimits.StatorCurrentLimit = CURRENT_LIMIT;
+            motorConfig.CurrentLimits.StatorCurrentLimitEnable = true;
         }
 
-        /** Positions climber can be in. */
-        public enum Position {
-            ZERO(0.0), // TODO
-            CLAMPED(0.0); // TODO
+        leftMotorConfigurator.apply(motorConfig);
 
-            public final double position;
+        rightMotor = new TalonFX(RIGHT_MOTOR_ID, MOTOR_CAN_BUS);
+        TalonFXConfigurator rightMotorConfigurator = rightMotor.getConfigurator();
+        rightMotorConfigurator.apply(motorConfig);
 
-            private Position(final double position) {
-                this.position = position;
-            }
-        }
+        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), false));
 
-        /**
-         * Constants for feedforward control for moving to position setpoints.
-         */
-        public static final class Feedforward {
-            /** Voltage required to overcome gravity. */
-            public static final double kG = 0; // TODO find good value
-            /** Voltage required to overcome motor's static friction. */
-            public static final double kS = 0; // TODO find good value
-            /** Voltage required to maintain constant velocity on motor. */
-            public static final double kV = 0; // TODO find good value
-            /** Voltage required to induce a given acceleration on motor. */
-            public static final double kA = 0; // TODO find good value
-        }
+        positionSignal = leftMotor.getPosition();
+        velocitySignal = leftMotor.getVelocity();
+        accelerationSignal = leftMotor.getAcceleration();
+        voltageSignal = leftMotor.getMotorVoltage();
 
-        /**
-         * Constants for PID feedback control for error correction for moving to
-         * position setpoints.
-         */
-        public static final class Feedback {
-            /** Proportional term constant which drives error to zero proportionally. */
-            public static final double kP = 0; // TODO find good value
-            /**
-             * Integral term constant which overcomes steady-state error. Should be used
-             * with caution due to integral windup.
-             */
-            public static final double kI = 0; // TODO find good value
-            /** Derivative term constant which dampens rate of error correction. */
-            public static final double kD = 0; // TODO find good value
-        }
+        SignalManager.register(
+                MOTOR_CAN_BUS,
+                positionSignal, velocitySignal, accelerationSignal, voltageSignal);
 
-        /**
-         * Constants for CTRE's Motion Magic motion profiling for moving to position
-         * setpoints with consistent and smooth motion across entire course of motion.
-         */
-        public static final class MotionProfile {
-            /** Target cruise velocity along course of motion. */
-            public static final double CRUISE_VELOCITY = 0; // TODO
-            /** Target acceleration of beginning and end of course of motion. */
-            public static final double ACCELERATION = 0; // TODO
-            /** Target jerk along course of motion. */
-            public static final double JERK = 0; // TODO
-        }
+        this.positionTracker = positionTracker;
+
+        positionTracker.addPositionSupplier("climber", this::getPosition);
     }
 
-    /** Climber motor A. */
-    private final TalonFX motorA = new TalonFX(CAN.IDs.MOTOR_A, CAN.BUS);
-    /** Climber motor B. */
-    private final TalonFX motorB = new TalonFX(CAN.IDs.MOTOR_B, CAN.BUS);
-    /**
-     * Configuration object for configurations shared across both climber motors.
-     */
-    private final TalonFXConfiguration motorConfigs = new TalonFXConfiguration();
-    /**
-     * Request object for motor voltage according to Motion Magic motion profile.
-     */
-    private final MotionMagicTorqueCurrentFOC motionMagicVoltageRequest = new MotionMagicTorqueCurrentFOC(0);
-    private final VoltageOut directVoltageRequest = new VoltageOut(0);
-
-    /** Mutable measure for voltages applied during sysId testing */
-    private final MutVoltage sysIdVoltage = Volts.mutable(0);
-    /** Mutable measure for distances traveled during sysId testing (Meters) */
-    private final MutAngle sysIdAngle = Radian.mutable(0);
-    /** Mutable measure for velocity during SysId testing (Meters/Second) */
-    private final MutAngularVelocity sysIdVelocity = RadiansPerSecond.mutable(0);
-    /**
-     * The sysIdRoutine object with default configuration and logging of voltage,
-     * velocity, and distance
-     */
-    private final SysIdRoutine sysIdRoutine = new SysIdRoutine(
-            new SysIdRoutine.Config(Volts.of(0.5).per(Second), Volts.of(3), null,
-                    state -> SignalLogger.writeString("state", state.toString())),
-            new SysIdRoutine.Mechanism(voltage -> {
-                setVoltage(voltage.magnitude());
-            }, log -> {
-                log.motor("Climber")
-                        .voltage(sysIdVoltage.mut_replace(getVoltage(), Volts))
-                        .angularPosition(sysIdAngle.mut_replace(getPosition(), Radian))
-                        .angularVelocity(sysIdVelocity.mut_replace(getVelocity(), RadiansPerSecond));
-            }, this));
-
-    /** Initialize climber motors configurations. */
-    public Climber() {
-        motorConfigs.MotorOutput.Inverted = MOTOR_DIRECTION;
-
-        motorConfigs.Feedback.SensorToMechanismRatio = SENSOR_TO_MECHANISM;
-
-        motorConfigs.CurrentLimits.SupplyCurrentLimit = 100;
-
-        motorConfigs.Slot0.kG = Feedforward.kG;
-        motorConfigs.Slot0.kS = Feedforward.kS;
-        motorConfigs.Slot0.kV = Feedforward.kV;
-        motorConfigs.Slot0.kA = Feedforward.kA;
-        motorConfigs.Slot0.kP = Feedback.kP;
-        motorConfigs.Slot0.kI = Feedback.kI;
-        motorConfigs.Slot0.kD = Feedback.kD;
-
-        motorConfigs.MotionMagic.MotionMagicCruiseVelocity = MotionProfile.CRUISE_VELOCITY;
-        motorConfigs.MotionMagic.MotionMagicAcceleration = MotionProfile.ACCELERATION;
-        motorConfigs.MotionMagic.MotionMagicJerk = MotionProfile.JERK;
-
-        motorA.getConfigurator().apply(motorConfigs);
-        motorB.getConfigurator().apply(motorConfigs);
-
-        motorB.setControl(new Follower(motorA.getDeviceID(), false));
-
-        motorA.setNeutralMode(NeutralModeValue.Brake);
-        motorB.setNeutralMode(NeutralModeValue.Brake);
+    @Log
+    public Pose3d getComponentPose() {
+        return new Pose3d(0, 0.32, 0.1105, new Rotation3d(0, 0, -Math.PI / 2.0));
     }
 
-    /**
-     * Gets the position of the left motor, increasing as it goes up
-     * 
-     * @return position of the left motor, as a double
-     */
-    @Override
+    public boolean getInitialized() {
+        return initialized;
+    }
+
+    @Log
     public double getPosition() {
-        return motorA.getPosition(true).getValueAsDouble();
+        return positionSignal.getValueAsDouble();
     }
 
-    /**
-     * Finds the voltage of the {@link #motorA motor}
-     * 
-     * @return Voltage of the motor, as a double
-     */
-    public double getVoltage() {
-        return motorA.getMotorVoltage().getValueAsDouble();
+    public boolean shouldEnforceSafeties(double intendedDirection) {
+        if (Utils.applySoftStops(intendedDirection, getPosition(), MIN_POSITION_ROTATIONS,
+                MAX_POSITION_ROTATIONS) == 0.0)
+            return true;
+
+        if (!GlobalStates.INITIALIZED.enabled()) {
+            return true;
+        }
+
+        return false;
     }
 
-    /**
-     * Finds the velocity of the {@link #motorA motor}
-     * 
-     * @return velocity of the motor, as a double
-     */
-    public double getVelocity() {
-        return motorA.getVelocity().getValueAsDouble();
-    }
-
-    /**
-     * Resets the position of the motors to the reset position specified in
-     * {@link Position#ZERO the constants}
-     */
-    @Override
-    public void resetPosition() {
-        motorA.setPosition(Position.ZERO.position);
-        motorB.setPosition(Position.ZERO.position);
-    }
-
-    /**
-     * Sets the voltage of both climber motors to a clamped value
-     * 
-     * @param voltage Voltage to set the motors to, clamped to the range [-12,12]
-     */
-    @Override
     public void setVoltage(double voltage) {
-        motorA.setControl(directVoltageRequest.withOutput(MathUtil.clamp(voltage, -12, 12)));
+        if (shouldEnforceSafeties(voltage)) {
+            leftMotor.setControl(stopRequest);
+        } else {
+            leftMotor.setControl(voltageRequest.withOutput(voltage));
+        }
     }
 
-    /**
-     * Moves the climber motors to their current goal, if not already doing so/
-     * 
-     * @return Command to move to the current PID goal
-     */
-    @Override
-    public Command moveToCurrentGoalCommand() {
-        return moveToArbitraryPositionCommand(() -> motionMagicVoltageRequest.Position)
-                .withName("climber.moveToCurrentGoal");
+    public Command climbCommand() {
+        return Commands.startEnd(
+                () -> setVoltage(-8),
+                () -> setVoltage(0))
+                .withName("climber.climb");
     }
 
-    /**
-     * Sets the goal and moves the climber motors to the supplied position from
-     * {@link Position the possible positions}
-     * 
-     * @return Command that will move to one of the possible preset positions
-     */
-    @Override
-    public Command moveToPositionCommand(Supplier<Position> goalPositionSupplier) {
-        return moveToArbitraryPositionCommand(() -> goalPositionSupplier.get().position)
-                .withName("climber.moveToPosition");
+    public Command declimbCommand() {
+        return Commands.startEnd(
+                () -> setVoltage(6),
+                () -> setVoltage(0))
+                .withName("climber.declimb");
     }
 
-    /**
-     * Sets the goal and moves the climber motors to the supplied position.
-     * 
-     * @param goalPositionSupplier The supplier for the goal position, which must
-     *                             return a double
-     * @return Command that will move to a specified position
-     */
-    @Override
-    public Command moveToArbitraryPositionCommand(final Supplier<Double> goalPositionSupplier) {
-        return runOnce(() -> {
-            motorA.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
-            motorB.setControl(motionMagicVoltageRequest.withPosition(goalPositionSupplier.get()));
-        }).withName("climber.moveToArbitraryPosition");
+    public void resetPosition() {
+        leftMotor.setPosition(0);
+        initialized = true;
     }
 
-    /**
-     * Sets the goal and moves climber motors to a position relative to the current
-     * position
-     * 
-     * @param delta Supplier for the relative change to the current position
-     *              (Current position + delta)
-     * @return Command that will move the climber relative to its current position
-     */
-    @Override
-    public Command movePositionDeltaCommand(Supplier<Double> delta) {
-        return moveToArbitraryPositionCommand(() -> delta.get() + getPosition()).withName("climber.movePositionDelta");
-    }
-
-    /**
-     * Holds the current position of the climber motors, keeping the climber
-     * mechanism still.
-     * 
-     * @return Command that will keep the climber still
-     */
-    @Override
-    public Command holdCurrentPositionCommand() {
-        return moveToArbitraryPositionCommand(() -> getPosition()).withName("climber.holdCurrentPosition");
-    }
-
-    /**
-     * Resets the position of the climber encoders.
-     * This is a Command based wrapper for {@link #resetPosition()}
-     * 
-     * @return Command that resets the position to
-     *         {@link Position#ZERO the reset position}
-     */
-    @Override
     public Command resetPositionCommand() {
         return runOnce(this::resetPosition).withName("climber.resetPosition");
     }
 
-    /**
-     * Creates a command that overrides PID control for the climber.
-     * 
-     * @param speed Supplier for speed, which should return values between -1 to 1
-     * @return Command that will set the speed of climber until interrupted, and
-     *         then zero the voltage.
-     */
-    @Override
-    public Command setOverridenSpeedCommand(final Supplier<Double> speed) {
-        return runEnd(() -> setVoltage(speed.get() * 12.0), () -> setVoltage(0)).withName("climber.setOverridenSpeed");
+    public Command manualInitializeCommand() {
+        return Commands.runOnce(() -> initialized = true).ignoringDisable(true).withName("climber.setInitialized");
     }
 
-    /**
-     * Creates a command that will make the climber motors coast instead of brake.
-     * Once done, climber motors will go back to braking.
-     * 
-     * @return Command that causes motors to coast
-     */
-    @Override
-    public Command coastMotorsCommand() {
-        return runOnce(() -> {
-            motorA.stopMotor();
-            motorB.stopMotor();
-        }).andThen(() -> {
-            motorA.setNeutralMode(NeutralModeValue.Coast);
-            motorB.setNeutralMode(NeutralModeValue.Coast);
-        }).finallyDo(() -> {
-            motorA.setNeutralMode(NeutralModeValue.Brake);
-            motorB.setNeutralMode(NeutralModeValue.Brake);
-        }).withInterruptBehavior(InterruptionBehavior.kCancelIncoming).withName("climber.coastMotors");
-    }
-
-    /**
-     * Creates a command for the sysId quasistatic test, which gradually speeds up
-     * the mechanism to eliminate variation from acceleration
-     * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the quasistatic test
-     */
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
-    }
-
-    /**
-     * Creates a command for the sysId dynamic test, which will step up the speed to
-     * see how the mechanism behaves during acceleration
-     * 
-     * @param direction Direction to run the motors in
-     * @return Command that runs the dynamic test
-     */
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
+    public Command setOverridenSpeedCommand(Supplier<Double> speed) {
+        return runEnd(() -> setVoltage(12.0 * speed.get()), () -> setVoltage(0))
+                .withName("climber.setOverriddenSpeed");
     }
 }
