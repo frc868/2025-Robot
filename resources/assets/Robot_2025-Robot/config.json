@@ -1,0 +1,160 @@
+{
+    "name": "2025-Robot",
+    "disableSimplification": false,
+    "rotations": [
+        {
+            "axis": "y",
+            "degrees": 180
+        },
+        {
+            "axis": "z",
+            "degrees": 270
+        }
+    ],
+    "position": [
+        -0.16,
+        -0.16,
+        0.425
+    ],
+    "cameras": [
+        {
+            "name": "houndeye01",
+            "rotations": [
+                {
+                    "axis": "y",
+                    "degrees": -20
+                },
+                {
+                    "axis": "z",
+                    "degrees": -35
+                }
+            ],
+            "position": [
+                0.31603696,
+                0.1679575,
+                0.210531964
+            ],
+            "resolution": [
+                1600,
+                1200
+            ],
+            "fov": 75
+        },
+        {
+            "name": "houndeye02",
+            "rotations": [
+                {
+                    "axis": "y",
+                    "degrees": -20
+                },
+                {
+                    "axis": "z",
+                    "degrees": 35
+                }
+            ],
+            "position": [
+                0.31603696,
+                -0.1679575,
+                0.210531964
+            ],
+            "resolution": [
+                1600,
+                1200
+            ],
+            "fov": 75
+        },
+        {
+            "name": "houndeye03",
+            "rotations": [
+                {
+                    "axis": "y",
+                    "degrees": -20
+                },
+                {
+                    "axis": "z",
+                    "degrees": 110
+                }
+            ],
+            "position": [
+                -0.31603696,
+                0.1679575,
+                0.210531964
+            ],
+            "resolution": [
+                1600,
+                1200
+            ],
+            "fov": 85
+        }
+    ],
+    "components": [
+        {
+            "zeroedRotations": [
+                {
+                    "axis": "y",
+                    "degrees": 180
+                },
+                {
+                    "axis": "z",
+                    "degrees": 270
+                }
+            ],
+            "zeroedPosition": [
+                0,
+                0.3545,
+                -0.291
+            ]
+        },
+        {
+            "zeroedRotations": [
+                {
+                    "axis": "y",
+                    "degrees": 180
+                },
+                {
+                    "axis": "z",
+                    "degrees": 270
+                }
+            ],
+            "zeroedPosition": [
+                -0.023,
+                0.373,
+                0.02
+            ]
+        },
+        {
+            "zeroedRotations": [
+                {
+                    "axis": "y",
+                    "degrees": 180
+                },
+                {
+                    "axis": "z",
+                    "degrees": 270
+                }
+            ],
+            "zeroedPosition": [
+                -0.054,
+                -0.0735,
+                -0.1975
+            ]
+        },
+        {
+            "zeroedRotations": [
+                {
+                    "axis": "y",
+                    "degrees": 180
+                },
+                {
+                    "axis": "z",
+                    "degrees": 270
+                }
+            ],
+            "zeroedPosition": [
+                -0.052,
+                -0.2848,
+                -0.1018
+            ]
+        }
+    ]
+}

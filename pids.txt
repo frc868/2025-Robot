@@ -1,0 +1,20 @@
+normal
+0.470 high
+0.360 low
+
+0.415 kG
+0.055 kS
+
+coral
+0.51 high
+0.34 low
+
+0.425 kG
+0.085 kS
+
+algae
+0.58 high
+0.35 low
+
+0.465 kG
+0.115 kS

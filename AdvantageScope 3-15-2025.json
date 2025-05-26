@@ -1,0 +1,266 @@
+{
+  "hubs": [
+    {
+      "x": 0,
+      "y": 43,
+      "width": 1800,
+      "height": 1126,
+      "state": {
+        "sidebar": {
+          "width": 300,
+          "expanded": [
+            "/HoundLog",
+            "/HoundLog/subsystems",
+            "/HoundLog/subsystems/drivetrain",
+            "/HoundLog/components",
+            "/HoundLog/autonomous",
+            "/HoundLog/autonomous/field",
+            "/HoundLog/subsystems/elevator",
+            "/HoundLog/subsystems/elevator/leftMotor",
+            "/HoundLog/subsystems/arm",
+            "/HoundLog/subsystems/arm/motor",
+            "/HoundLog/subsystems/arm/armSim",
+            "/HoundLog/subsystems/elevator/elevatorSim",
+            "/NT",
+            "/NT/HoundLog",
+            "/NT/HoundLog/subsystems",
+            "/NT/HoundLog/subsystems/arm"
+          ]
+        },
+        "tabs": {
+          "selected": 3,
+          "tabs": [
+            {
+              "type": 0,
+              "path": "../docs/INDEX.md"
+            },
+            {
+              "type": 6,
+              "uuid": "67g0hhakf30clng7vdensk1yiv4k96v6",
+              "fields": [],
+              "listFields": [
+                [
+                  {
+                    "type": "Component (Robot)",
+                    "key": "NT:/HoundLog//components/componentPoses",
+                    "sourceTypeIndex": 2,
+                    "sourceType": "Pose3d[]"
+                  },
+                  {
+                    "type": "Component (Ghost)",
+                    "key": "NT:/HoundLog//components/componentPoses",
+                    "sourceTypeIndex": 2,
+                    "sourceType": "Pose3d[]"
+                  },
+                  {
+                    "type": "Game Piece 0",
+                    "key": "NT:/HoundLog//components/coralPose",
+                    "sourceTypeIndex": 1,
+                    "sourceType": "Pose3d"
+                  }
+                ],
+                [
+                  {
+                    "type": "Robot",
+                    "key": "NT:/HoundLog/subsystems/drivetrain/simPose",
+                    "sourceTypeIndex": 1,
+                    "sourceType": "Pose2d"
+                  },
+                  {
+                    "type": "Trajectory",
+                    "key": "NT:/HoundLog/autonomous/field/trajectory",
+                    "sourceTypeIndex": 0,
+                    "sourceType": 5
+                  }
+                ]
+              ],
+              "options": {
+                "field": "2025 Field (Welded)",
+                "alliance": "blue",
+                "robot": "2025-Robot",
+                "unitDistance": "meters",
+                "unitRotation": "radians"
+              },
+              "configHidden": false,
+              "visualizer": {
+                "cameraIndex": -1,
+                "orbitFov": 50,
+                "cameraPosition": [
+                  1.5118334337134,
+                  2.7074790964564945,
+                  -5.833358437467414
+                ],
+                "cameraTarget": [
+                  1.544329952842413,
+                  0.15189617206200337,
+                  -0.6158718721103639
+                ]
+              },
+              "title": "3D Field"
+            },
+            {
+              "type": 3,
+              "field": "console",
+              "title": "Console"
+            },
+            {
+              "type": 1,
+              "legendHeight": 0.3,
+              "legends": {
+                "left": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": [
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/leftMotor/position",
+                      "color": "#2b66a2",
+                      "show": true
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/leftMotor/closedLoopReference",
+                      "color": "#e5b31b",
+                      "show": true
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/leftMotor/velocity",
+                      "color": "#af2437",
+                      "show": true
+                    }
+                  ]
+                },
+                "discrete": {
+                  "fields": []
+                },
+                "right": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": [
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/leftMotor/outputVoltage",
+                      "color": "#80588e",
+                      "show": true
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/leftMotor/outputCurrent",
+                      "color": "#e48b32",
+                      "show": false
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/elevator/elevatorSim/currentDrawAmps",
+                      "color": "#aacaee",
+                      "show": false
+                    }
+                  ]
+                }
+              },
+              "title": "Line Graph"
+            },
+            {
+              "type": 1,
+              "legendHeight": 0.3,
+              "legends": {
+                "left": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": [
+                    {
+                      "key": "NT:/HoundLog/subsystems/arm/motor/position",
+                      "color": "#2b66a2",
+                      "show": true
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/arm/motor/closedLoopReference",
+                      "color": "#e5b31b",
+                      "show": true
+                    }
+                  ]
+                },
+                "discrete": {
+                  "fields": []
+                },
+                "right": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": [
+                    {
+                      "key": "NT:/HoundLog/subsystems/arm/motor/outputVoltage",
+                      "color": "#af2437",
+                      "show": true
+                    },
+                    {
+                      "key": "NT:/HoundLog/subsystems/arm/motor/outputCurrent",
+                      "color": "#80588e",
+                      "show": true
+                    }
+                  ]
+                }
+              },
+              "title": "Line Graph"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "x": 355,
+      "y": 203,
+      "width": 1100,
+      "height": 650,
+      "state": {
+        "sidebar": {
+          "width": 300,
+          "expanded": []
+        },
+        "tabs": {
+          "selected": 1,
+          "tabs": [
+            {
+              "type": 0,
+              "path": "../docs/INDEX.md"
+            },
+            {
+              "type": 1,
+              "legendHeight": 0.3,
+              "legends": {
+                "left": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": []
+                },
+                "discrete": {
+                  "fields": []
+                },
+                "right": {
+                  "lockedRange": null,
+                  "unitConversion": {
+                    "type": null,
+                    "factor": 1
+                  },
+                  "fields": []
+                }
+              },
+              "title": "Line Graph"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "satellites": [],
+  "version": "3.2.1"
+}
