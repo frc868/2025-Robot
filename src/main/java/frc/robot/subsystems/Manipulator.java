@@ -106,6 +106,13 @@ public class Manipulator extends SubsystemBase implements BaseIntake {
                 .withName("manipulator.reverseRollers");
     }
 
+    public Command reverseRollersFastCommand() {
+        return startEnd(
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-11)),
+                () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(0)))
+                .withName("manipulator.reverseRollersFast");
+    }    
+
     public Command scoreNetCommand() {
         return startEnd(
                 () -> rollerMotor.setControl(rollerVoltageRequest.withOutput(-7.5)),

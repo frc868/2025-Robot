@@ -17,7 +17,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants.Elevator.ElevatorProfileParams;
@@ -216,6 +218,109 @@ public class Autos {
                 pathIntakeToC, pathCToIntake, pathIntakeToB), startingPose);
     }
 
+    public static AutoRoutine FDC4C3Algae(Drivetrain drivetrain, Superstructure superstructure)
+            throws IOException, ParseException {
+        PathPlannerPath pathStartToF = PathPlannerPath.fromChoreoTrajectory("FDCB", 0);
+        PathPlannerPath pathFToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 1);
+        PathPlannerPath pathIntakeToD = PathPlannerPath.fromChoreoTrajectory("FDCB", 2);
+        PathPlannerPath pathDToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 3);
+        PathPlannerPath pathIntakeToC = PathPlannerPath.fromChoreoTrajectory("FDCB", 4);
+        PathPlannerPath pathCToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 5);
+        PathPlannerPath pathIntakeToB = PathPlannerPath.fromChoreoTrajectory("FDCB", 6);
+        Pose2d startingPose = pathStartToF.getStartingHolonomicPose().get();
+
+        BooleanContainer startedScoring = new BooleanContainer(false);
+        Timer timer = new Timer();
+
+        Command command = Commands.sequence(
+                superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+                Commands.runOnce(timer::reset),
+                Commands.sequence(
+                        Commands.runOnce(timer::start),
+                        drivetrain
+                                .lockToClosestBranchAutoPauseTallCommand(ReefBranch.F,
+                                        superstructure.manipulator.hasGamePiece
+                                                .and(superstructure.isInAutoScoringPosition))
+                                .alongWith(
+                                        superstructure.prepareCoralScoreCommand(ReefLevel.L4)),
+                        superstructure.scoreCoralCommand())
+                        .until(() -> (timer.get() > 4 && startedScoring.value == false
+                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                        .finallyDo(() -> startedScoring.value = false),
+
+                superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+                drivetrain.followPathCommand(pathFToIntake)
+                        .alongWith(superstructure.stowAfterScoreCommand()),
+
+                Commands.waitSeconds(0.2),
+                Commands.runOnce(timer::reset),
+                Commands.sequence(
+                        Commands.runOnce(timer::start),
+                        Commands.parallel(
+                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.D,
+                                        superstructure.manipulator.hasGamePiece
+                                                .and(superstructure.isInAutoScoringPosition)),
+                                Commands.sequence(
+                                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                                .and(() -> drivetrain.getCurrentBranchDistance() < 3.3)),
+                                        Commands.runOnce(() -> startedScoring.value = true),
+                                        superstructure.prepareCoralScoreFastL4Command(ReefLevel.L4))),
+                        superstructure.scoreCoralCommand())
+                        // stop if the timer is above 4 seconds, we haven't started scoring yet, and we
+                        // don't have a game piece
+                        .until(() -> (timer.get() > 4 && startedScoring.value == false
+                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                        .finallyDo(() -> startedScoring.value = false),
+
+                drivetrain.followPathCommand(pathDToIntake)
+                        .alongWith(superstructure.stowAfterScoreCommand()),
+
+                Commands.waitSeconds(0.2),
+                Commands.runOnce(timer::reset),
+                Commands.sequence(
+                        Commands.runOnce(timer::start),
+                        Commands.parallel(
+                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.C,
+                                        superstructure.manipulator.hasGamePiece
+                                                .and(superstructure.isInAutoScoringPosition)),
+                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                        .and(() -> drivetrain.getCurrentBranchDistance() < 3.3))
+                                        .andThen(superstructure.prepareCoralScoreFastL4Command(ReefLevel.L4))),
+                        superstructure.scoreCoralCommand())
+                        .until(() -> (timer.get() > 4 && startedScoring.value == false
+                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                        .finallyDo(() -> startedScoring.value = false),
+
+                drivetrain.followPathCommand(pathCToIntake)
+                        .alongWith(superstructure.stowAfterScoreCommand()),
+
+                superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+                Commands.waitSeconds(0.2),
+                Commands.sequence(
+                        Commands.parallel(
+                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.C,
+                                        superstructure.manipulator.hasGamePiece),
+                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                        .and(() -> drivetrain.getCurrentBranchDistance() < 3.3))
+                                        .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L3))
+                        ),
+                        superstructure.scoreCoralCommand(), 
+                        superstructure.prepareCoralScoreCommand(ReefLevel.L2)
+                                .alongWith(drivetrain.driveToPoseCommand(() -> drivetrain.getCurrentBranchTargetPose()
+                                .plus(new Transform2d(-0.15, 0, Rotation2d.kZero))).withTimeout(0.5),superstructure.manipulator.reverseRollersFastCommand().asProxy())
+                ),
+
+                Commands.run(() -> drivetrain.drive(new ChassisSpeeds(-0.5, 0, 0), DriveMode.ROBOT_RELATIVE),
+                        drivetrain).withTimeout(0.5))
+                .finallyDo(() -> superstructure.elevator.setElevatorProfileParams(ElevatorProfileParams.MID));
+
+        return new AutoRoutine("FDC4C3Algae", command, List.of(pathStartToF, pathFToIntake, pathIntakeToD, pathDToIntake,
+                pathIntakeToC, pathCToIntake, pathIntakeToB), startingPose);
+    }
+
     public static AutoRoutine FDCE(Drivetrain drivetrain, Superstructure superstructure)
             throws IOException, ParseException {
         PathPlannerPath pathStartToF = PathPlannerPath.fromChoreoTrajectory("FDCB", 0);
@@ -311,190 +416,7 @@ public class Autos {
 
         return new AutoRoutine("FDCE", command, List.of(pathStartToF, pathFToIntake, pathIntakeToD, pathDToIntake,
                 pathIntakeToC, pathCToIntake, pathIntakeToB), startingPose);
-    }
-
-    public static AutoRoutine FDCBExperimental(Drivetrain drivetrain, Superstructure superstructure)
-            throws IOException, ParseException {
-        PathPlannerPath pathStartToF = PathPlannerPath.fromChoreoTrajectory("FDCB", 0);
-        PathPlannerPath pathFToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 1);
-        PathPlannerPath pathIntakeToD = PathPlannerPath.fromChoreoTrajectory("FDCB", 2);
-        PathPlannerPath pathDToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 3);
-        PathPlannerPath pathIntakeToC = PathPlannerPath.fromChoreoTrajectory("FDCB", 4);
-        PathPlannerPath pathCToIntake = PathPlannerPath.fromChoreoTrajectory("FDCB", 5);
-        PathPlannerPath pathIntakeToB = PathPlannerPath.fromChoreoTrajectory("FDCB", 6);
-        Pose2d startingPose = pathStartToF.getStartingHolonomicPose().get();
-
-        BooleanContainer startedScoring = new BooleanContainer(false);
-        Timer timer = new Timer();
-
-        Command command = Commands.sequence(
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        drivetrain
-                                .lockToClosestBranchAutoPauseFastCommand(ReefBranch.F,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition))
-                                .alongWith(
-                                        superstructure.prepareCoralScoreCommand(ReefLevel.L4)),
-                        superstructure.scoreCoralCommand())
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.driveToPoseCommand(() -> RIGHT_INTAKING_LOCATION)
-                        .until(() -> drivetrain.isInGoalPosition(RIGHT_INTAKING_LOCATION))
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        Commands.parallel(
-                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.D,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition)),
-                                Commands.sequence(
-                                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                                .and(() -> drivetrain.getCurrentBranchDistance() < 2.8)),
-                                        Commands.runOnce(() -> startedScoring.value = true),
-                                        superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                        superstructure.scoreCoralCommand())
-                        // stop if the timer is above 4 seconds, we haven't started scoring yet, and we
-                        // don't have a game piece
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.driveToPoseCommand(() -> RIGHT_INTAKING_LOCATION)
-                        .until(() -> drivetrain.isInGoalPosition(RIGHT_INTAKING_LOCATION))
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        Commands.parallel(
-                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.C,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition)),
-                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                        .and(() -> drivetrain.getCurrentBranchDistance() < 2.8))
-                                        .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                        superstructure.scoreCoralCommand())
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.driveToPoseCommand(() -> RIGHT_INTAKING_LOCATION)
-                        .until(() -> drivetrain.isInGoalPosition(RIGHT_INTAKING_LOCATION))
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.parallel(
-                        drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.B,
-                                superstructure.manipulator.hasGamePiece.and(superstructure.isInAutoScoringPosition)),
-                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                .and(() -> drivetrain.getCurrentBranchDistance() < 2.2))
-                                .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                superstructure.scoreCoralCommand(),
-
-                drivetrain.teleopDriveCommand(() -> -0.5, () -> 0, () -> 0).withTimeout(0.5));
-
-        return new AutoRoutine("FDCBExperimental", command,
-                List.of(pathStartToF, pathFToIntake, pathIntakeToD, pathDToIntake,
-                        pathIntakeToC, pathCToIntake, pathIntakeToB),
-                startingPose);
-    }
-
-    public static AutoRoutine FBDC(Drivetrain drivetrain, Superstructure superstructure)
-            throws IOException, ParseException {
-        PathPlannerPath pathStartToF = PathPlannerPath.fromChoreoTrajectory("FBDC", 0);
-        PathPlannerPath pathFToIntake = PathPlannerPath.fromChoreoTrajectory("FBDC", 1);
-        PathPlannerPath pathIntakeToB = PathPlannerPath.fromChoreoTrajectory("FBDC", 2);
-        PathPlannerPath pathBToIntake = PathPlannerPath.fromChoreoTrajectory("FBDC", 3);
-        PathPlannerPath pathIntakeToD = PathPlannerPath.fromChoreoTrajectory("FBDC", 4);
-        PathPlannerPath pathDToIntake = PathPlannerPath.fromChoreoTrajectory("FBDC", 5);
-        PathPlannerPath pathIntakeToC = PathPlannerPath.fromChoreoTrajectory("FBDC", 6);
-        PathPlannerPath pathCToIntake = PathPlannerPath.fromChoreoTrajectory("FBDC", 7);
-        Pose2d startingPose = pathStartToF.getStartingHolonomicPose().get();
-
-        BooleanContainer startedScoring = new BooleanContainer(false);
-        Timer timer = new Timer();
-
-        Command command = Commands.sequence(
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        drivetrain
-                                .lockToClosestBranchAutoPauseFastCommand(ReefBranch.F,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition))
-                                .alongWith(
-                                        superstructure.prepareCoralScoreCommand(ReefLevel.L4)),
-                        superstructure.scoreCoralCommand())
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.followPathCommand(pathFToIntake)
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.parallel(
-                        drivetrain.lockToClosestBranchAutoPause4thCommand(ReefBranch.B,
-                                superstructure.manipulator.hasGamePiece.and(superstructure.isInAutoScoringPosition)),
-                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                .and(() -> drivetrain.getCurrentBranchDistance() < 2.2))
-                                .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                superstructure.scoreCoralCommand(),
-
-                drivetrain.followPathCommand(pathBToIntake)
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        Commands.parallel(
-                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.D,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition)),
-                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                        .and(() -> drivetrain.getCurrentBranchDistance() < 3.3))
-                                        .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                        superstructure.scoreCoralCommand())
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.followPathCommand(pathDToIntake)
-                        .alongWith(superstructure.stowAfterScoreCommand()),
-
-                Commands.waitSeconds(0.2),
-                Commands.runOnce(timer::reset),
-                Commands.sequence(
-                        Commands.runOnce(timer::start),
-                        Commands.parallel(
-                                drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.C,
-                                        superstructure.manipulator.hasGamePiece
-                                                .and(superstructure.isInAutoScoringPosition)),
-                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
-                                        .and(() -> drivetrain.getCurrentBranchDistance() < 3.3))
-                                        .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L4))),
-                        superstructure.scoreCoralCommand())
-                        .until(() -> (timer.get() > 4 && startedScoring.value == false
-                                && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
-                        .finallyDo(() -> startedScoring.value = false),
-
-                drivetrain.followPathCommand(pathCToIntake)
-                        .alongWith(superstructure.stowAfterScoreCommand()));
-
-        return new AutoRoutine("FBDC_Different", command,
-                List.of(pathStartToF, pathFToIntake, pathIntakeToD, pathDToIntake,
-                        pathIntakeToC, pathDToIntake, pathIntakeToB, pathCToIntake),
-                startingPose);
-    }
+    } 
 
     public static AutoRoutine HAlgae(Drivetrain drivetrain, Superstructure superstructure)
             throws IOException, ParseException {
@@ -746,5 +668,288 @@ public class Autos {
         return new AutoRoutine("IKLJ", command, List.of(pathStartToI, pathIToIntake, pathIntakeToK, pathKToIntake,
                 pathIntakeToL, pathLToIntake, pathIntakeToA), startingPose);
     }
+
+    public static AutoRoutine IKL4L3Algae(Drivetrain drivetrain, Superstructure superstructure)
+    throws IOException, ParseException {
+PathPlannerPath pathStartToI = PathPlannerPath.fromChoreoTrajectory("IKLA", 0);
+PathPlannerPath pathIToIntake = PathPlannerPath.fromChoreoTrajectory("IKLA", 1);
+PathPlannerPath pathIntakeToK = PathPlannerPath.fromChoreoTrajectory("IKLA", 2);
+PathPlannerPath pathKToIntake = PathPlannerPath.fromChoreoTrajectory("IKLA", 3);
+PathPlannerPath pathIntakeToL = PathPlannerPath.fromChoreoTrajectory("IKLA", 4);
+PathPlannerPath pathLToIntake = PathPlannerPath.fromChoreoTrajectory("IKLA", 5);
+PathPlannerPath pathIntakeToA = PathPlannerPath.fromChoreoTrajectory("IKLA", 6);
+Pose2d startingPose = pathStartToI.getStartingHolonomicPose().get();
+
+BooleanContainer startedScoring = new BooleanContainer(false);
+Timer timer = new Timer();
+
+Command command = Commands.sequence(
+        superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+        Commands.runOnce(timer::reset),
+        Commands.sequence(
+                Commands.runOnce(timer::start),
+                drivetrain
+                        .lockToClosestBranchAutoPauseTallCommand(ReefBranch.I,
+                                superstructure.manipulator.hasGamePiece
+                                        .and(superstructure.isInAutoScoringPosition))
+                        .alongWith(
+                                superstructure.prepareCoralScoreCommand(ReefLevel.L4)),
+                superstructure.scoreCoralCommand())
+                .until(() -> (timer.get() > 4 && startedScoring.value == false
+                        && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                .finallyDo(() -> startedScoring.value = false),
+
+        superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+        drivetrain.followPathCommand(pathIToIntake)
+                .alongWith(superstructure.stowAfterScoreCommand()),
+
+        Commands.waitSeconds(0.2),
+        Commands.runOnce(timer::reset),
+        Commands.sequence(
+                Commands.runOnce(timer::start),
+                Commands.parallel(
+                        drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.K,
+                                superstructure.manipulator.hasGamePiece
+                                        .and(superstructure.isInAutoScoringPosition)),
+                        Commands.sequence(
+                                Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                        .and(() -> drivetrain.getCurrentBranchDistance() < 3.3)),
+                                Commands.runOnce(() -> startedScoring.value = true),
+                                superstructure.prepareCoralScoreFastL4Command(ReefLevel.L4))),
+                superstructure.scoreCoralCommand())
+                // stop if the timer is above 4 seconds, we haven't started scoring yet, and we
+                // don't have a game piece
+                .until(() -> (timer.get() > 3 && startedScoring.value == false
+                        && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                .finallyDo(() -> startedScoring.value = false),
+
+        drivetrain.followPathCommand(pathKToIntake)
+                .alongWith(superstructure.stowAfterScoreCommand()),
+
+        Commands.waitSeconds(0.2),
+        Commands.runOnce(timer::reset),
+        Commands.sequence(
+                Commands.runOnce(timer::start),
+                Commands.parallel(
+                        drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.L,
+                                superstructure.manipulator.hasGamePiece.and(superstructure.isInAutoScoringPosition)),
+                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                .and(() -> drivetrain.getCurrentBranchDistance() < 3.3))
+                                .andThen(superstructure.prepareCoralScoreFastL4Command(ReefLevel.L4))),
+                superstructure.scoreCoralCommand())
+                .until(() -> (timer.get() > 3 && startedScoring.value == false
+                        && !superstructure.manipulator.hasGamePiece.getAsBoolean()))
+                .finallyDo(() -> startedScoring.value = false),
+
+        drivetrain.followPathCommand(pathLToIntake)
+                .alongWith(superstructure.stowAfterScoreCommand()),
+
+        superstructure.elevator.setElevatorProfileParamsCommand(ElevatorProfileParams.SLOW),
+
+        Commands.waitSeconds(0.2),
+        Commands.sequence(
+                Commands.parallel(
+                        drivetrain.lockToClosestBranchAutoPauseFastCommand(ReefBranch.L,
+                                superstructure.manipulator.hasGamePiece),
+                        Commands.waitUntil(superstructure.manipulator.hasGamePiece
+                                .and(() -> drivetrain.getCurrentBranchDistance() < 3.2))
+                                .andThen(superstructure.prepareCoralScoreCommand(ReefLevel.L3))
+                ),
+                superstructure.scoreCoralCommand(), 
+                superstructure.prepareCoralScoreCommand(ReefLevel.L2)
+                        .alongWith(drivetrain.driveToPoseCommand(() -> drivetrain.getCurrentBranchTargetPose()
+                        .plus(new Transform2d(-0.06, 0, Rotation2d.kZero))).withTimeout(0.5),superstructure.manipulator.reverseRollersFastCommand().asProxy())
+        ),
+
+
+        Commands.run(() -> drivetrain.drive(new ChassisSpeeds(-0.05, 0, 0), DriveMode.ROBOT_RELATIVE),
+                drivetrain).withTimeout(0.5))
+        .finallyDo(() -> superstructure.elevator.setElevatorProfileParams(ElevatorProfileParams.MID));
+
+return new AutoRoutine("IKL4L3Algae", command, List.of(pathStartToI, pathIToIntake, pathIntakeToK, pathKToIntake,
+        pathIntakeToL, pathLToIntake, pathIntakeToA), startingPose);
+}
+
+// public static AutoRoutine IKLKL(Drivetrain drivetrain, Superstructure superstructure)
+//         throws IOException, ParseException {
+
+//     // ===== Tight timing to target ≤15s without risky global wrappers =====
+//     final double kAlignL4TimeoutSec   = 2.2;
+//     final double kAlignL3TimeoutSec   = 1.8;
+//     final double kScoreWindowSec      = 0.6;
+//     final double kPickupGateMeters    = 3.3;
+//     final double kPickupGateTight     = 2.8;
+//     final double kPostScoreStowWait   = 0.15;
+//     final double kTravelPause         = 0.08;
+//     final double kBumpOutSpeed        = -2.5;
+//     final double kBumpOutTime         = 0.30;
+
+//     // ===== Paths (Choreo export "IKLA"; segments 0..6) =====
+//     final PathPlannerPath pathStartToI   = PathPlannerPath.fromChoreoTrajectory("IKLA", 0);
+//     final PathPlannerPath pathIToIntake  = PathPlannerPath.fromChoreoTrajectory("IKLA", 1);
+//     final PathPlannerPath pathIntakeToK  = PathPlannerPath.fromChoreoTrajectory("IKLA", 2);
+//     final PathPlannerPath pathKToIntake  = PathPlannerPath.fromChoreoTrajectory("IKLA", 3);
+//     final PathPlannerPath pathIntakeToL  = PathPlannerPath.fromChoreoTrajectory("IKLA", 4);
+//     final PathPlannerPath pathLToIntake  = PathPlannerPath.fromChoreoTrajectory("IKLA", 5);
+//     final PathPlannerPath pathIntakeToA  = PathPlannerPath.fromChoreoTrajectory("IKLA", 6);
+
+//     final Pose2d startingPose = pathStartToI.getStartingHolonomicPose().get();
+
+//     // ===== Helpers =====
+//     final java.util.function.BooleanSupplier hasPiece    =
+//             () -> superstructure.manipulator.hasGamePiece.getAsBoolean();
+//     final java.util.function.BooleanSupplier inScorePose =
+//             () -> superstructure.isInAutoScoringPosition.getAsBoolean();
+//     final java.util.function.DoubleSupplier branchDist   =
+//             () -> drivetrain.getCurrentBranchDistance();
+
+//     // Wrap a score with short settle + stow
+//     java.util.function.Function<Command, Command> withStowAfterScore = (scoreCmd) ->
+//             Commands.sequence(
+//                     scoreCmd.withTimeout(kScoreWindowSec),
+//                     Commands.waitSeconds(kPostScoreStowWait),
+//                     superstructure.stowAfterScoreCommand()
+//             );
+
+//     // L4 align/score (fast)
+//     java.util.function.BiFunction<ReefBranch, ReefLevel, Command> alignPrepScoreL4 =
+//             (branch, level) -> {
+//                 Command alignFast = drivetrain.lockToClosestBranchAutoPauseFastCommand(
+//                         branch, () -> hasPiece.getAsBoolean() && inScorePose.getAsBoolean());
+
+//                 Command prepFast = Commands.sequence(
+//                         Commands.waitUntil(() -> hasPiece.getAsBoolean() && branchDist.getAsDouble() < kPickupGateMeters),
+//                         superstructure.prepareCoralScoreFastL4Command(level)
+//                 );
+
+//                 Command score = superstructure.scoreCoralCommand();
+
+//                 return Commands.sequence(
+//                         // Timebox: if we can't arm within timeout, skip scoring and continue
+//                         Commands.deadline(
+//                                 Commands.waitSeconds(kAlignL4TimeoutSec),
+//                                 Commands.parallel(alignFast, prepFast)
+//                         ),
+//                         Commands.either(
+//                                 withStowAfterScore.apply(score),
+//                                 Commands.none(),
+//                                 () -> inScorePose.getAsBoolean()
+//                         )
+//                 );
+//             };
+
+//     // L3 align/score (slightly tighter gate late in auto)
+//     java.util.function.BiFunction<ReefBranch, ReefLevel, Command> alignPrepScoreL3Tight =
+//             (branch, level) -> {
+//                 Command align = drivetrain.lockToClosestBranchAutoPause4thCommand(
+//                         branch, () -> hasPiece.getAsBoolean() && inScorePose.getAsBoolean());
+
+//                 Command prep = Commands.sequence(
+//                         Commands.waitUntil(() -> hasPiece.getAsBoolean() && branchDist.getAsDouble() < kPickupGateTight),
+//                         superstructure.prepareCoralScoreCommand(level)
+//                 );
+
+//                 Command score = superstructure.scoreCoralCommand();
+
+//                 return Commands.sequence(
+//                         Commands.deadline(
+//                                 Commands.waitSeconds(kAlignL3TimeoutSec),
+//                                 Commands.parallel(align, prep)
+//                         ),
+//                         Commands.either(
+//                                 withStowAfterScore.apply(score),
+//                                 Commands.none(),
+//                                 () -> inScorePose.getAsBoolean()
+//                         )
+//                 );
+//             };
+
+//     // ===== Routine =====
+//     Command routine =
+//             Commands.sequence(
+//                     // Init — safe and minimal
+//                     Commands.runOnce(() -> {
+//                         drivetrain.resetPoseEstimator(startingPose);
+//                         superstructure.elevator.setElevatorProfileParams(ElevatorProfileParams.SLOW);
+//                     }),
+
+//                     // PIECE 1 @ I (L4)
+//                     Commands.deadline(
+//                             drivetrain.followPathCommand(pathStartToI),
+//                             superstructure.prepareCoralScoreCommand(ReefLevel.L4)
+//                     ),
+//                     Commands.waitSeconds(kTravelPause),
+//                     alignPrepScoreL4.apply(ReefBranch.I, ReefLevel.L4),
+
+//                     // → intake
+//                     Commands.deadline(
+//                             drivetrain.followPathCommand(pathIToIntake),
+//                             superstructure.stowAfterScoreCommand()
+//                     ),
+
+//                     // PIECE 2 @ K (L4)
+//                     Commands.deadline(drivetrain.followPathCommand(pathIntakeToK), Commands.none()),
+//                     Commands.waitSeconds(kTravelPause),
+//                     alignPrepScoreL4.apply(ReefBranch.K, ReefLevel.L4),
+
+//                     // → intake
+//                     Commands.deadline(
+//                             drivetrain.followPathCommand(pathKToIntake),
+//                             superstructure.stowAfterScoreCommand()
+//                     ),
+
+//                     // PIECE 3 @ L (L4)
+//                     Commands.deadline(drivetrain.followPathCommand(pathIntakeToL), Commands.none()),
+//                     Commands.waitSeconds(kTravelPause),
+//                     alignPrepScoreL4.apply(ReefBranch.L, ReefLevel.L4),
+
+//                     // → intake
+//                     Commands.deadline(
+//                             drivetrain.followPathCommand(pathLToIntake),
+//                             superstructure.stowAfterScoreCommand()
+//                     ),
+
+//                     // PIECE 4 @ K (L3 tight)
+//                     Commands.waitSeconds(kTravelPause),
+//                     alignPrepScoreL3Tight.apply(ReefBranch.K, ReefLevel.L3),
+
+//                     // → intake then A
+//                     Commands.deadline(
+//                             drivetrain.followPathCommand(pathIntakeToA),
+//                             superstructure.stowAfterScoreCommand()
+//                     ),
+
+//                     // PIECE 5 @ A (L3 tight)
+//                     Commands.waitSeconds(kTravelPause),
+//                     alignPrepScoreL3Tight.apply(ReefBranch.L, ReefLevel.L3),
+
+//                     // Short clear and safe stop
+//                     Commands.run(
+//                             () -> drivetrain.drive(
+//                                     new ChassisSpeeds(kBumpOutSpeed, 0.0, 0.0),
+//                                     com.techhounds.houndutil.houndlib.subsystems.BaseSwerveDrive.DriveMode.ROBOT_RELATIVE),
+//                             drivetrain
+//                     ).withTimeout(kBumpOutTime),
+//                     Commands.runOnce(() -> {
+//                         drivetrain.drive(
+//                                 new ChassisSpeeds(0.0, 0.0, 0.0),
+//                                 com.techhounds.houndutil.houndlib.subsystems.BaseSwerveDrive.DriveMode.ROBOT_RELATIVE);
+//                         superstructure.elevator.setElevatorProfileParams(ElevatorProfileParams.MID);
+//                     })
+//             ).withName("IKLKL");
+
+//     return new AutoRoutine(
+//             "IKLKL",
+//             routine,
+//             java.util.List.of(
+//                     pathStartToI, pathIToIntake, pathIntakeToK, pathKToIntake,
+//                     pathIntakeToL, pathLToIntake, pathIntakeToA
+//             ),
+//             startingPose
+//     );
+// }
+
 
 }

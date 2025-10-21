@@ -197,16 +197,20 @@ public class RobotContainer {
 
     public void configureAuto() {
         try {
+            // RIGHT SIDE
             AutoManager.getInstance().addRoutine(Autos.FDCB(drivetrain, superstructure));
             AutoManager.getInstance().addRoutine(Autos.FDCE(drivetrain, superstructure));
-            // AutoManager.getInstance().addRoutine(Autos.FDCBExperimental(drivetrain,
-            // superstructure));
-            // AutoManager.getInstance().addRoutine(Autos.FBDC(drivetrain, superstructure));
-            // AutoManager.getInstance().addRoutine(Autos.IKL(drivetrain, superstructure));
+            AutoManager.getInstance().addRoutine(Autos.FDC4C3Algae(drivetrain, superstructure));
+
+            // LEFT SIDE
             AutoManager.getInstance().addRoutine(Autos.IKLA(drivetrain, superstructure));
             AutoManager.getInstance().addRoutine(Autos.IKLJ(drivetrain, superstructure));
-            AutoManager.getInstance().addRoutine(Autos.wheelRadiusCharacterization(drivetrain));
+            AutoManager.getInstance().addRoutine(Autos.IKL4L3Algae(drivetrain, superstructure));
+          
+            // ALGAE
             AutoManager.getInstance().addRoutine(Autos.HAlgae(drivetrain, superstructure));
+            //AutoManager.getInstance().addRoutine(Autos.wheelRadiusCharacterization(drivetrain));
+            
         } catch (IOException | ParseException e) {
             throw new RuntimeException("Could not create trajectories.");
         }
