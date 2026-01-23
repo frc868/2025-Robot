@@ -11,6 +11,7 @@ import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.GravityTypeValue;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue;
 import com.ctre.phoenix6.sim.TalonFXSimState;
@@ -47,6 +48,9 @@ import frc.robot.GlobalStates;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Volts;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 import static frc.robot.Constants.Elevator.*;
 
@@ -61,10 +65,9 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Eleva
 
     private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true).withUseTimesync(true);
     private final DynamicMotionMagicVoltage positionRequest = new DynamicMotionMagicVoltage(
-            0,
-            profileParams.velocity / DRUM_CIRCUMFERENCE,
-            profileParams.acceleration / DRUM_CIRCUMFERENCE,
-            profileParams.jerk / DRUM_CIRCUMFERENCE)
+            Radians.of(0.0),
+            RadiansPerSecond.of(profileParams.velocity / DRUM_CIRCUMFERENCE),
+            RadiansPerSecondPerSecond.of(profileParams.acceleration / DRUM_CIRCUMFERENCE))
             .withEnableFOC(true)
             .withUseTimesync(true);
     private final NeutralOut stopRequest = new NeutralOut().withUseTimesync(true);
@@ -155,7 +158,7 @@ public class Elevator extends SubsystemBase implements BaseLinearMechanism<Eleva
         motorConfig.MotorOutput.Inverted = RIGHT_MOTOR_INVERSION;
         rightMotorConfigurator.apply(motorConfig);
 
-        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), true));
+        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), MotorAlignmentValue.Aligned));
 
         positionSignal = leftMotor.getPosition();
         velocitySignal = leftMotor.getVelocity();

@@ -77,7 +77,6 @@ import edu.wpi.first.wpilibj2.command.DeferredCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Utils;
-import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.FieldConstants.Reef.BranchSide;
 import frc.robot.FieldConstants.Reef.ReefBranch;
@@ -105,7 +104,7 @@ public class Drivetrain extends SubsystemBase implements BaseSwerveDrive {
             FRONT_LEFT_STEER_MOTOR_ID,
             FRONT_LEFT_STEER_ENCODER_ID,
             CAN_BUS_NAME,
-            DRIVE_MOTORS_INVERTED,
+            DRIVE_MOTORS_INVERTED, 
             STEER_MOTORS_INVERTED,
             STEER_CANCODERS_INVERTED,
             FRONT_LEFT_OFFSET,

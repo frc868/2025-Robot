@@ -2,7 +2,6 @@ package frc.robot.subsystems;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.simulation.VisionSystemSim;
@@ -16,6 +15,7 @@ import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -65,10 +65,10 @@ public class Vision extends SubsystemBase {
 
     @Log(groups = "cameras")
     private final AprilTagPhotonCamera houndeye01 = new AprilTagPhotonCamera("FrontLeft",
-            ROBOT_TO_CAMS[0], CAMERA_CONSTANTS, 0.2, 0.1);
+            ROBOT_TO_CAMS[0], CAMERA_CONSTANTS, 0.2, 0.1,AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded));
     @Log(groups = "cameras")
     private final AprilTagPhotonCamera houndeye02 = new AprilTagPhotonCamera("FrontRight",
-            ROBOT_TO_CAMS[1], CAMERA_CONSTANTS, 0.2, 0.1);
+            ROBOT_TO_CAMS[1], CAMERA_CONSTANTS, 0.2, 0.1, AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded));
     // @Log(groups = "cameras")
     // private final AprilTagPhotonCamera houndeye03 = new
     // AprilTagPhotonCamera("BackLeft",
@@ -121,43 +121,42 @@ public class Vision extends SubsystemBase {
 
             // HEADING
             photonCamera.addHeadingData(Timer.getFPGATimestamp(), headingSupplier.get());
-            Optional<EstimatedRobotPose> result = photonCamera
-                    .getEstimatedGlobalPose(prevEstimatedRobotPose);
+            photonCamera.update(prevEstimatedRobotPose, SINGLE_TAG_STD_DEVS,
+                    DriverStation.isAutonomous() ? MULTI_TAG_STD_DEVS : MULTI_TAG_TELEOP_STD_DEVS);
 
-            if (result.isPresent()) {
-                EstimatedRobotPose estPose = result.get();
+            List<Pair<EstimatedRobotPose, Matrix<N3, N1>>> robotPoses = photonCamera.getEstimatedRobotPoses();
+            List<EstimatedRobotPose> trigPoses = photonCamera.getEstimatedTrigPoses();
+
+            latestUsedPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
+            latestUsedTrigPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
+
+            // System.out.println(robotPoses.size());
+            // System.out.println(trigPoses.size());
+
+            for (Pair<EstimatedRobotPose, Matrix<N3, N1>> item : robotPoses) {
+                EstimatedRobotPose estPose = item.getFirst();
+                Matrix<N3, N1> stddevs = item.getSecond();
+
                 latestUsedPoses[i] = estPose.estimatedPose;
                 Pose2d pose = estPose.estimatedPose.toPose2d();
-
-                Matrix<N3, N1> stddevs = photonCamera.getEstimationStdDevs(pose,
-                        SINGLE_TAG_PRECISE_STD_DEVS,
-                        DriverStation.isAutonomous() ? MULTI_TAG_STD_DEVS : MULTI_TAG_TELEOP_STD_DEVS);
 
                 double normSpeed = new Translation2d(chassisSpeedsSupplier.get().vxMetersPerSecond,
                         chassisSpeedsSupplier.get().vyMetersPerSecond).getNorm();
                 if (normSpeed < 0.8 || !DriverStation.isAutonomous()) {
                     visionMeasurementConsumer.accept(pose, estPose.timestampSeconds, stddevs);
                 }
-            } else {
-                latestUsedPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
             }
 
-            Optional<EstimatedRobotPose> preciseResult = photonCamera.getEstimatedTrigPose();
-
-            if (preciseResult.isPresent()) {
-                EstimatedRobotPose estPose = preciseResult.get();
-                Pose2d pose = estPose.estimatedPose.toPose2d();
-                latestUsedTrigPoses[i] = estPose.estimatedPose;
+            for (EstimatedRobotPose trigPose : trigPoses) {
+                Pose2d pose = trigPose.estimatedPose.toPose2d();
+                latestUsedTrigPoses[i] = trigPose.estimatedPose;
 
                 double normSpeed = new Translation2d(chassisSpeedsSupplier.get().vxMetersPerSecond,
                         chassisSpeedsSupplier.get().vyMetersPerSecond).getNorm();
                 if (normSpeed < 2.0 || !DriverStation.isAutonomous()) {
-                    preciseVisionMeasurementConsumer.accept(pose, estPose.timestampSeconds,
+                    preciseVisionMeasurementConsumer.accept(pose, trigPose.timestampSeconds,
                             SINGLE_TAG_PRECISE_STD_DEVS);
                 }
-
-            } else {
-                latestUsedTrigPoses[i] = new Pose3d(-100, -100, -100, new Rotation3d());
             }
         }
     }

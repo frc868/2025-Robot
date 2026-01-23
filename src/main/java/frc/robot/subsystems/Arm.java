@@ -57,7 +57,6 @@ import static frc.robot.Constants.Arm.*;
 public class Arm extends SubsystemBase implements BaseSingleJointedArm<ArmPosition> {
     @Log
     private final TalonFX motor;
-
     private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true);
     private final MotionMagicVoltage positionRequest = new MotionMagicVoltage(0).withEnableFOC(true);
     private final NeutralOut stopRequest = new NeutralOut();

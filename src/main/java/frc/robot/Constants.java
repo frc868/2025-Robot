@@ -1,5 +1,7 @@
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Radians;
+
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,7 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import frc.robot.FieldConstants.Reef.ReefBranch;
@@ -64,10 +67,10 @@ public class Constants {
         public static final boolean STEER_MOTORS_INVERTED = true;
         public static final boolean STEER_CANCODERS_INVERTED = RobotBase.isReal() ? false : true;
 
-        public static final double FRONT_LEFT_OFFSET = 0.1108398438 + 0.005126953125;
-        public static final double FRONT_RIGHT_OFFSET = 0.373046875 - 0.000732421875;
-        public static final double BACK_LEFT_OFFSET = -0.0278320313 + 0.002197265625;
-        public static final double BACK_RIGHT_OFFSET = -0.2575683594 - 0.003662109375;
+        public static final Angle FRONT_LEFT_OFFSET = Radians.of(0.1108398438 + 0.005126953125);
+        public static final Angle FRONT_RIGHT_OFFSET = Radians.of(0.373046875 - 0.000732421875);
+        public static final Angle BACK_LEFT_OFFSET = Radians.of(-0.0278320313 + 0.002197265625);
+        public static final Angle BACK_RIGHT_OFFSET = Radians.of(-0.2575683594 - 0.003662109375);
 
         /** Distance between left and right wheels. */
         public static final double TRACK_WIDTH_METERS = 0.60325;
@@ -93,7 +96,7 @@ public class Constants {
             SWERVE_CONSTANTS.STEER_kD = 1.0;
             SWERVE_CONSTANTS.STEER_kS = 0;
             SWERVE_CONSTANTS.STEER_kV = 0;
-            SWERVE_CONSTANTS.STEER_kA = 0;
+            SWERVE_CONSTANTS.STEER_kA = 0; 
 
             SWERVE_CONSTANTS.DRIVE_GEARING = 5.9027777778;
             SWERVE_CONSTANTS.STEER_GEARING = 18.75;

@@ -7,6 +7,7 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.techhounds.houndutil.houndlib.PositionTracker;
 import com.techhounds.houndutil.houndlib.Utils;
@@ -74,7 +75,7 @@ public class Climber extends SubsystemBase {
         TalonFXConfigurator rightMotorConfigurator = rightMotor.getConfigurator();
         rightMotorConfigurator.apply(motorConfig);
 
-        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), false));
+        rightMotor.setControl(new Follower(leftMotor.getDeviceID(), MotorAlignmentValue.Aligned));
 
         positionSignal = leftMotor.getPosition();
         velocitySignal = leftMotor.getVelocity();
